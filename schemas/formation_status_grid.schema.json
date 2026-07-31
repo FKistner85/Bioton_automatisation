@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/formation-status-grid-row-v2.json",
+  "schema_name": "formation_status_grid_row",
+  "schema_version": "2026-07-29-formation-status-abck-v3",
+  "type": "object",
+  "oneOf": [
+    {"required": ["grid_id"]},
+    {"required": ["grid_id_10"]}
+  ],
+  "required": [
+    "Majority_formation",
+    "majority_formation_status",
+    "majority_value",
+    "second_value",
+    "majority_delta",
+    "majority_disputed",
+    "n_formations",
+    "n_lrts"
+  ],
+  "properties": {
+    "grid_id": {"type": "string"},
+    "grid_id_10": {"type": "string"},
+    "Majority_formation": {"type": ["string", "null"]},
+    "majority_formation_status": {"type": ["string", "null"], "enum": ["A", "B", "C", "", null]},
+    "majority_value": {"$ref": "#/$defs/centiPercent"},
+    "second_value": {"$ref": "#/$defs/centiPercent"},
+    "majority_delta": {"$ref": "#/$defs/centiPercent"},
+    "majority_disputed": {"type": "boolean"},
+    "n_formations": {"type": "integer", "minimum": 0},
+    "n_lrts": {"type": "integer", "minimum": 0}
+  },
+  "patternProperties": {
+    "^(Bogs|Costal|Forests|Freshwater|Grassland|Other|Permanent Glaciers|Rocky habitats|Temperate heath)(_[ABCK])?$": {
+      "$ref": "#/$defs/centiPercent"
+    },
+    "^[0-9]{4}_[ABCK]$": {"$ref": "#/$defs/centiPercent"}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "centiPercent": {"type": ["integer", "null"], "minimum": 0, "maximum": 10000}
+  },
+  "x-validation-rules": [
+    "majority_delta equals majority_value - second_value",
+    "majority_disputed equals majority_delta <= 200",
+    "n_formations equals the count of positive formation total columns",
+    "n_lrts equals the count of LRT codes with any positive status column"
+  ]
+}

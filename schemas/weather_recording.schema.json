@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/weather-recording-row-v2.json",
+  "schema_name": "weather_recording_row",
+  "schema_version": "2026-07-23-weather-recording-v2",
+  "type": "object",
+  "required": [
+    "datetime",
+    "air_temperature_mean",
+    "cloud_cover",
+    "humidity_relative",
+    "radiation_downwelling",
+    "wind_direction",
+    "wind_speed"
+  ],
+  "properties": {
+    "datetime": {"type": "string"},
+    "air_temperature_mean": {"type": "number", "minimum": -60, "maximum": 60},
+    "cloud_cover": {"type": "number"},
+    "humidity_relative": {"type": "number", "minimum": 0, "maximum": 100},
+    "radiation_downwelling": {"type": "number"},
+    "wind_direction": {"type": "number"},
+    "wind_speed": {"type": "number"}
+  },
+  "additionalProperties": true,
+  "x-filename-pattern": "weather_<id>.csv",
+  "x-expected-rows-default": 264,
+  "x-expected-interval-seconds": 3600
+}

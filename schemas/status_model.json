@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/status-event-v2.json",
+  "schema_name": "pipeline_status_event",
+  "schema_version": "2026-07-23-status-event-v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_utc",
+    "workflow_run_id",
+    "dawn_chorus_id",
+    "field",
+    "previous_value",
+    "current_value"
+  ],
+  "properties": {
+    "event_utc": {"type": "string"},
+    "workflow_run_id": {"type": "string", "minLength": 1},
+    "dawn_chorus_id": {"type": "string", "minLength": 1},
+    "field": {"type": "string", "minLength": 1},
+    "previous_value": {"type": "string"},
+    "current_value": {"type": "string"}
+  }
+}

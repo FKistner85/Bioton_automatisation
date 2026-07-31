@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/bioacoustic-qc-row-v1.json",
+  "schema_name": "bioacoustic_qc_row",
+  "schema_version": "2026-07-24-bioacoustics-v1",
+  "type": "object",
+  "required": [
+    "dawn_chorus_id",
+    "bioacoustic_status",
+    "bioacoustic_has_issues",
+    "bioacoustic_required_models_complete"
+  ],
+  "properties": {
+    "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "bioacoustic_status": {"enum": ["validated", "partial", "failed"]},
+    "bioacoustic_has_issues": {"type": "boolean"},
+    "bioacoustic_issue_codes": {"type": "string"},
+    "bioacoustic_models_expected": {"type": "string"},
+    "bioacoustic_models_complete": {"type": "string"},
+    "bioacoustic_required_models_complete": {"type": "boolean"},
+    "bioacoustic_species_count": {"type": ["integer", "null"], "minimum": 0}
+  },
+  "x-primary-key": "dawn_chorus_id"
+}

@@ -1,0 +1,384 @@
+{
+  "dawn_chorus_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/dawn-chorus-soundscape.csv",
+  "processed_root": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs",
+  "manifest_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_0_manifests",
+  "slurm_log_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_0_slurm_logs",
+  "status_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata",
+  "pipeline_control": {
+    "lock_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_0_control/pipeline.lock",
+    "run_plan_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_0_control/run_plans",
+    "full_rebuild_root": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_0_control/full_rebuild",
+    "status_event_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_0_control/status_events.csv"
+  },
+  "metadata_extraction": {
+    "timezone": "Europe/Berlin",
+    "fingerprint_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/metadata_source_fingerprints.csv"
+  },
+  "lrt_cleaning": {
+    "source_gpkgs": [
+      "/lsdf/kit/ipf/projects/Bio-O-Ton/Biodiversity_data/Bundeslander/All_Bundeslander_merged.gpkg",
+      "/lsdf/kit/ipf/projects/Bio-O-Ton/Biodiversity_data/Bundeslander/LRT_Germany_Clean.gpkg"
+    ],
+    "output_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_0/lrt.gpkg",
+    "output_layer": "lrt",
+    "target_crs": 3035,
+    "eps_area": 1.0,
+    "processes": 16,
+    "maxtasksperchild": 2,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_0/state.json"
+  },
+  "lrt_grid_merge": {
+    "grid_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/grid.gpkg",
+    "grid_layer": "grid",
+    "grid_id_column": "grid_id",
+    "lrt_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_0/lrt.gpkg",
+    "lrt_layer": "lrt",
+    "output_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/LRT_Grid_Majority.csv",
+    "output_grid_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/majority_formation_grid.gpkg",
+    "output_grid_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/majority_formation_grid.parquet",
+    "output_grid_layer": "majority_formation_100m",
+    "chunk_size": 100000,
+    "chunk_checkpoint_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/_chunk_checkpoints",
+    "cell_area_m2": 10000,
+    "disputed_threshold_pct": 2.0,
+    "processes": 16,
+    "maxtasksperchild": 4,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/state.json",
+    "susi_compatible_outputs": {
+      "enabled": true,
+      "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1_susi_compatible",
+      "write_intersections_csv": true
+    }
+  },
+  "point_lrt_assignment": {
+    "metadata_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/dawnchorus_metadata_clean.csv",
+    "grid_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/grid.gpkg",
+    "grid_layer": "grid",
+    "grid_id_column": "grid_id",
+    "grid_majority_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/LRT_Grid_Majority.csv",
+    "lrt_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_0/lrt.gpkg",
+    "lrt_layer": "lrt",
+    "output_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_2/DawnChorus_LRT_Grid_Assignment.csv",
+    "matches_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_2/DawnChorus_LRT_Polygon_Matches.csv",
+    "log_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_2/point_processing_log.csv",
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_2/state.json"
+  },
+  "lrt_grid_aggregation": {
+    "source_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1/majority_formation_grid.parquet",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_3",
+    "resolutions_m": [1000, 5000, 10000],
+    "processes": 3,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_3/state.json"
+  },
+  "susi_10m_products": {
+    "source_100m_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet",
+    "lrt_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_0/lrt.gpkg",
+    "lrt_layer": "lrt",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_4_susi_10m",
+    "grid_chunk_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_4_susi_10m/grid10m_chunks",
+    "ix_chunk_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_4_susi_10m/ix_chunks",
+    "parquet_chunk_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_4_susi_10m/parquet_10",
+    "final_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode.parquet",
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_4_susi_10m/state.json",
+    "chunk_size_100m": 1000,
+    "processes": 16,
+    "write_grid_chunks": true,
+    "write_ix_chunks": true
+  },
+  "public_lrt_cleaning": {
+    "source_gpkgs": [
+      "/lsdf/kit/ipf/projects/Bio-O-Ton/Biodiversity_data/Bundeslander/LRT_Germany_Clean.gpkg"
+    ],
+    "output_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_5_public_lrt/lrt_public.gpkg",
+    "output_layer": "lrt",
+    "target_crs": 3035,
+    "eps_area": 1.0,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_5_public_lrt/state.json"
+  },
+  "public_lrt_grid_merge": {
+    "grid_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/grid_public.gpkg",
+    "grid_layer": "grid",
+    "grid_id_column": "grid_id",
+    "lrt_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_5_public_lrt/lrt_public.gpkg",
+    "lrt_layer": "lrt",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_6_public_susi_compatible",
+    "chunk_size": 500000,
+    "chunk_checkpoint_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_6_public_susi_compatible/_chunk_checkpoints",
+    "cell_area_m2": 10000,
+    "disputed_threshold_pct": 2.0,
+    "processes": 16,
+    "maxtasksperchild": 4,
+    "write_intersections_csv": true,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_2_6_public_susi_compatible/state.json"
+  },
+  "audio_inventory": {
+    "source_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/SoundRecordings",
+    "detailed_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_a_audio_inventory/audio_inventory_detailed.csv",
+    "compact_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_a_audio_inventory/audio_inventory_compact.csv",
+    "target_duration_seconds": 60,
+    "duration_tolerance_seconds": 1,
+    "workers": 16,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_a_audio_inventory/state.json"
+  },
+  "photo_inventory": {
+    "source_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/Images_SoundRecordings",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/Images_SoundRecordings",
+    "detailed_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_b_photo_inventory/photo_inventory_detailed.csv",
+    "compact_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_b_photo_inventory/photo_inventory_compact.csv",
+    "workers": 16,
+    "create_source_dir_if_missing": true,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_b_photo_inventory/state.json"
+  },
+  "audio_download": {
+    "retry_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_1_a_audio_download/audio_download_retry_log.csv",
+    "max_attempts": 5,
+    "timeout_seconds": 120,
+    "sleep_between_downloads_seconds": 0.0,
+    "workers": "auto",
+    "max_workers": 24,
+    "batch_write_size": 25,
+    "master_update_batch_size": 250
+  },
+  "photo_download": {
+    "retry_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_1_b_photo_download/photo_download_retry_log.csv",
+    "max_attempts": 5,
+    "timeout_seconds": 120,
+    "sleep_between_downloads_seconds": 0.0,
+    "workers": "auto",
+    "max_workers": 24,
+    "batch_write_size": 25,
+    "master_update_batch_size": 250
+  },
+  "sentinel2_inventory": {
+    "source_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/S2",
+    "score_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/S2_Scores.csv",
+    "score_id_column": "DC_id",
+    "detailed_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_4_0_Sentinel2_inventory/sentinel2_inventory_detailed.csv",
+    "compact_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_4_0_Sentinel2_inventory/sentinel2_inventory_compact.csv",
+    "workers": 16,
+    "recursive": true,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_4_0_Sentinel2_inventory/state.json"
+  },
+  "sentinel2_download": {
+    "google_drive_folder_id": "16Tyt9w2_yQhF5u5bOenVGnMSGfGThro_",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/S2",
+    "metadata_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/dawnchorus_metadata_clean.csv",
+    "mirror_only_metadata_ids": true,
+    "credentials_path": "credentials.json",
+    "token_path": "token.json",
+    "expected_bands": 12,
+    "expected_height": 101,
+    "expected_width": 101,
+    "batch_write_size": 10,
+    "log_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_4_1_sentinel2_download/download_log.csv"
+  },
+  "sentinel2_cleaning": {
+    "source_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/S2",
+    "expected_bands": 12,
+    "expected_height": 101,
+    "expected_width": 101,
+    "dry_run": true,
+    "log_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_4_2_sentinel2_cleaning/cleaning_log.csv"
+  },
+  "weather_inventory": {
+    "directory": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/Weather/Hostrada",
+    "filename_glob": "weather_*.csv",
+    "metadata_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/dawnchorus_metadata_clean.csv",
+    "metadata_id_column": "id",
+    "metadata_datetime_column": "datetime",
+    "detailed_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_1_weather_inventory/weather_inventory_detailed.csv",
+    "compact_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_1_weather_inventory/weather_inventory_compact.csv",
+    "required_columns": ["datetime", "air_temperature_mean", "cloud_cover", "humidity_relative", "radiation_downwelling", "wind_direction", "wind_speed"],
+    "expected_rows": 264,
+    "expected_interval_seconds": 3600,
+    "temperature_min_C": -60,
+    "temperature_max_C": 60,
+    "humidity_min_percent": 0,
+    "humidity_max_percent": 100,
+    "max_nan_fraction": 0.0,
+    "workers": 16,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_1_weather_inventory/state.json"
+  },
+  "weather_download": {
+    "input_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/dawnchorus_metadata_clean.csv",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/Weather/Hostrada",
+    "cache_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_2_weather_download/hostrada_cache",
+    "log_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_2_weather_download/run_log.txt",
+    "preceding_days": 10,
+    "input_timezone": "Europe/Berlin",
+    "max_download_retries": 3,
+    "retry_backoff_seconds": 5,
+    "http_timeout_seconds": 120,
+    "request_chunk_bytes": 1048576,
+    "cache_download_workers": "auto",
+    "cache_download_max_workers": 16,
+    "recording_workers": "auto",
+    "recording_max_workers": 16,
+    "recording_batch_size": 200,
+    "master_update_batch_size": 5000,
+    "slurm_shard_count": 8,
+    "slurm_max_concurrent_tasks": 4
+  },
+  "hostrada_monthly_download": {
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/netcdf",
+    "start_year": 2017,
+    "workers": 16,
+    "http_timeout_seconds": 300,
+    "request_chunk_bytes": 1048576,
+    "variables": {
+      "Ta": {
+        "base_url": "https://opendata.dwd.de/climate_environment/CDC/grids_germany/hourly/hostrada/air_temperature_mean/",
+        "filename_regex": "tas_1hr_HOSTRADA-v1-0_BE_gn_(\\d{10})-(\\d{10})\\.nc"
+      },
+      "Rh": {
+        "base_url": "https://opendata.dwd.de/climate_environment/CDC/grids_germany/hourly/hostrada/humidity_relative/",
+        "filename_regex": "hurs_1hr_HOSTRADA-v1-0_BE_gn_(\\d{10})-(\\d{10})\\.nc"
+      },
+      "Radiation": {
+        "base_url": "https://opendata.dwd.de/climate_environment/CDC/grids_germany/hourly/hostrada/radiation_downwelling/",
+        "filename_regex": "rsds_1hr_HOSTRADA-v1-0_BE_gn_(\\d{10})-(\\d{10})\\.nc"
+      },
+      "CloudCover": {
+        "base_url": "https://opendata.dwd.de/climate_environment/CDC/grids_germany/hourly/hostrada/cloud_cover/",
+        "filename_regex": "clt_1hr_HOSTRADA-v1-0_BE_gn_(\\d{10})-(\\d{10})\\.nc"
+      },
+      "Winddirection": {
+        "base_url": "https://opendata.dwd.de/climate_environment/CDC/grids_germany/hourly/hostrada/wind_direction/",
+        "filename_regex": "sfcWind_direction_1hr_HOSTRADA-v1-0_BE_gn_(\\d{10})-(\\d{10})\\.nc"
+      },
+      "Windspeed": {
+        "base_url": "https://opendata.dwd.de/climate_environment/CDC/grids_germany/hourly/hostrada/wind_speed/",
+        "filename_regex": "sfcWind_1hr_HOSTRADA-v1-0_BE_gn_(\\d{10})-(\\d{10})\\.nc"
+      }
+    },
+    "log_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/download_log.csv"
+  },
+  "hostrada_raster_products": {
+    "input_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/netcdf",
+    "output_root": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_4_hostrada_raster_products",
+    "x_min": 4031300,
+    "y_min": 2684000,
+    "x_max": 4672600,
+    "y_max": 3556600,
+    "resolution_m": 100,
+    "tile_size_m": 50000,
+    "source_crs": "EPSG:3034",
+    "target_crs": "EPSG:3035",
+    "scale": 100,
+    "nodata": -9999
+  },
+  "hostrada_raster_quality_check": {
+    "input_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_4_hostrada_raster_products",
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_5_hostrada_raster_quality_check",
+    "workers": 16,
+    "recursive": true,
+    "state_file": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_5_hostrada_raster_quality_check/state.json",
+    "forced_nodata": null
+  },
+  "bioacoustics": {
+    "enabled": true,
+    "bacpipe_version": "1.3.1",
+    "device": "cpu",
+    "instantiate_models_in_preflight": true,
+    "model_checkpoint_repository": "vskode/bacpipe_models",
+    "model_checkpoint_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka/bacpipe/model_checkpoints",
+    "stage_optional_models": true,
+    "run_pretrained_classifier": true,
+    "preprocessing_version": "smartphone_audio_v1",
+    "models": [
+      {
+        "name": "birdnet",
+        "required": true,
+        "classifier": true,
+        "taxon_scope": "birds",
+        "segment_seconds": 3.0
+      },
+      {
+        "name": "perch_v2",
+        "required": true,
+        "classifier": true,
+        "taxon_scope": "multitaxon",
+        "segment_seconds": 5.0
+      },
+      {
+        "name": "audioprotopnet",
+        "required": true,
+        "classifier": true,
+        "taxon_scope": "birds",
+        "segment_seconds": 5.0
+      },
+      {
+        "name": "convnext_birdset",
+        "required": true,
+        "classifier": true,
+        "taxon_scope": "birds",
+        "segment_seconds": 5.0
+      },
+      {
+        "name": "insect66",
+        "required": false,
+        "classifier": false,
+        "taxon_scope": "insects",
+        "segment_seconds": 5.5
+      },
+      {
+        "name": "naturebeats",
+        "required": false,
+        "classifier": false,
+        "taxon_scope": "multitaxon_embedding",
+        "segment_seconds": 5.0
+      }
+    ],
+    "classifier_threshold": 0.1,
+    "classifier_top_k": 5,
+    "shard_count": 16,
+    "checkpoint_batch_size": 16,
+    "max_concurrent_tasks": 4,
+    "audio_inventory_detailed_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_0_a_audio_inventory/audio_inventory_detailed.csv",
+    "metadata_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/dawnchorus_metadata_clean.csv",
+    "model_registry_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_0_bioacoustic_model_preflight/model_registry.json",
+    "worklist_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_1_bioacoustic_worklist/worklist.csv",
+    "worklist_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_1_bioacoustic_worklist/worklist.parquet",
+    "rejected_audio_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_1_bioacoustic_worklist/rejected_audio.csv",
+    "worklist_state_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_1_bioacoustic_worklist/state.json",
+    "embedding_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_2_bioacoustic_embeddings",
+    "native_prediction_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_2_bioacoustic_native_predictions",
+    "inference_state_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_2_bioacoustic_state",
+    "raw_prediction_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_3_species_predictions_raw",
+    "normalisation_state_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_3_species_predictions_raw/state.json",
+    "taxonomy_allowlist_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka/reference_data/germany_species_allowlist.csv",
+    "require_taxonomy_allowlist": false,
+    "filtered_prediction_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_4_species_predictions_germany",
+    "taxonomy_state_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_4_species_predictions_germany/state.json",
+    "recording_summary_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_5_bioacoustic_recording_summary/recording_summary.csv",
+    "recording_summary_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_5_bioacoustic_recording_summary/recording_summary.parquet",
+    "recording_species_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_5_bioacoustic_recording_summary/recording_species.parquet",
+    "aggregation_state_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_5_bioacoustic_recording_summary/state.json",
+    "qc_compact_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_6_bioacoustic_quality_control/bioacoustic_qc_compact.csv",
+    "qc_detailed_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_6_bioacoustic_quality_control/bioacoustic_qc_detailed.csv",
+    "qc_state_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_6_bioacoustic_quality_control/state.json"
+  },
+  "master_table": {
+    "output_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Mastertable.csv",
+    "output_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Mastertable.parquet",
+    "summary_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Mastertable_summary.json",
+    "weather_qc_workers": 16
+  },
+  "final_validation": {
+    "require_all_general_ready": true,
+    "require_100m_formation": true,
+    "require_10m_formation": true,
+    "require_weather_raster_100m": true,
+    "require_bioacoustic_analysis": false,
+    "automatic_release": false
+  },
+  "visual_reporting": {
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_9_visual_reports"
+  },
+  "susi_sanity_check": {
+    "output_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_8_susi_compatibility",
+    "legacy_susi_100m_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/Formation_Status_Grid_withLRTCode.parquet",
+    "legacy_susi_lrt_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/lrt.gpkg"
+  }
+}
+

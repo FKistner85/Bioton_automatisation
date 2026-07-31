@@ -1,0 +1,22 @@
+name: bioton-pipeline
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas
+  - geopandas
+  - pyogrio
+  - shapely
+  - pyarrow
+  - av
+  - pillow
+  - rasterio
+  - requests
+  - xarray
+  - netcdf4
+  - pyproj
+  - tqdm
+  - rioxarray
+  - google-api-python-client
+  - google-auth-oauthlib
+  - google-auth-httplib2

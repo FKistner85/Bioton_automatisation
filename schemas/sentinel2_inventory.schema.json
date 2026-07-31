@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/sentinel2-inventory-row-v2.json",
+  "schema_name": "sentinel2_inventory_row",
+  "schema_version": "2026-07-23-sentinel2-inventory-v2",
+  "type": "object",
+  "required": ["dawn_chorus_id", "sentinel_exists", "sentinel_has_issues"],
+  "properties": {
+    "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "sentinel_exists": {"type": "boolean"},
+    "sentinel_has_issues": {"type": "boolean"},
+    "sentinel_quality_score": {"type": ["number", "null"]},
+    "record_type": {"type": ["string", "null"]},
+    "source_path": {"type": ["string", "null"]},
+    "filename": {"type": ["string", "null"]},
+    "size_bytes": {"type": ["integer", "null"], "minimum": 0},
+    "mtime_ns": {"type": ["integer", "null"], "minimum": 0},
+    "raster_open_ok": {"type": ["boolean", "null"]},
+    "raster_read_ok": {"type": ["boolean", "null"]},
+    "width_px": {"type": ["integer", "null"], "minimum": 0},
+    "height_px": {"type": ["integer", "null"], "minimum": 0},
+    "band_count": {"type": ["integer", "null"], "minimum": 0},
+    "crs": {"type": ["string", "null"]},
+    "has_issues": {"type": ["boolean", "null"]},
+    "issues": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true,
+  "x-default-expectations": {
+    "bands": 12,
+    "height": 101,
+    "width": 101
+  }
+}

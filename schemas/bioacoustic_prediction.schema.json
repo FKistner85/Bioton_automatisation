@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/bioacoustic-prediction-row-v1.json",
+  "schema_name": "bioacoustic_prediction_row",
+  "schema_version": "2026-07-24-bioacoustics-v1",
+  "type": "object",
+  "required": [
+    "dawn_chorus_id",
+    "model",
+    "work_key",
+    "segment_index",
+    "species_scientific",
+    "score",
+    "plausibility_status"
+  ],
+  "properties": {
+    "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "model": {"type": "string", "minLength": 1},
+    "work_key": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "segment_index": {"type": "integer", "minimum": 0},
+    "segment_start_seconds": {"type": "number", "minimum": 0},
+    "segment_end_seconds": {"type": "number", "exclusiveMinimum": 0},
+    "species_scientific": {"type": "string", "minLength": 1},
+    "accepted_scientific_name": {"type": ["string", "null"]},
+    "score": {"type": "number"},
+    "rank_within_segment": {"type": "integer", "minimum": 1},
+    "germany_plausibility": {
+      "enum": ["accepted", "outside_reference", "not_in_reference", "not_evaluated"]
+    },
+    "season_plausibility": {
+      "enum": ["accepted", "outside_season", "not_evaluated"]
+    },
+    "plausibility_status": {"enum": ["accepted", "flagged", "not_evaluated"]}
+  }
+}

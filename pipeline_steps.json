@@ -1,0 +1,257 @@
+{
+  "schema_version": "2026-07-23-pipeline-steps-v1",
+  "statuses": [
+    "not_started",
+    "queued",
+    "running",
+    "complete",
+    "validated",
+    "missing",
+    "has_issues",
+    "partial",
+    "failed",
+    "outdated",
+    "skipped",
+    "not_applicable",
+    "manual_review_required",
+    "approved"
+  ],
+  "steps": {
+    "step_1_metadata": {
+      "scope": "per_id",
+      "script": "scripts/Step_1_metadata_extraction.py",
+      "depends_on": [],
+      "input_sections": ["dawn_chorus_csv", "metadata_extraction"],
+      "outputs": ["metadata_clean", "metadata_log", "metadata_fingerprints"],
+      "invalidated_by": ["id", "lat", "lng", "datetime", "localtimes", "audio", "photo"]
+    },
+    "step_2_0_lrt_cleaning": {
+      "scope": "global",
+      "script": "scripts/Step_2_0_clean_lrts.py",
+      "depends_on": [],
+      "input_sections": ["lrt_cleaning.source_gpkgs", "lrt_cleaning"],
+      "outputs": ["lrt_cleaning.output_gpkg"],
+      "invalidates": ["step_2_1_100m_formation"]
+    },
+    "step_2_1_100m_formation": {
+      "scope": "global",
+      "script": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "depends_on": ["step_2_0_lrt_cleaning"],
+      "input_sections": ["lrt_grid_merge.grid_gpkg", "lrt_grid_merge.lrt_gpkg", "lrt_grid_merge"],
+      "outputs": ["lrt_grid_merge.output_grid_parquet", "lrt_grid_merge.output_grid_gpkg"],
+      "invalidates": ["step_2_2_point_assignment", "step_2_3_grid_aggregation", "step_2_4_10m_formation"]
+    },
+    "step_2_2_point_assignment": {
+      "scope": "per_id",
+      "script": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "depends_on": ["step_1_metadata", "step_2_1_100m_formation"],
+      "input_sections": ["point_lrt_assignment", "metadata_fingerprint"],
+      "outputs": ["point_lrt_assignment.output_csv"],
+      "invalidated_by": ["lat", "lng"]
+    },
+    "step_2_3_grid_aggregation": {
+      "scope": "global",
+      "script": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "depends_on": ["step_2_1_100m_formation"],
+      "input_sections": ["lrt_grid_aggregation"],
+      "outputs": ["lrt_grid_aggregation.output_dir"]
+    },
+    "step_2_4_10m_formation": {
+      "scope": "global_batch",
+      "script": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "depends_on": ["step_2_1_100m_formation"],
+      "input_sections": ["susi_10m_products"],
+      "outputs": ["susi_10m_products.final_parquet"]
+    },
+    "step_3_0_audio_inventory": {
+      "scope": "per_file",
+      "script": "scripts/Step_3_0_a_audio_inventory.py",
+      "depends_on": [],
+      "input_sections": ["audio_inventory.source_dir"],
+      "outputs": ["audio_inventory.compact_log", "audio_inventory.detailed_log"]
+    },
+    "step_3_0_audio_inventory_post": {
+      "scope": "per_file",
+      "script": "scripts/Step_3_0_a_audio_inventory.py",
+      "depends_on": ["step_3_1_audio_download"],
+      "input_sections": ["audio_inventory.source_dir"],
+      "outputs": ["audio_inventory.compact_log", "audio_inventory.detailed_log"]
+    },
+    "step_3_0_photo_inventory": {
+      "scope": "per_file",
+      "script": "scripts/Step_3_0_b_photo_inventory.py",
+      "depends_on": [],
+      "input_sections": ["photo_inventory.source_dir"],
+      "outputs": ["photo_inventory.compact_log", "photo_inventory.detailed_log"]
+    },
+    "step_3_1_audio_download": {
+      "scope": "per_id",
+      "script": "scripts/Step_3_1_a_audio_download.py",
+      "depends_on": ["step_3_0_audio_inventory"],
+      "input_sections": ["audio_download", "audio_fingerprint"],
+      "outputs": ["audio_download.retry_log"],
+      "invalidated_by": ["audio"]
+    },
+    "step_3_1_photo_download": {
+      "scope": "per_id",
+      "script": "scripts/Step_3_1_b_photo_download.py",
+      "depends_on": ["step_3_0_photo_inventory"],
+      "input_sections": ["photo_download", "photo_fingerprint"],
+      "outputs": ["photo_download.retry_log"],
+      "invalidated_by": ["photo"]
+    },
+    "step_4_1_sentinel2_mirror": {
+      "scope": "per_file",
+      "script": "scripts/Step_4_1_Sentinel2_download.py",
+      "depends_on": ["step_1_metadata"],
+      "input_sections": ["sentinel2_download", "sentinel_fingerprint"],
+      "outputs": ["sentinel2_download.output_dir", "sentinel2_download.log_csv"]
+    },
+    "step_4_0_sentinel2_inventory": {
+      "scope": "per_file",
+      "script": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "depends_on": ["step_4_1_sentinel2_mirror"],
+      "input_sections": ["sentinel2_inventory"],
+      "outputs": ["sentinel2_inventory.compact_log", "sentinel2_inventory.detailed_log"]
+    },
+    "step_5_1_weather_inventory": {
+      "scope": "per_id",
+      "script": "scripts/Step_5_1_Weather_inventory.py",
+      "depends_on": ["step_1_metadata"],
+      "input_sections": ["weather_inventory", "weather_fingerprint"],
+      "outputs": ["weather_inventory.compact_log", "weather_inventory.detailed_log"]
+    },
+    "step_5_2_weather_download": {
+      "scope": "per_id",
+      "script": "scripts/Step_5_2_download_weather_data.py",
+      "depends_on": ["step_5_1_weather_inventory"],
+      "input_sections": ["weather_download", "weather_inventory.compact_log"],
+      "outputs": ["weather_download.output_dir"]
+    },
+    "step_5_3_hostrada_monthly": {
+      "scope": "per_remote_file",
+      "script": "scripts/Step_5_3_download_hostrada_monthly.py",
+      "depends_on": [],
+      "input_sections": ["hostrada_monthly_download"],
+      "outputs": ["hostrada_monthly_download.output_dir"]
+    },
+    "step_5_4_hostrada_rasters": {
+      "scope": "per_variable_year_tile",
+      "script": "tools/run_hostrada_raster_all.py",
+      "depends_on": ["step_5_3_hostrada_monthly"],
+      "input_sections": ["hostrada_raster_products"],
+      "outputs": ["hostrada_raster_products.output_root"]
+    },
+    "step_5_5_hostrada_raster_qc": {
+      "scope": "per_file",
+      "script": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "depends_on": ["step_5_4_hostrada_rasters"],
+      "input_sections": ["hostrada_raster_quality_check"],
+      "outputs": ["hostrada_raster_quality_check.output_dir"]
+    },
+    "step_6_0_bioacoustic_model_preflight": {
+      "scope": "global_model_registry",
+      "script": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "depends_on": [],
+      "input_sections": ["bioacoustics.models", "bioacoustics.bacpipe_version"],
+      "outputs": ["bioacoustics.model_registry_json"]
+    },
+    "step_6_1_bioacoustic_worklist": {
+      "scope": "per_id_model",
+      "script": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "depends_on": [
+        "step_3_0_audio_inventory_post",
+        "step_6_0_bioacoustic_model_preflight"
+      ],
+      "input_sections": ["audio_inventory.detailed_log", "bioacoustics"],
+      "outputs": ["bioacoustics.worklist_parquet", "bioacoustics.rejected_audio_csv"],
+      "invalidated_by": ["audio"]
+    },
+    "step_6_2_bioacoustic_embeddings": {
+      "scope": "per_model_id_shard",
+      "script": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "depends_on": [
+        "step_6_0_bioacoustic_model_preflight",
+        "step_6_1_bioacoustic_worklist"
+      ],
+      "input_sections": ["bioacoustics.worklist_parquet", "bioacoustics.models"],
+      "outputs": [
+        "bioacoustics.embedding_dir",
+        "bioacoustics.native_prediction_dir",
+        "bioacoustics.inference_state_dir"
+      ],
+      "invalidated_by": ["audio", "model_version", "checkpoint_hash", "preprocessing_version"]
+    },
+    "step_6_3_species_predictions": {
+      "scope": "per_model",
+      "script": "scripts/Step_6_3_normalise_species_predictions.py",
+      "depends_on": ["step_6_2_bioacoustic_embeddings"],
+      "input_sections": [
+        "bioacoustics.native_prediction_dir",
+        "bioacoustics.classifier_threshold",
+        "bioacoustics.classifier_top_k"
+      ],
+      "outputs": ["bioacoustics.raw_prediction_dir"]
+    },
+    "step_6_4_germany_taxonomy_filter": {
+      "scope": "per_model_prediction",
+      "script": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "depends_on": ["step_6_3_species_predictions", "step_1_metadata"],
+      "input_sections": [
+        "bioacoustics.raw_prediction_dir",
+        "bioacoustics.taxonomy_allowlist_csv",
+        "bioacoustics.metadata_csv"
+      ],
+      "outputs": ["bioacoustics.filtered_prediction_dir"]
+    },
+    "step_6_5_bioacoustic_aggregation": {
+      "scope": "per_id",
+      "script": "scripts/Step_6_5_aggregate_bioacoustic_results.py",
+      "depends_on": ["step_6_4_germany_taxonomy_filter"],
+      "input_sections": ["bioacoustics.filtered_prediction_dir"],
+      "outputs": [
+        "bioacoustics.recording_summary_csv",
+        "bioacoustics.recording_species_parquet"
+      ]
+    },
+    "step_6_6_bioacoustic_qc": {
+      "scope": "per_id_model",
+      "script": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "depends_on": [
+        "step_6_1_bioacoustic_worklist",
+        "step_6_2_bioacoustic_embeddings",
+        "step_6_5_bioacoustic_aggregation"
+      ],
+      "input_sections": [
+        "bioacoustics.worklist_parquet",
+        "bioacoustics.inference_state_dir",
+        "bioacoustics.recording_summary_csv"
+      ],
+      "outputs": [
+        "bioacoustics.qc_compact_csv",
+        "bioacoustics.qc_detailed_csv"
+      ]
+    },
+    "step_7_0_master_table": {
+      "scope": "global_snapshot",
+      "script": "scripts/Step_7_0_update_master_table.py",
+      "depends_on": [
+        "step_1_metadata",
+        "step_2_2_point_assignment",
+        "step_2_4_10m_formation",
+        "step_3_1_audio_download",
+        "step_3_1_photo_download",
+        "step_4_0_sentinel2_inventory",
+        "step_5_1_weather_inventory",
+        "step_5_5_hostrada_raster_qc",
+        "step_6_6_bioacoustic_qc"
+      ],
+      "input_sections": ["master_table"],
+      "outputs": [
+        "master_table.output_csv",
+        "master_table.output_parquet",
+        "pipeline_control.status_event_csv"
+      ]
+    }
+  }
+}

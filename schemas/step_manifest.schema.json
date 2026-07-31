@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/step-manifest-v2.json",
+  "schema_name": "step_manifest",
+  "schema_version": "2026-07-23-step-manifest-v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workflow_run_id",
+    "step_run_id",
+    "step_name",
+    "status",
+    "started_utc",
+    "force",
+    "inputs",
+    "outputs",
+    "parameters",
+    "slurm",
+    "runtime",
+    "result",
+    "warnings",
+    "error"
+  ],
+  "properties": {
+    "schema_version": {"const": "2026-07-23-step-manifest-v2"},
+    "workflow_run_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "step_run_id": {"type": "string", "minLength": 1},
+    "step_name": {"type": "string", "minLength": 1},
+    "status": {"$ref": "#/$defs/status"},
+    "started_utc": {"type": "string"},
+    "finished_utc": {"type": "string"},
+    "force": {"type": "boolean"},
+    "config_path": {"type": "string"},
+    "inputs": {"type": "array", "items": {"type": "string"}},
+    "input_fingerprints": {"type": "array", "items": {"type": "object"}},
+    "outputs": {"type": "array", "items": {"type": "string"}},
+    "output_fingerprints": {"type": "array", "items": {"type": "object"}},
+    "parameters": {"type": "object"},
+    "batch_count": {"type": ["integer", "null"], "minimum": 0},
+    "slurm": {"type": "object"},
+    "runtime": {"type": "object"},
+    "stdout_log": {"type": "string"},
+    "stderr_log": {"type": "string"},
+    "result": {"type": "object"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "error": {"type": "string"}
+  },
+  "$defs": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "queued",
+        "running",
+        "complete",
+        "validated",
+        "missing",
+        "has_issues",
+        "partial",
+        "failed",
+        "outdated",
+        "skipped",
+        "not_applicable",
+        "manual_review_required",
+        "approved"
+      ]
+    }
+  }
+}

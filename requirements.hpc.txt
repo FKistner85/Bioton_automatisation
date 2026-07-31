@@ -1,0 +1,17 @@
+pandas
+geopandas
+pyogrio
+shapely
+pyarrow
+av
+Pillow
+rasterio
+requests
+xarray
+netCDF4
+pyproj
+tqdm
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+rioxarray

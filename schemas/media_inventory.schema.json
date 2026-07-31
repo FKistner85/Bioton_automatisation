@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/media-inventory-row-v2.json",
+  "schema_name": "media_inventory_row",
+  "schema_version": "2026-07-23-media-inventory-v2",
+  "type": "object",
+  "required": ["dawn_chorus_id", "has_issues"],
+  "properties": {
+    "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "source_path": {"type": ["string", "null"]},
+    "source_relative_path": {"type": ["string", "null"]},
+    "filename": {"type": ["string", "null"]},
+    "size_bytes": {"type": ["integer", "null"], "minimum": 0},
+    "mtime_ns": {"type": ["integer", "null"], "minimum": 0},
+    "exists": {"type": ["boolean", "null"]},
+    "has_issues": {"type": "boolean"},
+    "issues": {"type": ["string", "null"]},
+    "duration_seconds": {"type": ["number", "null"], "minimum": 0},
+    "codec": {"type": ["string", "null"]},
+    "sample_rate": {"type": ["integer", "null"], "minimum": 0},
+    "channels": {"type": ["integer", "null"], "minimum": 0},
+    "width": {"type": ["integer", "null"], "minimum": 0},
+    "height": {"type": ["integer", "null"], "minimum": 0},
+    "format": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

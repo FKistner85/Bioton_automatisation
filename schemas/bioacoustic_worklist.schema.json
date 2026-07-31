@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/bioacoustic-worklist-row-v1.json",
+  "schema_name": "bioacoustic_worklist_row",
+  "schema_version": "2026-07-24-bioacoustics-v1",
+  "type": "object",
+  "required": [
+    "dawn_chorus_id",
+    "source_path",
+    "audio_fingerprint",
+    "model",
+    "model_fingerprint",
+    "shard_index",
+    "work_key"
+  ],
+  "properties": {
+    "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
+    "source_path": {"type": "string", "minLength": 1},
+    "audio_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "model": {"type": "string", "minLength": 1},
+    "model_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "required_model": {"type": "boolean"},
+    "classifier_available": {"type": "boolean"},
+    "segment_seconds": {"type": "number", "exclusiveMinimum": 0},
+    "shard_index": {"type": "integer", "minimum": 0},
+    "work_key": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "x-primary-key": ["work_key"]
+}

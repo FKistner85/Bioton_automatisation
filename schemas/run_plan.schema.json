@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bio-o-ton.local/schemas/run-plan-v1.json",
+  "schema_name": "pipeline_run_plan",
+  "schema_version": "2026-07-23-run-plan-v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workflow_run_id",
+    "created_utc",
+    "mode",
+    "source_id_count",
+    "id_files",
+    "id_counts",
+    "steps"
+  ],
+  "properties": {
+    "schema_version": {"const": "2026-07-23-run-plan-v1"},
+    "workflow_run_id": {"type": "string", "minLength": 1},
+    "created_utc": {"type": "string"},
+    "mode": {"enum": ["add_new_ids", "from_scratch"]},
+    "config_path": {"type": "string"},
+    "source": {"type": "object"},
+    "source_id_count": {"type": "integer", "minimum": 0},
+    "previous_id_count": {"type": "integer", "minimum": 0},
+    "deleted_ids": {"type": "array", "items": {"type": "string"}},
+    "id_files": {"type": "object", "additionalProperties": {"type": "string"}},
+    "id_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "full_rebuild": {
+      "type": "object",
+      "properties": {
+        "generation_id": {"type": "string"},
+        "resume": {"type": "boolean"},
+        "state_file": {"type": "string"},
+        "marker_dir": {"type": "string"},
+        "required_steps": {"type": "array", "items": {"type": "string"}},
+        "completed_steps": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "steps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["run", "reasons"],
+        "properties": {
+          "run": {"type": "boolean"},
+          "reasons": {"type": "array", "items": {"type": "string"}},
+          "ids_file": {"type": "string"}
+        }
+      }
+    }
+  }
+}
