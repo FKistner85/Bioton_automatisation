@@ -19,17 +19,17 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common import load_config
-from Step_5_4_prepare_hostrada_rasters import (
-    VARIABLES,
-    build_year,
-    expected_tile_jobs,
-    finish_force_resume,
-    prepare_force_resume,
-    tile_status_is_complete,
+# HOSTRADA timestamps use YYYYMMDDHH (10 digits).  After capturing YYYYMM,
+# exactly DDHH (four digits) remain before the separator.
+YEAR_MONTH_PATTERN = re.compile(r"_(\d{4})(\d{2})\d{4}-\d{10}\.nc$")
+VARIABLES = (
+    "CloudCover",
+    "Radiation",
+    "Rh",
+    "Ta",
+    "Winddirection",
+    "Windspeed",
 )
-
-
-YEAR_MONTH_PATTERN = re.compile(r"_(\d{4})(\d{2})\d{6}-\d{10}\.nc$")
 
 
 def complete_years(input_dir: Path, variable: str) -> list[int]:
@@ -62,6 +62,11 @@ def task_is_complete(input_dir: Path, variable: str, year: int) -> bool:
 
 def verify_complete_jobs(settings: dict) -> tuple[int, int]:
     """Ensure all complete source years have every expected output tile."""
+    from Step_5_4_prepare_hostrada_rasters import (
+        expected_tile_jobs,
+        tile_status_is_complete,
+    )
+
     input_dir = Path(settings["input_dir"])
     checked = 0
     incomplete = 0
@@ -77,6 +82,12 @@ def verify_complete_jobs(settings: dict) -> tuple[int, int]:
             ):
                 incomplete += 1
                 print(f"INCOMPLETE: {variable} {year}")
+    if checked == 0:
+        incomplete += 1
+        print(
+            "INCOMPLETE: no complete HOSTRADA source year was recognised; "
+            "check Step 5_3 inputs and filename parsing."
+        )
     return checked, incomplete
 
 
@@ -129,6 +140,12 @@ def main() -> int:
             return 0
         jobs = [(variable, year)]
     print(f"Complete HOSTRADA variable/year jobs: {len(jobs):,}")
+    from Step_5_4_prepare_hostrada_rasters import (
+        build_year,
+        finish_force_resume,
+        prepare_force_resume,
+    )
+
     started = time.monotonic()
     for index, (variable, year) in enumerate(jobs, start=1):
         effective_force = prepare_force_resume(

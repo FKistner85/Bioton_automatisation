@@ -432,6 +432,7 @@ def process_recording(
         columns: dict[str, Any] = {
             "datetime": times_utc.tz_convert(input_timezone).tz_localize(None)
         }
+        unavailable_source_months: set[tuple[str, int, int]] = set()
         for variable_folder, (abbr, nc_variable) in VARIABLES.items():
             values = np.full(len(times_utc), np.nan, dtype=float)
             for year, month in month_pairs:
@@ -444,6 +445,7 @@ def process_recording(
                     download_settings,
                 )
                 if dataset is None:
+                    unavailable_source_months.add((variable_folder, year, month))
                     continue
                 month_mask = np.array(
                     [
@@ -475,6 +477,16 @@ def process_recording(
         temporary = output_path.with_suffix(output_path.suffix + ".part")
         frame.to_csv(temporary, index=False)
         temporary.replace(output_path)
+        if unavailable_source_months:
+            logger.warning(
+                "[%s] Output written with unavailable HOSTRADA source months: %s",
+                recording_id,
+                ", ".join(
+                    f"{variable}:{year:04d}-{month:02d}"
+                    for variable, year, month in sorted(unavailable_source_months)
+                ),
+            )
+            return "upstream_unavailable"
         return "ok"
     except Exception as exc:
         logger.error("[%s] FAILED: %r", recording_id, exc)
@@ -969,6 +981,7 @@ def main() -> int:
 
         processed_ok: list[str] = []
         processed_out_of_bounds: list[str] = []
+        processed_upstream_unavailable: list[str] = []
         processed_failed: list[str] = []
 
         recording_tasks = []
@@ -990,12 +1003,14 @@ def main() -> int:
                 processed_ok.append(recording_id)
             elif status == "out_of_bounds":
                 processed_out_of_bounds.append(recording_id)
+            elif status == "upstream_unavailable":
+                processed_upstream_unavailable.append(recording_id)
             else:
                 processed_failed.append(recording_id)
 
         def remember_with_status_file(recording_id: str, status: str, output_path: Path, started_utc: str | None = None) -> None:
             remember(recording_id, status)
-            if status in {"ok", "out_of_bounds"}:
+            if status in {"ok", "out_of_bounds", "upstream_unavailable"}:
                 batch_status = "complete"
             else:
                 batch_status = "failed"
@@ -1035,6 +1050,7 @@ def main() -> int:
                 extra={
                     "recording_workers": recording_workers,
                     "master_update_batch_size": master_update_batch_size,
+                    "upstream_unavailable": len(processed_upstream_unavailable),
                 },
             )
             if (
@@ -1164,6 +1180,7 @@ def main() -> int:
             f" Already processed (skipped)  : {len(indices_done)}",
             f" Successfully processed       : {len(processed_ok)}",
             f" Out-of-bounds (NaN-filled)   : {len(processed_out_of_bounds)}",
+            f" Upstream data unavailable    : {len(processed_upstream_unavailable)}",
             f" Failed                       : {len(processed_failed)}",
             "=" * 72,
         ]
@@ -1180,6 +1197,7 @@ def main() -> int:
                     "skipped_existing": len(indices_done),
                     "processed_ok": len(processed_ok),
                     "out_of_bounds": len(processed_out_of_bounds),
+                    "upstream_unavailable": len(processed_upstream_unavailable),
                     "failed": len(processed_failed),
                     "task_index": args.task_index,
                     "task_count": args.task_count,

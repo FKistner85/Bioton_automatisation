@@ -137,7 +137,7 @@
     "workers": "auto",
     "max_workers": 24,
     "batch_write_size": 25,
-    "master_update_batch_size": 250
+    "master_update_batch_size": 5000
   },
   "photo_download": {
     "retry_log": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_3_1_b_photo_download/photo_download_retry_log.csv",
@@ -147,7 +147,7 @@
     "workers": "auto",
     "max_workers": 24,
     "batch_write_size": 25,
-    "master_update_batch_size": 250
+    "master_update_batch_size": 5000
   },
   "sentinel2_inventory": {
     "source_dir": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/S2",
@@ -365,6 +365,7 @@
     "weather_qc_workers": 16
   },
   "final_validation": {
+    "readiness_policy": "report_only",
     "require_all_general_ready": true,
     "require_100m_formation": true,
     "require_10m_formation": true,

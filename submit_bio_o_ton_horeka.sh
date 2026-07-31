@@ -99,6 +99,7 @@ fi
 RUN_ID="${BIOOTON_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)_${USER:-user}_$$}"
 LOG_STAMP="${BIOOTON_LOG_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
 export BIOOTON_RUN_ID="${RUN_ID}"
+export PYTHONUNBUFFERED=1
 
 account_args=()
 [[ -n "${ACCOUNT}" ]] && account_args=(--account="${ACCOUNT}")

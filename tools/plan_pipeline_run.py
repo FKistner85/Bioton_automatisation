@@ -176,6 +176,53 @@ def master_problem_ids(master: pd.DataFrame, prefix: str) -> set[str]:
     return set(master.loc[problem, "dawn_chorus_id"].astype(str))
 
 
+def inventory_problem_ids(path: Path) -> set[str]:
+    """Read IDs marked missing/problematic by a compact inventory CSV."""
+    if not path.is_file() or path.stat().st_size == 0:
+        return set()
+    try:
+        frame = pd.read_csv(path, low_memory=False, dtype=str)
+    except Exception:
+        return set()
+    id_column = next(
+        (name for name in ("dawn_chorus_id", "id", "ID") if name in frame.columns),
+        None,
+    )
+    if id_column is None:
+        return set()
+    exists_column = next(
+        (name for name in ("weather_exists", "exists") if name in frame.columns),
+        None,
+    )
+    issue_column = next(
+        (
+            name
+            for name in ("weather_has_issues", "has_issues")
+            if name in frame.columns
+        ),
+        None,
+    )
+    status_column = next(
+        (name for name in ("weather_status", "status") if name in frame.columns),
+        None,
+    )
+    problem = pd.Series(False, index=frame.index)
+    if exists_column:
+        problem |= ~truthy(frame[exists_column])
+    if issue_column:
+        problem |= truthy(frame[issue_column])
+    if status_column:
+        healthy = {"complete", "validated", "approved", "ok", "not_applicable"}
+        problem |= ~frame[status_column].fillna("").str.strip().str.lower().isin(healthy)
+    if not any((exists_column, issue_column, status_column)):
+        return set()
+    return {
+        dawn_id
+        for dawn_id in frame.loc[problem, id_column].map(normalise_id)
+        if dawn_id
+    }
+
+
 def read_json(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
@@ -484,6 +531,15 @@ def main() -> int:
         ("bioacoustic", "bioacoustic"),
     ]:
         add_reason(id_reasons[target], master_problem_ids(master, prefix), f"master:{prefix}_problem")
+
+    weather_inventory_path = Path(
+        str(config.get("weather_inventory", {}).get("compact_log", ""))
+    )
+    add_reason(
+        id_reasons["weather"],
+        inventory_problem_ids(weather_inventory_path) & all_current,
+        "inventory:weather_problem",
+    )
 
     bio_section = config.get("bioacoustics", {})
     bio_enabled = bool(bio_section.get("enabled", True))

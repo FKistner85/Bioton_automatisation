@@ -7,6 +7,8 @@ liegen auf LSDF; generierte Analyse-, Status- und QC-Produkte liegen unter
 Die vollstaendige deutsche Schrittuebersicht steht in
 [`PIPELINE_SCHRITTE_DE.md`](PIPELINE_SCHRITTE_DE.md). Detaildokumentation in
 Deutsch und Englisch steht unter [`Readmes/`](Readmes/README_INDEX.md).
+Die gepruefte Reihenfolge fuer einen Recovery-Lauf auf HoreKa steht in
+[`HOREKA_RECOVERY_RUNBOOK_DE.md`](HOREKA_RECOVERY_RUNBOOK_DE.md).
 
 ## Standardstart
 

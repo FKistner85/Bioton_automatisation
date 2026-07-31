@@ -13,8 +13,14 @@ import pandas as pd
 SCRIPT_ROOT = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
+TOOLS_ROOT = Path(__file__).resolve().parents[1] / "tools"
+if str(TOOLS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TOOLS_ROOT))
 
 from common import output_is_nonempty, should_skip, source_signature, write_batch_status, write_run_meta
+from final_validation_report import master_readiness
+from plan_pipeline_run import inventory_problem_ids
+from run_hostrada_raster_all import complete_years
 
 
 FORMATION_COLUMNS = [
@@ -159,6 +165,55 @@ def test_weather_resume_uses_nonempty_files() -> None:
         assert not output_is_nonempty(missing)
 
 
+def test_weather_inventory_problems_are_planned_for_repair() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        inventory = Path(raw) / "weather_inventory_compact.csv"
+        pd.DataFrame(
+            {
+                "dawn_chorus_id": [1, 2, 3],
+                "weather_exists": [True, False, True],
+                "weather_has_issues": [False, False, True],
+            }
+        ).to_csv(inventory, index=False)
+        assert inventory_problem_ids(inventory) == {"2", "3"}
+
+
+def test_hostrada_complete_year_filename_recognition() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        variable_dir = Path(raw) / "Ta"
+        variable_dir.mkdir()
+        for month in range(1, 13):
+            last_day = 31
+            name = (
+                "tas_1hr_HOSTRADA-v1-0_BE_gn_"
+                f"2024{month:02d}0100-2024{month:02d}{last_day:02d}23.nc"
+            )
+            (variable_dir / name).touch()
+        assert complete_years(Path(raw), "Ta") == [2024]
+
+
+def test_readiness_report_only_does_not_fail_technical_gate() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        master = Path(raw) / "master.csv"
+        pd.DataFrame(
+            {
+                "dawn_chorus_id": [1, 2],
+                "ready_for_general_analysis": [True, False],
+            }
+        ).to_csv(master, index=False)
+        result = master_readiness(
+            {
+                "master_table": {"output_csv": str(master)},
+                "final_validation": {
+                    "readiness_policy": "report_only",
+                    "require_all_general_ready": True,
+                },
+            }
+        )
+        assert result["requirements"]["require_all_general_ready"]["not_ready"] == 1
+        assert result["critical"] == []
+
+
 if __name__ == "__main__":
     test_new_id_detection()
     test_checkpoint_and_source_signature()
@@ -166,4 +221,7 @@ if __name__ == "__main__":
     test_10m_matrix_uses_centi_percent_and_keeps_formation_k()
     test_media_log_download_selection()
     test_weather_resume_uses_nonempty_files()
+    test_weather_inventory_problems_are_planned_for_repair()
+    test_hostrada_complete_year_filename_recognition()
+    test_readiness_report_only_does_not_fail_technical_gate()
     print("test_pipeline_regressions.py: OK")

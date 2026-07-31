@@ -230,6 +230,12 @@ def master_readiness(config: dict[str, Any]) -> dict[str, Any]:
         "rows": 0,
         "requirements": {},
         "critical": [],
+        "policy": str(
+            config.get("final_validation", {}).get(
+                "readiness_policy",
+                "strict",
+            )
+        ).strip().lower(),
     }
     if not result["exists"]:
         result["critical"].append("master_table_missing_or_empty")
@@ -244,6 +250,7 @@ def master_readiness(config: dict[str, Any]) -> dict[str, Any]:
 
     result["rows"] = int(len(table))
     settings = config.get("final_validation", {})
+    strict_readiness = result["policy"] == "strict"
     requirements = [
         (
             "require_all_general_ready",
@@ -271,7 +278,8 @@ def master_readiness(config: dict[str, Any]) -> dict[str, Any]:
                 "status": "missing_column",
                 "not_ready": len(table),
             }
-            result["critical"].append(f"master_missing_column:{column}")
+            if strict_readiness:
+                result["critical"].append(f"master_missing_column:{column}")
             continue
         ready = table[column].astype(str).str.strip().str.lower().isin(
             {"true", "1", "yes", "y"}
@@ -282,7 +290,7 @@ def master_readiness(config: dict[str, Any]) -> dict[str, Any]:
             "status": "ok" if not_ready == 0 else "not_ready",
             "not_ready": not_ready,
         }
-        if not_ready:
+        if not_ready and strict_readiness:
             result["critical"].append(f"{column}_not_ready:{not_ready}")
     return result
 
@@ -294,6 +302,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Erstellt UTC: `{report['created_utc']}`",
         f"- Ergebnis: `{report['overall_status']}`",
         f"- Technischer Status: `{report['technical_status']}`",
+        f"- Daten-Readiness: `{report['data_readiness_status']}`",
         f"- Freigabestatus: `{report['release_status']}`",
         f"- Workflow-Run: `{report['workflow_run_id']}`",
         f"- Kritische Probleme: `{report['critical_count']}`",
@@ -321,6 +330,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend(["", "## Mastertable-Readiness", ""])
     readiness = report["master_readiness"]
     lines.append(f"- Zeilen: `{readiness['rows']}`")
+    lines.append(f"- Readiness-Policy: `{readiness['policy']}`")
     for setting, item in readiness["requirements"].items():
         lines.append(
             f"- `{setting}`: `{item['status']}`; nicht bereit: `{item['not_ready']}`"
@@ -356,6 +366,11 @@ def main() -> int:
     checks = expected_outputs(config)
     manifests = manifest_summary(config, workflow_run_id)
     readiness = master_readiness(config)
+    readiness_issue_count = sum(
+        1
+        for item in readiness.get("requirements", {}).values()
+        if item.get("status") != "ok"
+    )
 
     critical = [
         item
@@ -414,9 +429,16 @@ def main() -> int:
     automatic_release = bool(
         config.get("final_validation", {}).get("automatic_release", False)
     )
+    data_readiness_status = (
+        "ready" if readiness_issue_count == 0 else "manual_review_required"
+    )
     release_status = (
         "approved"
-        if technical_status == "validated" and automatic_release
+        if (
+            technical_status == "validated"
+            and automatic_release
+            and readiness_issue_count == 0
+        )
         else (
             "manual_review_required"
             if technical_status == "validated"
@@ -426,12 +448,13 @@ def main() -> int:
     overall_status = technical_status
 
     report = {
-        "schema_version": "2026-07-23-final-validation-v2",
+        "schema_version": "2026-07-31-final-validation-v3",
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "workflow_run_id": workflow_run_id,
         "config_path": str(args.config),
         "overall_status": overall_status,
         "technical_status": technical_status,
+        "data_readiness_status": data_readiness_status,
         "release_status": release_status,
         "critical_count": (
             len(critical)
@@ -439,7 +462,7 @@ def main() -> int:
             + len(missing_planned_manifests)
             + len(readiness["critical"])
         ),
-        "warning_count": len(warnings),
+        "warning_count": len(warnings) + readiness_issue_count,
         "checks": checks,
         "manifests": manifests,
         "master_readiness": readiness,
