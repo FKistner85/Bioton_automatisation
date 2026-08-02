@@ -713,19 +713,29 @@ def add_weather_point_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.
         weather["weather_point_issue_codes"] = "inventory_not_run"
         return table.merge(weather, on="dawn_chorus_id", how="left")
 
+    # Real inventory files may contain both the domain-specific and generic
+    # issue columns. Renaming both aliases to one target creates duplicate
+    # column names, causing ``compact[target]`` to return a DataFrame. Coalesce
+    # aliases in priority order and remove only the redundant source columns.
     aliases = {
-        "weather_exists": "weather_point_exists",
-        "weather_has_issues": "weather_point_has_issues",
-        "has_issues": "weather_point_has_issues",
-        "issue_codes": "weather_point_issue_codes",
+        "weather_point_exists": ["weather_exists", "exists"],
+        "weather_point_has_issues": ["weather_has_issues", "has_issues"],
+        "weather_point_issue_codes": ["issue_codes"],
     }
-    compact = compact.rename(
-        columns={
-            source: target
-            for source, target in aliases.items()
-            if source in compact.columns and target not in compact.columns
-        }
-    )
+    compact = compact.copy()
+    for target, sources in aliases.items():
+        values = (
+            compact[target].copy()
+            if target in compact.columns
+            else pd.Series(pd.NA, index=compact.index, dtype="object")
+        )
+        for source in sources:
+            if source in compact.columns:
+                values = values.combine_first(compact[source])
+        compact[target] = values
+        compact = compact.drop(
+            columns=[source for source in sources if source in compact.columns]
+        )
     weather = compact[["dawn_chorus_id"]].copy()
     for column, default in [
         ("weather_point_exists", False),
