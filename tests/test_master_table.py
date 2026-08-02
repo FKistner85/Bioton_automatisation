@@ -76,6 +76,7 @@ def test_master_table_minimal_build() -> None:
                     "dawn_chorus_id": [1],
                     "weather_exists": [True],
                     "weather_has_issues": [False],
+                    "has_issues": [False],
                     "issue_codes": [""],
                 }
             ),
@@ -205,3 +206,4 @@ if __name__ == "__main__":
     test_incremental_master_merge_preserves_unaffected_rows()
     test_mixed_timezone_local_wall_times()
     print("test_master_table.py: OK")
+
