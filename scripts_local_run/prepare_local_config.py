@@ -163,6 +163,7 @@ def main() -> int:
     parser.add_argument("--output-config", type=Path, required=True)
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
+    parser.add_argument("--skip-cache-copy", action="store_true")
     args = parser.parse_args()
 
     settings = load_json(args.settings)
@@ -171,7 +172,7 @@ def main() -> int:
     workspace = Path(settings["workspace_dir"]).expanduser().resolve()
     mounted_project = mount_root(settings)
     cache_root = workspace / "lsdf_cache"
-    if not (mounted_project / "PointData").is_dir():
+    if not args.skip_cache_copy and not (mounted_project / "PointData").is_dir():
         raise FileNotFoundError(f"LSDF-Mount ist nicht lesbar: {mounted_project}")
 
     cache_sources: dict[Path, Path] = {}
@@ -200,8 +201,9 @@ def main() -> int:
         config["sentinel2_download"]["token_path"] = windows_path(token)
 
     apply_local_resources(config, settings)
-    for source, destination in sorted(cache_sources.items(), key=lambda item: str(item[0])):
-        copy_if_changed(source, destination)
+    if not args.skip_cache_copy:
+        for source, destination in sorted(cache_sources.items(), key=lambda item: str(item[0])):
+            copy_if_changed(source, destination)
 
     args.output_config.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.output_config.with_suffix(args.output_config.suffix + ".part")
