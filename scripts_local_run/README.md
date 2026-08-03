@@ -90,6 +90,8 @@ Schneller Funktionstest:
 powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode functionality_test
 ```
 
+Dieser Modus mountet LSDF nicht und kopiert keine groÃŸen Eingabedateien.
+
 Nach dem ersten erfolgreichen Setup kann die Dependency-Pruefung uebersprungen
 werden:
 
