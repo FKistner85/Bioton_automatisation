@@ -5,6 +5,9 @@
   "remote_project_root": "/lsdf01/lsdf/kit/ipf/projects/Bio-O-Ton",
   "mount_drive": "L:",
   "workspace_dir": "D:/BioOTon_local_workspace",
+  "environment_dir": "D:/BioOTon_envs",
+  "bootstrap_horeka_outputs": true,
+  "horeka_outputs_relative": "Data_automatisation_skripts/outputs",
   "logical_cpus": 20,
   "max_parallel_steps": 2,
   "array_workers": 2,
@@ -12,4 +15,3 @@
   "bioacoustic_array_workers_cpu": 2,
   "prefer_cuda": true
 }
-

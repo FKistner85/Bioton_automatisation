@@ -3,6 +3,7 @@
 .venv_bacpipe/
 scripts_local_run/.venv_local/
 scripts_local_run/.venv_local_bacpipe/
+scripts_local_run/.venv_*/
 scripts_local_run/local.settings.json
 scripts_local_run/config.local.generated.json
 scripts_local_run/workspace/
@@ -25,4 +26,3 @@ bacpipe/model_checkpoints/
 .idea/
 .DS_Store
 Thumbs.db
-

@@ -14,13 +14,18 @@ Checkpoints und Mastertable-Updates mit lokalen Prozessen nach.
 | Finale Mastertabelle | `<workspace_dir>/outputs/Bio_O_Ton_Mastertable.*` |
 | Lokale Logs | `<workspace_dir>/outputs/step_0_local_logs` |
 | Grosse/statische LSDF-Eingaben | `<workspace_dir>/lsdf_cache` |
+| Python-Environments | `<environment_dir>/core` und `<environment_dir>/bacpipe` |
 | Audio-Originale | LSDF `PointData/SoundRecordings` |
 | Foto-Originale | LSDF `PointData/Images_SoundRecordings` |
 | Sentinel-2-TIFs | LSDF `PointData/S2` |
 | Punkt-Wetter-CSV | LSDF `PointData/Weather/Hostrada` |
 
 Die vier Originalverzeichnisse werden ueber ein eingebundenes LSDF-Laufwerk
-direkt gelesen und beschrieben. Generierte Analyseprodukte bleiben lokal.
+direkt gelesen und beschrieben. Vor dem ersten lokalen `add_new_ids` werden
+die bereits auf Horeka erzeugten Produkte einmalig nach
+`<workspace_dir>/outputs` uebernommen. Dadurch verwendet der lokale Planner
+die vorhandenen Fingerprints, Inventare, Checkpoints und die Mastertabelle.
+Remote-Locks, Run-Plaene und alte Slurm-Logs werden dabei ausgeschlossen.
 
 ## Voraussetzungen
 
@@ -63,11 +68,20 @@ cd "C:\Users\Frede\OneDrive\Projects and Disschaptors\Bioton_automatisation\scri
 powershell -ExecutionPolicy Bypass -File .\setup_local_env.ps1
 ```
 
-Es werden zwei kompatible Environments erzeugt:
+Es werden zwei kompatible Environments ausserhalb des tiefen OneDrive-Pfads
+erzeugt. Standard ist `D:/BioOTon_envs`:
 
 ```text
-.venv_local          Geodaten, Medien, Wetter, Reports und Orchestrierung
-.venv_local_bacpipe  Bacpipe und PyTorch fuer Step 6
+core     Geodaten, Medien, Wetter, Reports und Orchestrierung
+bacpipe  Bacpipe, TensorFlow und PyTorch fuer Step 6
+```
+
+Der kurze Pfad verhindert Windows-Installationsfehler durch sehr lange
+TensorFlow-Dateinamen. Ein unvollstaendiges Environment kann explizit neu
+erzeugt werden:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup_local_env.ps1 -Recreate
 ```
 
 ## Start
@@ -91,6 +105,7 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode function
 ```
 
 Dieser Modus mountet LSDF nicht und kopiert keine grossen Eingabedateien.
+Er installiert und benoetigt auch das Bacpipe-Environment nicht.
 
 Nach dem ersten erfolgreichen Setup kann die Dependency-Pruefung uebersprungen
 werden:
@@ -104,6 +119,22 @@ CPU fuer Step 6 erzwingen:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_ids -SkipEnvironmentSetup -CpuOnly
 ```
+
+## Vorhandene Horeka-Outputs
+
+Der erste inkrementelle Lauf kopiert den Horeka-Outputbestand vollstaendig und
+fortsetzbar in den lokalen Workspace. Bereits lokal neuere Dateien werden
+nicht ueberschrieben. Spaetere Horeka-Ergebnisse werden nur auf ausdruecklichen
+Wunsch erneut abgeglichen:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 `
+  -Mode add_new_ids -SkipEnvironmentSetup -RefreshHorekaOutputs
+```
+
+`from_scratch` importiert keine Horeka-Produkte. Der Bootstrap kann bei einem
+inkrementellen Lauf mit `-SkipHorekaBootstrap` deaktiviert werden. Cluster und
+lokaler Lauf duerfen waehrend des Abgleichs nicht gleichzeitig schreiben.
 
 ## Resume und Fehler
 
@@ -126,4 +157,3 @@ Nach Ende aller lokalen Pipeline-Prozesse:
 ```powershell
 net use L: /delete /y
 ```
-

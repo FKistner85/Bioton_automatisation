@@ -12,6 +12,12 @@ assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
+SYNC_MODULE_PATH = ROOT / "scripts_local_run" / "sync_horeka_outputs.py"
+SYNC_SPEC = importlib.util.spec_from_file_location("sync_horeka_outputs", SYNC_MODULE_PATH)
+assert SYNC_SPEC and SYNC_SPEC.loader
+SYNC_MODULE = importlib.util.module_from_spec(SYNC_SPEC)
+SYNC_SPEC.loader.exec_module(SYNC_MODULE)
+
 
 def test_local_path_mapping(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
@@ -54,9 +60,38 @@ def test_copy_if_changed_reuses_identical_file(tmp_path: Path) -> None:
     assert destination.stat().st_mtime_ns == first_mtime
 
 
+def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
+    mount = tmp_path / "mount"
+    remote = mount / "Data_automatisation_skripts" / "outputs"
+    workspace = tmp_path / "workspace"
+    (remote / "step_1_metadata").mkdir(parents=True)
+    (remote / "step_0_slurm_logs").mkdir(parents=True)
+    (remote / "step_0_control" / "run_plans").mkdir(parents=True)
+    (remote / "step_1_metadata" / "metadata_source_fingerprints.csv").write_text(
+        "dawn_chorus_id\n1\n", encoding="utf-8"
+    )
+    (remote / "step_0_slurm_logs" / "old.out").write_text("old", encoding="utf-8")
+    (remote / "step_0_control" / "run_plans" / "old.json").write_text("{}", encoding="utf-8")
+
+    settings = {
+        "mount_drive": str(mount),
+        "workspace_dir": str(workspace),
+        "horeka_outputs_relative": "Data_automatisation_skripts/outputs",
+    }
+    result = SYNC_MODULE.sync_outputs(settings)
+
+    assert result["status"] == "complete"
+    assert (workspace / "outputs/step_1_metadata/metadata_source_fingerprints.csv").is_file()
+    assert not (workspace / "outputs/step_0_slurm_logs/old.out").exists()
+    assert not (workspace / "outputs/step_0_control/run_plans/old.json").exists()
+
+
 if __name__ == "__main__":
-    for test in (test_local_path_mapping, test_copy_if_changed_reuses_identical_file):
+    for test in (
+        test_local_path_mapping,
+        test_copy_if_changed_reuses_identical_file,
+        test_horeka_output_bootstrap_excludes_runtime_files,
+    ):
         with tempfile.TemporaryDirectory() as directory:
             test(Path(directory))
     print("test_local_run.py: OK")
-

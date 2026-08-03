@@ -1,15 +1,40 @@
 param(
     [string]$BasePython = "C:\Users\Frede\anaconda3\envs\BioTon\python.exe",
-    [switch]$SkipBacpipe
+    [string]$Settings = "",
+    [string]$EnvironmentRoot = "",
+    [switch]$SkipBacpipe,
+    [switch]$Recreate
 )
 
 $ErrorActionPreference = "Stop"
 $LocalRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $LocalRoot
-$CoreEnv = Join-Path $LocalRoot ".venv_local"
-$BacpipeEnv = Join-Path $LocalRoot ".venv_local_bacpipe"
+if (-not $Settings) { $Settings = Join-Path $LocalRoot "local.settings.json" }
+if (-not $EnvironmentRoot -and (Test-Path -LiteralPath $Settings)) {
+    $LocalSettings = Get-Content -Raw -LiteralPath $Settings | ConvertFrom-Json
+    $EnvironmentRoot = [string]$LocalSettings.environment_dir
+}
+if (-not $EnvironmentRoot) { $EnvironmentRoot = "D:\BioOTon_envs" }
+$EnvironmentRoot = [Environment]::ExpandEnvironmentVariables($EnvironmentRoot)
+if (-not [IO.Path]::IsPathRooted($EnvironmentRoot)) {
+    $EnvironmentRoot = Join-Path $LocalRoot $EnvironmentRoot
+}
+$CoreEnv = Join-Path $EnvironmentRoot "core"
+$BacpipeEnv = Join-Path $EnvironmentRoot "bacpipe"
 $CorePython = Join-Path $CoreEnv "Scripts\python.exe"
 $BacpipePython = Join-Path $BacpipeEnv "Scripts\python.exe"
+
+if ($Recreate) {
+    foreach ($Environment in @($CoreEnv, $BacpipeEnv)) {
+        if (Test-Path -LiteralPath $Environment) {
+            $Resolved = [IO.Path]::GetFullPath($Environment)
+            if ($Resolved.Length -lt 8 -or $Resolved -eq [IO.Path]::GetPathRoot($Resolved)) {
+                throw "Unsicherer Environment-Pfad fuer -Recreate: $Resolved"
+            }
+            Remove-Item -LiteralPath $Resolved -Recurse -Force
+        }
+    }
+}
 
 if (-not (Test-Path -LiteralPath $BasePython)) {
     $PyLauncher = Get-Command py.exe -ErrorAction SilentlyContinue
@@ -31,6 +56,7 @@ function New-OrUpdateEnvironment {
         [string[]]$Requirements
     )
 
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Prefix) | Out-Null
     if (-not (Test-Path -LiteralPath $Python)) {
         & $BasePythonCommand @BasePythonArgs -m venv $Prefix
         if ($LASTEXITCODE -ne 0) { throw "Virtuelle Umgebung konnte nicht erstellt werden: $Prefix" }
@@ -64,4 +90,3 @@ if (-not $SkipBacpipe) {
 
 Write-Host "Core Python:    $CorePython"
 if (-not $SkipBacpipe) { Write-Host "Bacpipe Python: $BacpipePython" }
-
