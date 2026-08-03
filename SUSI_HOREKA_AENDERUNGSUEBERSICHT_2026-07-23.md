@@ -65,10 +65,12 @@ Die aktuelle Definition in Susi und HoreKa ist fachlich gleich:
 - `2330` und `6xxx` -> `Grassland`
 - `3xxx` -> `Freshwater`
 - `8xxx` ausser `8340` -> `Rocky habitats`
-- sonstige `1xxx`/`2xxx` -> `Costal`
+- sonstige `1xxx`/`2xxx` -> `Coastal`
 - Rest -> `Other`
 
-Hinweis: Der Label-String ist weiterhin `Costal`, nicht `Coastal`. Das ist in beiden Ansaetzen gleich und sollte nur geaendert werden, wenn downstream bewusst ein neues Label akzeptiert.
+Hinweis: Seit 2026-08-03 wird der wissenschaftlich korrekte Label-String
+`Coastal` verwendet. Die Schema-Version wurde angehoben; alte Produkte mit
+`Costal` muessen durch Step 2 neu erzeugt werden.
 
 ## Output-Orte
 

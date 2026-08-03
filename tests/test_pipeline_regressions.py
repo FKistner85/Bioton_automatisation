@@ -25,7 +25,7 @@ from run_hostrada_raster_all import complete_years
 
 FORMATION_COLUMNS = [
     "Bogs",
-    "Costal",
+    "Coastal",
     "Forests",
     "Freshwater",
     "Grassland",
@@ -132,7 +132,10 @@ def test_10m_matrix_uses_centi_percent_and_keeps_formation_k() -> None:
     source = (
         SCRIPT_ROOT / "Step_2_4_generate_10m_formation_status_products.py"
     ).read_text(encoding="utf-8")
-    assert 'ix["pct_of_cell"] = ix["ix_area"] / 100.0 * 100.0' in source
+    assert (
+        'ix["pct_of_cell"] = ix["ix_area"] / TEN_M_CELL_AREA_M2 * 100.0'
+        in source
+    )
     assert 'x_fs = x_fs.loc[:, ~x_fs.columns.str.endswith("_K")]' not in source
 
     # 100 m2 is the area of a 10 m cell: full coverage must become 10000

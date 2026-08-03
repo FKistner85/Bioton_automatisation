@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from Step_2_0_clean_lrts import (  # noqa: E402
+    FORMATION_DEFINITION_VERSION,
     STATUS_RANK,
     file_fingerprint,
     lrt_formation,
@@ -111,7 +112,7 @@ def main() -> int:
                 "eps_area": eps_area,
                 "output_gpkg": str(output_gpkg.resolve()),
                 "output_layer": output_layer,
-                "formation_definition": "table_2026_07_22",
+                "formation_definition": FORMATION_DEFINITION_VERSION,
             },
         }
 

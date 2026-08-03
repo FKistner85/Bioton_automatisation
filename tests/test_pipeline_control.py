@@ -117,6 +117,7 @@ def test_result_config_invalidates_global_steps() -> None:
                         "output_layer": "lrt",
                         "target_crs": 3035,
                         "eps_area": 1.0,
+                        "formation_definition": "table_2026_08_03_coastal_v2",
                     },
                 }
             ),
@@ -153,7 +154,7 @@ def test_result_config_invalidates_global_steps() -> None:
                         "chunk_size_100m": 1000,
                         "output_dir": str(Path(section24["output_dir"]).resolve()),
                         "final_parquet": str(final10.resolve()),
-                        "susi_matrix_schema_version": "2026-07-29-centi-percent-abck-v2",
+                        "susi_matrix_schema_version": "2026-08-03-centi-percent-abck-coastal-v3",
                     },
                     "status": "complete",
                 }
@@ -210,10 +211,55 @@ def test_full_rebuild_generation_resume() -> None:
         assert third["generation_id"] == "run-3"
 
 
+def test_full_rebuild_step_contract_and_legacy_migration() -> None:
+    assert "step_6_2_bioacoustic_embeddings" in planner.FULL_REBUILD_STEPS
+    assert planner.FULL_REBUILD_STEPS.index("step_4_1_sentinel2_mirror") < (
+        planner.FULL_REBUILD_STEPS.index("step_4_0_sentinel2_inventory")
+    )
+
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        rebuild_root = root / "full"
+        marker_dir = rebuild_root / "legacy-run" / "completed_steps"
+        marker_dir.mkdir(parents=True)
+        legacy_steps = [
+            step
+            for step in planner.FULL_REBUILD_STEPS
+            if step != "step_6_2_bioacoustic_embeddings"
+        ]
+        (marker_dir / f"{legacy_steps[0]}.json").write_text("{}", encoding="utf-8")
+        (rebuild_root / "current.json").write_text(
+            json.dumps(
+                {
+                    "generation_id": "legacy-run",
+                    "status": "in_progress",
+                    "marker_dir": str(marker_dir),
+                    "required_steps": legacy_steps,
+                    "workflow_runs": ["legacy-run"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        config = {
+            "processed_root": str(root / "processed"),
+            "pipeline_control": {"full_rebuild_root": str(rebuild_root)},
+        }
+        migrated = planner.full_rebuild_context(config, "resume-run")
+        assert migrated["resume"] is True
+        assert migrated["generation_id"] == "legacy-run"
+        assert migrated["required_steps"] == planner.FULL_REBUILD_STEPS
+        assert legacy_steps[0] in migrated["completed_steps"]
+
+        state = json.loads((rebuild_root / "current.json").read_text(encoding="utf-8"))
+        assert state["migrated_from_required_steps"] == legacy_steps
+        assert state["workflow_runs"] == ["legacy-run", "resume-run"]
+
+
 if __name__ == "__main__":
     test_lock_ownership()
     test_domain_fingerprint_change_detection()
     test_run_plan_schema_contract()
     test_result_config_invalidates_global_steps()
     test_full_rebuild_generation_resume()
+    test_full_rebuild_step_contract_and_legacy_migration()
     print("test_pipeline_control.py: OK")

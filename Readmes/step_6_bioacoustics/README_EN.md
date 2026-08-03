@@ -14,7 +14,8 @@ The substeps are:
 
 - `6_0`: provision checkpoint files, then validate Bacpipe, CUDA and the model registry.
 - `6_1`: select valid audio and create audio/model fingerprints.
-- `6_2`: run checkpointed CPU arrays over model x deterministic ID shard.
+- `6_2`: run checkpointed CPU arrays over model x deterministic ID shard,
+  followed by a verification gate over every expected shard and work key.
 - `6_3`: normalise classifier outputs and retain thresholded segment top-k.
 - `6_4`: harmonise taxonomy and add Germany/season plausibility.
 - `6_5`: aggregate segments and model support per recording and species.
@@ -47,3 +48,5 @@ registry while the damaged files remain available for diagnosis.
 Resume is keyed by audio fingerprint, model fingerprint and preprocessing
 version. Every model/shard state records completed and failed IDs. A timeout
 continues at the last checkpoint, while failed IDs are retried in later runs.
+Only the verification gate writes the completed Step 6_2 marker, so one
+successful array task cannot prematurely complete a full rebuild.

@@ -386,14 +386,19 @@ class Pipeline:
             task_count = len(section["models"]) * int(section.get("shard_count", 16))
             workers = max(1, int(section.get("max_concurrent_tasks", 1)))
             self.add("j62", "step_6_2", self.array_runner(
-                "step_6_2", "step_6_2_bioacoustic_embeddings", "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+                "step_6_2", "step_6_2_bioacoustic_embeddings_array_task", "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
                 task_count, lambda index: [*force, "--task-index", str(index)],
                 target_python=self.bacpipe, max_workers=workers,
             ), ["j61"], ["j61"])
+            self.add("j62verify", "step_6_2_verify", self.command_runner(
+                "step_6_2_verify", "step_6_2_bioacoustic_embeddings",
+                "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+                ["--verify-shards"], cpus=2,
+            ), ["j62"])
         if self.plan_run("step_6_3_species_predictions"):
             self.add("j63", "step_6_3", self.command_runner(
                 "step_6_3", "step_6_3_species_predictions", "scripts/Step_6_3_normalise_species_predictions.py",
-            ), ["j62"])
+            ), ["j62verify"])
         if self.plan_run("step_6_4_germany_taxonomy_filter"):
             self.add("j64", "step_6_4", self.command_runner(
                 "step_6_4", "step_6_4_germany_taxonomy_filter", "scripts/Step_6_4_filter_germany_taxonomy.py",
@@ -543,4 +548,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

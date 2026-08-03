@@ -60,7 +60,7 @@ def current_script_formation(code: Any) -> str:
             return "Bogs"
         if code.startswith("2180") or code.startswith("23"):
             return "Temperate heath"
-        return "Costal"
+        return "Coastal"
     if code.startswith("3"):
         return "Freshwater"
     if code.startswith(("4", "5")):
@@ -97,7 +97,7 @@ def table_formation(code: Any) -> str:
     if code.startswith("8"):
         return "Rocky habitats"
     if code.startswith(("1", "2")):
-        return "Costal"
+        return "Coastal"
     return "Other"
 
 

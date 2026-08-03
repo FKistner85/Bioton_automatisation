@@ -29,6 +29,7 @@ from common import atomic_write_json
 
 
 STATUS_RANK = {"A": 4, "B": 3, "C": 2, "K": 1}
+FORMATION_DEFINITION_VERSION = "table_2026_08_03_coastal_v2"
 
 COLUMN_ALIASES = {
     "mapping_year": {
@@ -242,7 +243,7 @@ def lrt_formation(code: object) -> str:
     if code.startswith("8"):
         return "Rocky habitats"
     if code.startswith(("1", "2")):
-        return "Costal"
+        return "Coastal"
     return "Other"
 
 
@@ -453,6 +454,7 @@ def main() -> int:
                 "output_layer": output_layer,
                 "target_crs": target_crs,
                 "eps_area": eps_area,
+                "formation_definition": FORMATION_DEFINITION_VERSION,
             },
         }
 

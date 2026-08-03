@@ -39,8 +39,75 @@ def parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parents[1] / "config.horeka.json",
     )
     parser.add_argument("--task-index", type=int)
+    parser.add_argument("--verify-shards", action="store_true")
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
+
+
+def verify_shards(config: dict[str, Any]) -> int:
+    section = bio_config(config)
+    models = configured_models(config)
+    shard_count = int(section.get("shard_count", 16))
+    worklist_path = output_path(config, "worklist_parquet")
+    state_root = output_path(config, "inference_state_dir")
+    if not worklist_path.is_file():
+        print(f"ERROR: Worklist fehlt: {worklist_path}", file=sys.stderr)
+        return 2
+
+    worklist = pd.read_parquet(worklist_path)
+    issues: list[str] = []
+    verified_rows = 0
+    for model_cfg in models:
+        model_name = str(model_cfg["name"])
+        model_rows = worklist[worklist["model"].astype(str) == model_name]
+        for shard_index in range(shard_count):
+            expected = model_rows[
+                pd.to_numeric(model_rows["shard_index"], errors="coerce")
+                == shard_index
+            ]
+            state_path = (
+                state_root
+                / f"model={model_name}"
+                / f"shard={shard_index:04d}.json"
+            )
+            state = load_task_state(state_path)
+            if not state:
+                issues.append(f"missing_state:{model_name}:{shard_index}")
+                continue
+            if state.get("status") != "complete":
+                issues.append(
+                    f"non_complete_state:{model_name}:{shard_index}:"
+                    f"{state.get('status', '')}"
+                )
+            if state.get("failed_by_id"):
+                issues.append(f"failed_ids:{model_name}:{shard_index}")
+            if int(state.get("shard_count", -1)) != shard_count:
+                issues.append(f"shard_count_mismatch:{model_name}:{shard_index}")
+            completed = {
+                str(key): str(value)
+                for key, value in state.get("completed_work_keys", {}).items()
+            }
+            for row in expected.to_dict("records"):
+                dawn_id = str(row["dawn_chorus_id"])
+                if completed.get(dawn_id) != str(row["work_key"]):
+                    issues.append(
+                        f"missing_work_key:{model_name}:{shard_index}:{dawn_id}"
+                    )
+            verified_rows += len(expected)
+
+    print(f"Verified models : {len(models)}")
+    print(f"Verified shards : {len(models) * shard_count}")
+    print(f"Verified rows   : {verified_rows:,}")
+    if issues:
+        print(
+            f"ERROR: Step 6_2 shard verification found {len(issues)} issue(s).",
+            file=sys.stderr,
+        )
+        for issue in issues[:50]:
+            print(f"- {issue}", file=sys.stderr)
+        return 2
+    print("Step 6_2 shard verification: OK")
+    return 0
 
 
 def as_numpy(value: Any) -> np.ndarray:
@@ -254,6 +321,8 @@ def main() -> int:
     # Keep Bacpipe's relative checkpoint lookup stable for direct and Slurm runs.
     os.chdir(args.config.resolve().parent)
     config = load_config(args.config)
+    if args.verify_shards:
+        return verify_shards(config)
     section = bio_config(config)
     models = configured_models(config)
     shard_count = int(section.get("shard_count", 16))

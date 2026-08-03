@@ -33,7 +33,8 @@ from common import (
 
 _WORKER_LRT: gpd.GeoDataFrame | None = None
 _WORKER_SETTINGS: dict[str, Any] | None = None
-SUSI_10M_MATRIX_SCHEMA_VERSION = "2026-07-29-centi-percent-abck-v2"
+SUSI_10M_MATRIX_SCHEMA_VERSION = "2026-08-03-centi-percent-abck-coastal-v3"
+TEN_M_CELL_AREA_M2 = 100.0
 
 
 def load_config(config_path: Path) -> dict[str, Any]:
@@ -399,7 +400,7 @@ def process_chunk(
         ix["ix_area"] = ix.geometry.area
         # A 10 m cell covers 100 m2. pct_of_cell is a true percentage here;
         # build_susi_matrix subsequently stores percentage * 100 as uint16.
-        ix["pct_of_cell"] = ix["ix_area"] / 100.0 * 100.0
+        ix["pct_of_cell"] = ix["ix_area"] / TEN_M_CELL_AREA_M2 * 100.0
 
         ix_table = pd.DataFrame(
             ix[

@@ -338,52 +338,7 @@ afterok_jobs() {
   echo "${dependency/afterany:/afterok:}"
 }
 
-if [[ "${MODE}" == "susi_compare" ]]; then
-  MODE="formation_compare"
-fi
-
-RUN_PLAN=""
-if [[ "${MODE}" == "functionality_test" ]]; then
-  job="$(submit_python bio_func functionality_test 2 "00:10:00" "" tools/functionality_test.py)"
-  echo "Functionality test job: ${job}"
-  echo "Workflow run ID: ${RUN_ID}"
-  echo "Monitor with: squeue -u ${USER}"
-  exit 0
-fi
-
-if [[ "${MODE}" == "formation_compare" ]]; then
-  job="$(submit_bash bio_form_cmp formation_compare "${FORMATION_COMPARE_CPUS}" "02:00:00" "" run_formation_status_comparison.sh)"
-  echo "Formation comparison job: ${job}"
-  echo "Workflow run ID: ${RUN_ID}"
-  echo "Monitor with: squeue -u ${USER}"
-  exit 0
-fi
-
-"${PYTHON}" -c "import pandas, geopandas, pyogrio, shapely, pyarrow, av; from PIL import Image; import rasterio, requests, xarray" || {
-  echo "Missing Python dependencies in selected environment." >&2
-  exit 1
-}
-
-"${PYTHON}" "${PIPELINE_DIR}/tools/pipeline_lock.py" \
-  --config "${CONFIG}" acquire --run-id "${RUN_ID}"
-
-SUBMISSION_STARTED=0
-release_on_early_error() {
-  if [[ "${SUBMISSION_STARTED}" -eq 0 ]]; then
-    "${PYTHON}" "${PIPELINE_DIR}/tools/pipeline_lock.py" \
-      --config "${CONFIG}" release --run-id "${RUN_ID}" || true
-  else
-    echo "Submission failed after jobs were queued. The pipeline lock remains active." >&2
-    echo "Inspect queued jobs, then use the documented force-release command if needed." >&2
-  fi
-}
-trap release_on_early_error ERR INT TERM
-
-RUN_PLAN="$(
-  "${PYTHON}" "${PIPELINE_DIR}/tools/plan_pipeline_run.py" \
-    --config "${CONFIG}" \
-    --run-id "${RUN_ID}" \
-    --mode "${MODE}" |
+if [[ "${MODE}" == "susi_compare" ]]; thenç^m¢G§²ÚîÆ­yÝ-mode "${MODE}" |
     tail -n 1
 )"
 [[ -f "${RUN_PLAN}" ]] || { echo "Run plan was not created: ${RUN_PLAN}" >&2; exit 1; }
@@ -608,14 +563,16 @@ bio_max_concurrent="$("${PYTHON}" -c "import json; c=json.load(open('${CONFIG}',
 bio_task_count=$((bio_model_count * bio_shard_count))
 
 j62="skipped_plan"
+j62verify="skipped_plan"
 if [[ "$(plan_run step_6_2_bioacoustic_embeddings)" == "1" ]]; then
   # Step 6_1 already requires the model preflight, so j60 is transitive here.
-  j62="$(submit_bacpipe_array bio_step62 step_6_2_bioacoustic_embeddings "${t_step62}" "$(afterok_jobs "${j61}")" scripts/Step_6_2_generate_bioacoustic_embeddings.py "${bio_task_count}" "${bio_max_concurrent}" "${force_args[@]}")"
+  j62="$(submit_bacpipe_array bio_step62 step_6_2_bioacoustic_embeddings_array_task "${t_step62}" "$(afterok_jobs "${j61}")" scripts/Step_6_2_generate_bioacoustic_embeddings.py "${bio_task_count}" "${bio_max_concurrent}" "${force_args[@]}")"
+  j62verify="$(submit_python bio_step62v step_6_2_bioacoustic_embeddings 2 "00:15:00" "$(afterany_jobs "${j62}")" scripts/Step_6_2_generate_bioacoustic_embeddings.py --verify-shards)"
 fi
 
 j63="skipped_plan"
 if [[ "$(plan_run step_6_3_species_predictions)" == "1" ]]; then
-  j63="$(submit_python bio_step63 step_6_3_species_predictions 8 "${t_step63}" "$(afterany_jobs "${j62}")" scripts/Step_6_3_normalise_species_predictions.py)"
+  j63="$(submit_python bio_step63 step_6_3_species_predictions 8 "${t_step63}" "$(afterany_jobs "${j62verify}")" scripts/Step_6_3_normalise_species_predictions.py)"
 fi
 j64="skipped_plan"
 if [[ "$(plan_run step_6_4_germany_taxonomy_filter)" == "1" ]]; then
@@ -659,8 +616,8 @@ junlock="$(
 
 trap - ERR INT TERM
 
-printf 'Mode:          %s\nWorkflow run:  %s\nRun plan:      %s\nStep 1:        %s\nStep 2_0:      %s\nStep 2_1:      %s\nStep 2_2:      %s\nStep 2_3:      %s\nStep 2_4:      %s\nStep 3 pre:    %s\nStep 3_0a:     %s\nStep 3_0b:     %s\nStep 3_1a:     %s\nStep 3_0a post:%s\nStep 3_1b:     %s\nStep 4_1:      %s\nStep 4_0:      %s\nStep 5_1 pre:  %s\nStep 5_2 array:%s\nStep 5_2 verify:%s\nStep 5_1 post: %s\nStep 5_3:      %s\nStep 5_4 array:%s\nStep 5_4 verify:%s\nStep 5_5:      %s\nStep 6_0:      %s\nStep 6_1:      %s\nStep 6_2 array:%s\nStep 6_3:      %s\nStep 6_4:      %s\nStep 6_5:      %s\nStep 6_6:      %s\nMaster 7_0:    %s\nValidation:    %s\nVisual reports:%s\nUnlock:        %s\n' \
-  "${MODE}" "${RUN_ID}" "${RUN_PLAN}" "${j1}" "${j20}" "${j21}" "${j22}" "${j23}" "${j24}" "${j3pre}" "${j30a}" "${j30b}" "${j31a}" "${j30apost}" "${j31b}" "${j41}" "${j40}" "${j51pre}" "${j52}" "${j52verify}" "${j51post}" "${j53}" "${j54}" "${j54verify}" "${j55}" "${j60}" "${j61}" "${j62}" "${j63}" "${j64}" "${j65}" "${j66}" "${jmaster}" "${jvalid}" "${jvisual}" "${junlock}"
+printf 'Mode:          %s\nWorkflow run:  %s\nRun plan:      %s\nStep 1:        %s\nStep 2_0:      %s\nStep 2_1:      %s\nStep 2_2:      %s\nStep 2_3:      %s\nStep 2_4:      %s\nStep 3 pre:    %s\nStep 3_0a:     %s\nStep 3_0b:     %s\nStep 3_1a:     %s\nStep 3_0a post:%s\nStep 3_1b:     %s\nStep 4_1:      %s\nStep 4_0:      %s\nStep 5_1 pre:  %s\nStep 5_2 array:%s\nStep 5_2 verify:%s\nStep 5_1 post: %s\nStep 5_3:      %s\nStep 5_4 array:%s\nStep 5_4 verify:%s\nStep 5_5:      %s\nStep 6_0:      %s\nStep 6_1:      %s\nStep 6_2 array:%s\nStep 6_2 verify:%s\nStep 6_3:      %s\nStep 6_4:      %s\nStep 6_5:      %s\nStep 6_6:      %s\nMaster 7_0:    %s\nValidation:    %s\nVisual reports:%s\nUnlock:        %s\n' \
+  "${MODE}" "${RUN_ID}" "${RUN_PLAN}" "${j1}" "${j20}" "${j21}" "${j22}" "${j23}" "${j24}" "${j3pre}" "${j30a}" "${j30b}" "${j31a}" "${j30apost}" "${j31b}" "${j41}" "${j40}" "${j51pre}" "${j52}" "${j52verify}" "${j51post}" "${j53}" "${j54}" "${j54verify}" "${j55}" "${j60}" "${j61}" "${j62}" "${j62verify}" "${j63}" "${j64}" "${j65}" "${j66}" "${jmaster}" "${jvalid}" "${jvisual}" "${junlock}"
 
 echo "Submitted Bio-O-Ton Slurm workflow."
 echo "Monitor with: squeue -u ${USER}"

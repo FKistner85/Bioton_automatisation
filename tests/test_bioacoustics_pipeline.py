@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -15,6 +17,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from Step_6_1_prepare_bioacoustic_worklist import build_worklist
+import Step_6_2_generate_bioacoustic_embeddings as step62
 from Step_6_2_generate_bioacoustic_embeddings import select_predictions
 from Step_6_4_filter_germany_taxonomy import apply_filter
 from Step_6_5_aggregate_bioacoustic_results import aggregate_predictions
@@ -206,8 +209,61 @@ def test_checkpoint_repair_helpers() -> None:
         assert all(Path(path).exists() for path in moved)
 
 
+def test_embedding_shard_verification_gate() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        worklist_path = root / "worklist.parquet"
+        worklist_path.touch()
+        state_root = root / "state"
+        worklist = pd.DataFrame(
+            [
+                {
+                    "dawn_chorus_id": "123",
+                    "model": "birdnet",
+                    "shard_index": 0,
+                    "work_key": "work-123",
+                }
+            ]
+        )
+        config = {
+            "bioacoustics": {
+                "shard_count": 2,
+                "worklist_parquet": str(worklist_path),
+                "inference_state_dir": str(state_root),
+                "models": [{"name": "birdnet", "required": True}],
+            }
+        }
+        for shard_index in range(2):
+            state_path = (
+                state_root / "model=birdnet" / f"shard={shard_index:04d}.json"
+            )
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "status": "complete",
+                        "shard_count": 2,
+                        "completed_work_keys": (
+                            {"123": "work-123"} if shard_index == 0 else {}
+                        ),
+                        "failed_by_id": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        with patch.object(step62.pd, "read_parquet", return_value=worklist):
+            assert step62.verify_shards(config) == 0
+            broken_path = state_root / "model=birdnet" / "shard=0000.json"
+            broken = json.loads(broken_path.read_text(encoding="utf-8"))
+            broken["status"] = "partial"
+            broken_path.write_text(json.dumps(broken), encoding="utf-8")
+            assert step62.verify_shards(config) == 2
+
+
 if __name__ == "__main__":
     test_bioacoustic_data_flow()
     test_prediction_threshold_and_top_k()
     test_checkpoint_repair_helpers()
+    test_embedding_shard_verification_gate()
     print("test_bioacoustics_pipeline.py: OK")

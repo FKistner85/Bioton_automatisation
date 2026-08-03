@@ -42,6 +42,12 @@ MANIFEST_PACKAGES = [
     "rioxarray",
 ]
 
+# These products evolve independently and therefore intentionally use
+# separate schema versions.
+STEP_MANIFEST_SCHEMA_VERSION = "2026-07-23-step-manifest-v2"
+BATCH_STATUS_SCHEMA_VERSION = "2026-07-23-batch-status-v2"
+PROGRESS_SNAPSHOT_SCHEMA_VERSION = "2026-07-29-progress-v1"
+
 
 @dataclass
 class ResolvedPath:
@@ -365,7 +371,7 @@ def start_step_manifest(
     )
     path = manifest_root(cfg) / step_name / f"{step_run_id}.json"
     payload: dict[str, Any] = {
-        "schema_version": "2026-07-23-step-manifest-v2",
+        "schema_version": STEP_MANIFEST_SCHEMA_VERSION,
         "workflow_run_id": workflow_id,
         "run_id": step_run_id,
         "step_run_id": step_run_id,
@@ -422,22 +428,22 @@ def write_batch_status(
 ) -> Path:
     if status not in CANONICAL_STATUSES:
         raise ValueError(f"Unknown canonical status: {status}")
-    path = Path(directory) / f"{safe_name(batch_id)}.json"
+    status_path = Path(directory) / f"{safe_name(batch_id)}.json"
     payload = {
-        "schema_version": "2026-07-23-batch-status-v2",
+        "schema_version": BATCH_STATUS_SCHEMA_VERSION,
         "workflow_run_id": workflow_run_id(),
         "batch_id": str(batch_id),
         "status": status,
         "started_utc": started_utc or utc_now_iso(),
         "finished_utc": utc_now_iso() if status in {"complete", "failed", "skipped"} else "",
-        "inputs": [str(path) for path in inputs or []],
-        "outputs": [str(path) for path in outputs or []],
+        "inputs": [str(item) for item in inputs or []],
+        "outputs": [str(item) for item in outputs or []],
         "output_fingerprints": dependency_fingerprints(outputs or []),
         "result": result or {},
         "error": error,
     }
-    atomic_write_json(path, payload)
-    return path
+    atomic_write_json(status_path, payload)
+    return status_path
 
 
 def write_progress_snapshot(
@@ -458,7 +464,7 @@ def write_progress_snapshot(
     remaining = max(0, total_batches - completed_batches)
     eta = remaining / rate if rate > 0 else None
     payload = {
-        "schema_version": "2026-07-29-progress-v1",
+        "schema_version": PROGRESS_SNAPSHOT_SCHEMA_VERSION,
         "workflow_run_id": workflow_run_id(),
         "step_name": step_name,
         "updated_utc": utc_now_iso(),
@@ -539,7 +545,6 @@ def source_signature(paths: list[str | Path]) -> str:
         else:
             st=p.stat()
             values.append(f"{p}:dir:{st.st_mtime_ns}")
-    import hashlib
     return hashlib.sha256("|".join(values).encode()).hexdigest()
 
 def should_skip(run_meta_path: Path, signature: str) -> bool:

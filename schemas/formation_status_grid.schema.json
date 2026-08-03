@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bio-o-ton.local/schemas/formation-status-grid-row-v2.json",
+  "$id": "https://bio-o-ton.local/schemas/formation-status-grid-row-v3.json",
   "schema_name": "formation_status_grid_row",
-  "schema_version": "2026-07-29-formation-status-abck-v3",
+  "schema_version": "2026-08-03-formation-status-abck-coastal-v4",
   "type": "object",
   "oneOf": [
     {"required": ["grid_id"]},
@@ -31,7 +31,7 @@
     "n_lrts": {"type": "integer", "minimum": 0}
   },
   "patternProperties": {
-    "^(Bogs|Costal|Forests|Freshwater|Grassland|Other|Permanent Glaciers|Rocky habitats|Temperate heath)(_[ABCK])?$": {
+    "^(Bogs|Coastal|Forests|Freshwater|Grassland|Other|Permanent Glaciers|Rocky habitats|Temperate heath)(_[ABCK])?$": {
       "$ref": "#/$defs/centiPercent"
     },
     "^[0-9]{4}_[ABCK]$": {"$ref": "#/$defs/centiPercent"}

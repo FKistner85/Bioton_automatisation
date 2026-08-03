@@ -48,6 +48,7 @@ FULL_REBUILD_STEPS = [
     "step_5_5_hostrada_raster_qc",
     "step_6_0_bioacoustic_model_preflight",
     "step_6_1_bioacoustic_worklist",
+    "step_6_2_bioacoustic_embeddings",
     "step_6_3_species_predictions",
     "step_6_4_germany_taxonomy_filter",
     "step_6_5_bioacoustic_aggregation",
@@ -263,6 +264,7 @@ def step20_needed(config: dict[str, Any]) -> tuple[bool, list[str]]:
             "output_layer": section.get("output_layer", "lrt"),
             "target_crs": int(section.get("target_crs", 3035)),
             "eps_area": float(section.get("eps_area", 1.0)),
+            "formation_definition": "table_2026_08_03_coastal_v2",
         }
         if state.get("processing") != expected_processing:
             reasons.append("changed_processing_config")
@@ -293,7 +295,7 @@ def step21_needed(config: dict[str, Any], upstream: bool) -> tuple[bool, list[st
         "output_grid_gpkg": str(Path(section["output_grid_gpkg"]).resolve()),
         "output_grid_parquet": str(Path(section["output_grid_parquet"]).resolve()),
         "output_grid_layer": section.get("output_grid_layer", "majority_formation_100m"),
-        "susi_matrix_schema_version": "2026-07-29-centi-percent-abck-v2",
+        "susi_matrix_schema_version": "2026-08-03-centi-percent-abck-coastal-v3",
         "susi_compatible_outputs": {
             "enabled": bool(compatible.get("enabled", True)),
             "output_dir": str(Path(compatible["output_dir"]).resolve()),
@@ -365,76 +367,11 @@ def step24_needed(config: dict[str, Any], upstream: bool) -> tuple[bool, list[st
             "chunk_size_100m": int(section.get("chunk_size_100m", 1000)),
             "output_dir": str(Path(section["output_dir"]).resolve()),
             "final_parquet": str(final.resolve()),
-            "susi_matrix_schema_version": "2026-07-29-centi-percent-abck-v2",
+            "susi_matrix_schema_version": "2026-08-03-centi-percent-abck-coastal-v3",
         }
         if state.get("processing") != expected_processing:
             reasons.append("changed_processing_config")
-        if state.get("status") != "complete":
-            reasons.append("incomplete_state")
-    return bool(reasons), list(dict.fromkeys(reasons))
-
-
-def write_id_file(path: Path, reasons_by_id: dict[str, set[str]]) -> None:
-    rows = [
-        {"dawn_chorus_id": dawn_id, "reason": "|".join(sorted(reasons))}
-        for dawn_id, reasons in sorted(
-            reasons_by_id.items(),
-            key=lambda item: int(item[0]) if item[0].isdigit() else item[0],
-        )
-    ]
-    atomic_write_csv(pd.DataFrame(rows, columns=["dawn_chorus_id", "reason"]), path)
-
-
-def add_reason(target: dict[str, set[str]], ids: Iterable[str], reason: str) -> None:
-    for dawn_id in ids:
-        target.setdefault(str(dawn_id), set()).add(reason)
-
-
-def full_rebuild_context(
-    config: dict[str, Any],
-    workflow_run_id: str,
-) -> dict[str, Any]:
-    configured = config.get("pipeline_control", {}).get("full_rebuild_root")
-    root = (
-        Path(configured)
-        if configured
-        else processed_root_from_config(config) / "step_0_control" / "full_rebuild"
-    )
-    state_path = root / "current.json"
-    state = read_json(state_path)
-    expected_steps = list(FULL_REBUILD_STEPS)
-    resume = bool(
-        state.get("status") == "in_progress"
-        and state.get("required_steps") == expected_steps
-        and state.get("generation_id")
-    )
-    if resume:
-        marker_dir = Path(state["marker_dir"])
-        complete = all(
-            (marker_dir / f"{step}.json").is_file()
-            for step in expected_steps
-        )
-        if complete:
-            state["status"] = "complete"
-            state["finished_utc"] = utc_now_iso()
-            atomic_write_json(state_path, state)
-            resume = False
-
-    if not resume:
-        generation_id = workflow_run_id
-        marker_dir = root / generation_id / "completed_steps"
-        state = {
-            "schema_version": "2026-07-23-full-rebuild-v1",
-            "generation_id": generation_id,
-            "status": "in_progress",
-            "created_utc": utc_now_iso(),
-            "finished_utc": "",
-            "marker_dir": str(marker_dir),
-            "required_steps": expected_steps,
-            "workflow_runs": [workflow_run_id],
-        }
-    else:
-        generation_id = str(state["generation_id"])
+        if state.get("status") ÷Î-¢G§²ÚîÆ­yÙd = str(state["generation_id"])
         marker_dir = Path(state["marker_dir"])
         runs = [str(value) for value in state.get("workflow_runs", [])]
         if workflow_run_id not in runs:

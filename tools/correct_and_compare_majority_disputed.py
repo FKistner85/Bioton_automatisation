@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 FORMATIONS = [
     "Bogs",
-    "Costal",
+    "Coastal",
     "Forests",
     "Freshwater",
     "Grassland",
