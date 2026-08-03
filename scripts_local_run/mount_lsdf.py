@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 3 seconds
-Output:
 #!/usr/bin/env python3
 """Mount the Bio-O-Ton LSDF project on Windows using SSHFS-Win and keyring."""
 

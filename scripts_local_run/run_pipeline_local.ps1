@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 3.1 seconds
-Output:
 param(
     [ValidateSet("add_new_ids", "from_scratch", "functionality_test")]
     [string]$Mode = "add_new_ids",

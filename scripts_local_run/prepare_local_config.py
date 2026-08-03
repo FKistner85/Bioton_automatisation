@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 3 seconds
-Output:
 #!/usr/bin/env python3
 """Generate a Windows-local config from config.horeka.json."""
 

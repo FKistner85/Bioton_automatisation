@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 3 seconds
-Output:
 param(
     [string]$BasePython = "C:\Users\Frede\anaconda3\envs\BioTon\python.exe",
     [switch]$SkipBacpipe

@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 2.8 seconds
-Output:
 # Bio-O-Ton: lokaler Windows-Lauf mit LSDF
 
 Dieser Ordner startet dieselben fachlichen Python-Skripte wie die Cluster-

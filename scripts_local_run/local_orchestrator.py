@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 3 seconds
-Output:
 #!/usr/bin/env python3
 """Run the current Bio-O-Ton pipeline locally with the Slurm dependency graph."""
 
