@@ -84,25 +84,36 @@ def main() -> int:
         "-o", "ServerAliveCountMax=3",
         "-o", "idmap=user",
     ]
-    result = subprocess.run(
+    process = subprocess.Popen(
         command,
-        input=password + "\n",
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         text=True,
-        capture_output=True,
-        check=False,
+        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
     )
+    assert process.stdin is not None
+    process.stdin.write(password + "\n")
+    process.stdin.flush()
+    process.stdin.close()
     password = ""
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
-        print(f"ERROR: LSDF-Mount fehlgeschlagen: {detail}", file=sys.stderr)
-        return result.returncode or 1
 
     deadline = time.monotonic() + max(1, args.wait_seconds)
     while time.monotonic() < deadline:
         if is_ready(root):
             print(f"LSDF verbunden: {root}")
             return 0
+        return_code = process.poll()
+        if return_code is not None:
+            detail = process.stderr.read().strip() if process.stderr else ""
+            print(
+                f"ERROR: LSDF-Mount fehlgeschlagen (exit {return_code}): {detail}",
+                file=sys.stderr,
+            )
+            return return_code or 1
         time.sleep(1)
+    if process.poll() is None:
+        process.terminate()
     print(f"ERROR: Mount wurde nicht rechtzeitig lesbar: {root}", file=sys.stderr)
     return 1
 
