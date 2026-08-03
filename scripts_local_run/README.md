@@ -44,6 +44,11 @@ keyring.set_password("lsdf_kit", "jk3038", "DEIN_PASSWORT")
 Das Passwort wird von `mount_lsdf.py` nur an SSHFS uebergeben und weder in
 Konfigurationen noch in Logs geschrieben.
 
+Der Mount verwendet den offiziellen SSHFS-Win-Netzwerkprovider mit der
+Root-UNC `\\sshfs.r\...`. Das Keyring-Passwort wird direkt ueber die
+Windows-Netzwerk-API uebergeben und erscheint nicht in der Prozess-
+Kommandozeile.
+
 ## Lokale Einstellungen
 
 Beim ersten Start wird `local.settings.json` aus

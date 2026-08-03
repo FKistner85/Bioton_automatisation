@@ -25,6 +25,12 @@ assert PUBLISH_SPEC and PUBLISH_SPEC.loader
 PUBLISH_MODULE = importlib.util.module_from_spec(PUBLISH_SPEC)
 PUBLISH_SPEC.loader.exec_module(PUBLISH_MODULE)
 
+MOUNT_MODULE_PATH = ROOT / "scripts_local_run" / "mount_lsdf.py"
+MOUNT_SPEC = importlib.util.spec_from_file_location("mount_lsdf", MOUNT_MODULE_PATH)
+assert MOUNT_SPEC and MOUNT_SPEC.loader
+MOUNT_MODULE = importlib.util.module_from_spec(MOUNT_SPEC)
+MOUNT_SPEC.loader.exec_module(MOUNT_MODULE)
+
 
 def test_local_path_mapping(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
@@ -130,12 +136,24 @@ def test_local_publish_translates_paths_and_excludes_runtime(tmp_path: Path) -> 
     assert not (remote / "step_0_local_logs/local.log").exists()
 
 
+def test_sshfs_root_unc(_tmp_path: Path) -> None:
+    assert MOUNT_MODULE.sshfs_unc(
+        "jk3038",
+        "os-login.lsdf.kit.edu",
+        "/lsdf01/lsdf/kit/ipf/projects/Bio-O-Ton",
+    ) == (
+        r"\\sshfs.r\jk3038@os-login.lsdf.kit.edu"
+        r"\lsdf01\lsdf\kit\ipf\projects\Bio-O-Ton"
+    )
+
+
 if __name__ == "__main__":
     for test in (
         test_local_path_mapping,
         test_copy_if_changed_reuses_identical_file,
         test_horeka_output_bootstrap_excludes_runtime_files,
         test_local_publish_translates_paths_and_excludes_runtime,
+        test_sshfs_root_unc,
     ):
         with tempfile.TemporaryDirectory() as directory:
             test(Path(directory))
