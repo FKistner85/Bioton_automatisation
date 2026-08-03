@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 from pathlib import Path
 
@@ -17,6 +18,12 @@ SYNC_SPEC = importlib.util.spec_from_file_location("sync_horeka_outputs", SYNC_M
 assert SYNC_SPEC and SYNC_SPEC.loader
 SYNC_MODULE = importlib.util.module_from_spec(SYNC_SPEC)
 SYNC_SPEC.loader.exec_module(SYNC_MODULE)
+
+PUBLISH_MODULE_PATH = ROOT / "scripts_local_run" / "publish_local_outputs.py"
+PUBLISH_SPEC = importlib.util.spec_from_file_location("publish_local_outputs", PUBLISH_MODULE_PATH)
+assert PUBLISH_SPEC and PUBLISH_SPEC.loader
+PUBLISH_MODULE = importlib.util.module_from_spec(PUBLISH_SPEC)
+PUBLISH_SPEC.loader.exec_module(PUBLISH_MODULE)
 
 
 def test_local_path_mapping(tmp_path: Path) -> None:
@@ -86,11 +93,49 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     assert not (workspace / "outputs/step_0_control/run_plans/old.json").exists()
 
 
+def test_local_publish_translates_paths_and_excludes_runtime(tmp_path: Path) -> None:
+    mount = tmp_path / "mount"
+    remote = mount / "Data_automatisation_skripts" / "outputs"
+    workspace = tmp_path / "workspace"
+    repo = tmp_path / "repo"
+    remote.mkdir(parents=True)
+    local_outputs = workspace / "outputs"
+    (local_outputs / "step_3_0_a_audio_inventory").mkdir(parents=True)
+    (local_outputs / "step_0_local_logs").mkdir(parents=True)
+    local_audio = mount / "PointData" / "SoundRecordings" / "1_audio.wav"
+    (local_outputs / "step_3_0_a_audio_inventory" / "state.json").write_text(
+        json.dumps({"output": str(local_outputs / "x.csv"), "audio": str(local_audio)}),
+        encoding="utf-8",
+    )
+    (local_outputs / "step_0_local_logs" / "local.log").write_text("local", encoding="utf-8")
+
+    settings = {
+        "mount_drive": str(mount),
+        "workspace_dir": str(workspace),
+        "horeka_outputs_relative": "Data_automatisation_skripts/outputs",
+        "cluster_project_root": "/lsdf/kit/ipf/projects/Bio-O-Ton",
+    }
+    result = PUBLISH_MODULE.publish_outputs(settings, repo)
+
+    assert result["status"] == "complete"
+    published = json.loads(
+        (remote / "step_3_0_a_audio_inventory/state.json").read_text(encoding="utf-8")
+    )
+    assert published["output"].startswith(
+        "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs"
+    )
+    assert published["audio"].startswith(
+        "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/SoundRecordings"
+    )
+    assert not (remote / "step_0_local_logs/local.log").exists()
+
+
 if __name__ == "__main__":
     for test in (
         test_local_path_mapping,
         test_copy_if_changed_reuses_identical_file,
         test_horeka_output_bootstrap_excludes_runtime_files,
+        test_local_publish_translates_paths_and_excludes_runtime,
     ):
         with tempfile.TemporaryDirectory() as directory:
             test(Path(directory))

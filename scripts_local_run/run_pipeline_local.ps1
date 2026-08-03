@@ -7,6 +7,7 @@ param(
     [switch]$SkipMount,
     [switch]$SkipHorekaBootstrap,
     [switch]$RefreshHorekaOutputs,
+    [switch]$SkipLsdfPublish,
     [switch]$CpuOnly
 )
 
@@ -93,4 +94,25 @@ if ($LASTEXITCODE -ne 0) { throw "Lokale Konfiguration konnte nicht erzeugt werd
     --core-python $CorePython `
     --bacpipe-python $BacpipePython `
     --settings $Settings
-exit $LASTEXITCODE
+$PipelineExitCode = $LASTEXITCODE
+
+$PublishEnabled = if ($null -eq $LocalSettings.publish_successful_outputs_to_lsdf) {
+    $true
+}
+else {
+    [bool]$LocalSettings.publish_successful_outputs_to_lsdf
+}
+if (
+    ($PipelineExitCode -eq 0) -and
+    ($Mode -ne "functionality_test") -and
+    (-not $SkipLsdfPublish) -and
+    $PublishEnabled
+) {
+    & $CorePython (Join-Path $LocalRoot "publish_local_outputs.py") `
+        --settings $Settings `
+        --repo-root $RepoRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "Lokaler Lauf war erfolgreich, aber die LSDF-Veroeffentlichung ist fehlgeschlagen."
+    }
+}
+exit $PipelineExitCode

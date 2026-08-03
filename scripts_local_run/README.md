@@ -136,6 +136,30 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 `
 inkrementellen Lauf mit `-SkipHorekaBootstrap` deaktiviert werden. Cluster und
 lokaler Lauf duerfen waehrend des Abgleichs nicht gleichzeitig schreiben.
 
+## Erfolgreiche lokale Ergebnisse auf LSDF veroeffentlichen
+
+Nach einem vollstaendig erfolgreichen `add_new_ids`- oder `from_scratch`-Lauf
+werden kompatible lokale Outputs automatisch in den kanonischen LSDF-Ordner
+`Data_automatisation_skripts/outputs` hochgeladen. Pfade in CSV-, JSON- und
+pfadhaltigen Parquet-Dateien werden dabei von Windows auf LSDF uebersetzt.
+Dadurch koennen die Horeka-Planung und ihre Checkpoints lokal abgeschlossene
+Arbeit erkennen und ueberspringen.
+
+Nicht veroeffentlicht werden lokale Logs, Slurm-Logs, Manifeste, Run-Plaene,
+Locks, lokale Reports und die umgebungsspezifische Bacpipe-Model-Registry.
+Der Upload loescht keine Remote-Dateien, ueberschreibt keine neueren
+Remote-Dateien und bricht ab, wenn ein Remote-Pipeline-Lock existiert.
+
+Fuer einen einzelnen Lauf kann die Veroeffentlichung abgeschaltet werden:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 `
+  -Mode add_new_ids -SkipEnvironmentSetup -SkipLsdfPublish
+```
+
+Dauerhaft steuerbar ist das Verhalten in `local.settings.json` mit
+`publish_successful_outputs_to_lsdf`.
+
 ## Resume und Fehler
 
 Ein Abbruch mit `Ctrl+C` behaelt alle fachlichen Checkpoints. Beim naechsten
