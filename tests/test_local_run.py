@@ -4,6 +4,7 @@ import importlib.util
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,11 +81,15 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     (remote / "step_1_metadata").mkdir(parents=True)
     (remote / "step_0_slurm_logs").mkdir(parents=True)
     (remote / "step_0_control" / "run_plans").mkdir(parents=True)
+    (remote / "step_2_4_susi_10m" / "grid10m_chunks").mkdir(parents=True)
     (remote / "step_1_metadata" / "metadata_source_fingerprints.csv").write_text(
         "dawn_chorus_id\n1\n", encoding="utf-8"
     )
     (remote / "step_0_slurm_logs" / "old.out").write_text("old", encoding="utf-8")
     (remote / "step_0_control" / "run_plans" / "old.json").write_text("{}", encoding="utf-8")
+    (remote / "step_2_4_susi_10m" / "grid10m_chunks" / "part.gpkg").write_text(
+        "intermediate", encoding="utf-8"
+    )
 
     settings = {
         "mount_drive": str(mount),
@@ -97,6 +102,10 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     assert (workspace / "outputs/step_1_metadata/metadata_source_fingerprints.csv").is_file()
     assert not (workspace / "outputs/step_0_slurm_logs/old.out").exists()
     assert not (workspace / "outputs/step_0_control/run_plans/old.json").exists()
+    assert not (
+        workspace / "outputs/step_2_4_susi_10m/grid10m_chunks/part.gpkg"
+    ).exists()
+    assert result["excluded_directories"] >= 1
 
 
 def test_local_publish_translates_paths_and_excludes_runtime(tmp_path: Path) -> None:
@@ -147,6 +156,32 @@ def test_sshfs_root_unc(_tmp_path: Path) -> None:
     )
 
 
+def test_stale_sshfs_mapping_is_cleared(_tmp_path: Path) -> None:
+    expected = MOUNT_MODULE.sshfs_unc(
+        "jk3038",
+        "os-login.lsdf.kit.edu",
+        "/lsdf01/lsdf/kit/ipf/projects/Bio-O-Ton",
+    )
+    with (
+        patch.object(MOUNT_MODULE, "current_mapping", return_value=expected),
+        patch.object(MOUNT_MODULE, "cancel_mapping") as cancel,
+    ):
+        MOUNT_MODULE.clear_stale_mapping("L:", expected)
+        cancel.assert_called_once_with("L:", ignore_missing=True)
+
+    with patch.object(
+        MOUNT_MODULE,
+        "current_mapping",
+        return_value=r"\\server\unrelated",
+    ):
+        try:
+            MOUNT_MODULE.clear_stale_mapping("L:", expected)
+        except OSError as exc:
+            assert "anders belegt" in str(exc)
+        else:
+            raise AssertionError("An unrelated drive mapping must not be removed.")
+
+
 if __name__ == "__main__":
     for test in (
         test_local_path_mapping,
@@ -154,6 +189,7 @@ if __name__ == "__main__":
         test_horeka_output_bootstrap_excludes_runtime_files,
         test_local_publish_translates_paths_and_excludes_runtime,
         test_sshfs_root_unc,
+        test_stale_sshfs_mapping_is_cleared,
     ):
         with tempfile.TemporaryDirectory() as directory:
             test(Path(directory))

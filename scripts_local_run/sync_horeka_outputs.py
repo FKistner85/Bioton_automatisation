@@ -15,6 +15,12 @@ from pathlib import Path
 EXCLUDED_TOP_LEVEL = {"step_0_slurm_logs", "step_0_local_logs"}
 EXCLUDED_CONTROL_DIRS = {"run_plans", "full_rebuild"}
 EXCLUDED_SUFFIXES = {".part", ".tmp"}
+DEFAULT_EXCLUDED_DIRECTORY_NAMES = {
+    "_chunk_checkpoints",
+    "grid10m_chunks",
+    "ix_chunks",
+    "parquet_10",
+}
 
 
 def load_json(path: Path) -> dict:
@@ -26,10 +32,20 @@ def mount_root(settings: dict) -> Path:
     return Path(value + "\\")
 
 
-def excluded(relative: Path) -> bool:
+def excluded(
+    relative: Path,
+    excluded_directory_names: set[str] | None = None,
+) -> bool:
     parts = relative.parts
     if not parts:
         return False
+    directory_names = (
+        DEFAULT_EXCLUDED_DIRECTORY_NAMES
+        if excluded_directory_names is None
+        else excluded_directory_names
+    )
+    if any(part in directory_names for part in parts[:-1]):
+        return True
     if parts[0] in EXCLUDED_TOP_LEVEL:
         return True
     if len(parts) >= 2 and parts[0] == "step_0_control" and parts[1] in EXCLUDED_CONTROL_DIRS:
@@ -59,6 +75,27 @@ def atomic_copy(source: Path, destination: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def copy_with_retry(
+    source: Path,
+    destination: Path,
+    *,
+    attempts: int,
+    delay_seconds: float,
+) -> os.stat_result:
+    last_error: OSError | None = None
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            source_stat = source.stat()
+            atomic_copy(source, destination)
+            return source_stat
+        except OSError as exc:
+            last_error = exc
+            if attempt < max(1, attempts):
+                time.sleep(max(0.0, delay_seconds) * attempt)
+    assert last_error is not None
+    raise last_error
+
+
 def write_state(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
@@ -85,12 +122,24 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
         raise FileNotFoundError(f"Horeka-Outputordner ist nicht lesbar: {source_root}")
 
     started = time.time()
+    excluded_directory_names = {
+        str(value)
+        for value in settings.get(
+            "bootstrap_excluded_directories",
+            sorted(DEFAULT_EXCLUDED_DIRECTORY_NAMES),
+        )
+        if str(value).strip()
+    }
+    copy_attempts = max(1, int(settings.get("bootstrap_copy_attempts", 3)))
+    retry_seconds = max(0.0, float(settings.get("bootstrap_retry_seconds", 1.0)))
     state = {
-        "schema_version": "2026-08-03-horeka-output-bootstrap-v1",
+        "schema_version": "2026-08-03-horeka-output-bootstrap-v2",
         "status": "in_progress",
         "source_root": str(source_root),
         "destination_root": str(destination_root),
         "refresh": refresh,
+        "excluded_directory_names": sorted(excluded_directory_names),
+        "copy_attempts": copy_attempts,
         "started_unix": started,
     }
     write_state(state_path, state)
@@ -100,52 +149,91 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
     unchanged_files = 0
     preserved_local_files = 0
     excluded_files = 0
+    excluded_directories = 0
+    examined_files = 0
     errors: list[str] = []
     last_progress = started
 
     print(f"HOREKA OUTPUT BOOTSTRAP: {source_root} -> {destination_root}")
     print("Lokale neuere Dateien werden nicht ueberschrieben.")
-    for source in source_root.rglob("*"):
-        if not source.is_file():
-            continue
-        relative = source.relative_to(source_root)
-        if excluded(relative):
-            excluded_files += 1
-            continue
-        destination = destination_root / relative
-        try:
-            source_stat = source.stat()
-            if same_file(source_stat, destination):
-                unchanged_files += 1
-                continue
-            if destination.is_file():
-                destination_stat = destination.stat()
-                if not refresh or destination_stat.st_mtime >= source_stat.st_mtime:
-                    preserved_local_files += 1
-                    continue
-            atomic_copy(source, destination)
-            copied_files += 1
-            copied_bytes += source_stat.st_size
-        except OSError as exc:
-            errors.append(f"{relative}: {type(exc).__name__}: {exc}")
+    print(
+        "Nicht uebernommen werden Zwischenchunks: "
+        + ", ".join(sorted(excluded_directory_names))
+    )
 
-        now = time.time()
-        if now - last_progress >= 30:
-            print(
-                f"  kopiert={copied_files:,}, unveraendert={unchanged_files:,}, "
-                f"lokal_behalten={preserved_local_files:,}, GiB={copied_bytes / 2**30:.2f}"
-            )
-            last_progress = now
+    def walk_error(exc: OSError) -> None:
+        errors.append(f"directory_scan: {type(exc).__name__}: {exc}")
+
+    for current, directories, filenames in os.walk(
+        source_root,
+        topdown=True,
+        onerror=walk_error,
+    ):
+        current_path = Path(current)
+        kept_directories = []
+        for directory in directories:
+            relative_directory = (current_path / directory).relative_to(source_root)
+            if directory in excluded_directory_names or excluded(relative_directory / "_", excluded_directory_names):
+                excluded_directories += 1
+            else:
+                kept_directories.append(directory)
+        directories[:] = kept_directories
+
+        for filename in filenames:
+            source = current_path / filename
+            relative = source.relative_to(source_root)
+            if excluded(relative, excluded_directory_names):
+                excluded_files += 1
+                continue
+            examined_files += 1
+            destination = destination_root / relative
+            try:
+                source_stat = source.stat()
+                if same_file(source_stat, destination):
+                    unchanged_files += 1
+                    continue
+                if destination.is_file():
+                    destination_stat = destination.stat()
+                    if not refresh or destination_stat.st_mtime >= source_stat.st_mtime:
+                        preserved_local_files += 1
+                        continue
+                source_stat = copy_with_retry(
+                    source,
+                    destination,
+                    attempts=copy_attempts,
+                    delay_seconds=retry_seconds,
+                )
+                copied_files += 1
+                copied_bytes += source_stat.st_size
+            except OSError as exc:
+                errors.append(f"{relative}: {type(exc).__name__}: {exc}")
+
+            now = time.time()
+            if now - last_progress >= 30:
+                print(
+                    f"  kopiert={copied_files:,}, unveraendert={unchanged_files:,}, "
+                    f"lokal_behalten={preserved_local_files:,}, GiB={copied_bytes / 2**30:.2f}"
+                )
+                last_progress = now
+
+    if errors and examined_files == 0:
+        final_status = "failed"
+    elif errors:
+        final_status = "partial"
+    else:
+        final_status = "complete"
 
     state.update(
         {
-            "status": "failed" if errors else "complete",
+            "status": final_status,
             "finished_unix": time.time(),
             "copied_files": copied_files,
             "copied_bytes": copied_bytes,
             "unchanged_files": unchanged_files,
             "preserved_local_files": preserved_local_files,
             "excluded_files": excluded_files,
+            "excluded_directories": excluded_directories,
+            "examined_files": examined_files,
             "errors": errors[:100],
         }
     )
@@ -153,10 +241,15 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
     print(
         f"HOREKA OUTPUTS: kopiert={copied_files:,}, unveraendert={unchanged_files:,}, "
         f"lokal_behalten={preserved_local_files:,}, ausgeschlossen={excluded_files:,}, "
-        f"GiB={copied_bytes / 2**30:.2f}"
+        f"Chunkordner={excluded_directories:,}, GiB={copied_bytes / 2**30:.2f}"
     )
     if errors:
-        print(f"ERROR: {len(errors)} Dateien konnten nicht uebernommen werden.", file=sys.stderr)
+        level = "ERROR" if final_status == "failed" else "WARNING"
+        print(
+            f"{level}: {len(errors)} Pfade konnten nicht uebernommen werden; "
+            "der naechste Lauf versucht sie erneut.",
+            file=sys.stderr,
+        )
         for error in errors[:10]:
             print(f"- {error}", file=sys.stderr)
     return state
@@ -172,7 +265,7 @@ def main() -> int:
         print("Horeka-Output-Bootstrap ist in local.settings.json deaktiviert.")
         return 0
     state = sync_outputs(settings, refresh=args.refresh)
-    return 0 if state.get("status") == "complete" else 1
+    return 0 if state.get("status") in {"complete", "partial"} else 1
 
 
 if __name__ == "__main__":

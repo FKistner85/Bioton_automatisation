@@ -7,6 +7,8 @@ import argparse
 import ctypes
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
 from ctypes import wintypes
@@ -38,9 +40,20 @@ class NETRESOURCEW(ctypes.Structure):
 
 RESOURCETYPE_DISK = 1
 CONNECT_TEMPORARY = 0x00000004
+CONNECT_UPDATE_PROFILE = 0x00000001
 NO_ERROR = 0
 ERROR_ALREADY_ASSIGNED = 85
 ERROR_DEVICE_ALREADY_REMEMBERED = 1202
+ERROR_NOT_CONNECTED = 2250
+
+
+class NetworkProviderError(OSError):
+    def __init__(self, code: int):
+        self.code = int(code)
+        super().__init__(
+            f"SSHFS-Win Netzwerkprovider fehlgeschlagen ({code}): "
+            f"{windows_error(code)}"
+        )
 
 
 def sshfs_unc(user: str, host: str, remote: str) -> str:
@@ -88,9 +101,11 @@ def current_mapping(drive: str) -> str:
     return buffer.value if result == NO_ERROR else ""
 
 
-def cancel_mapping(drive: str) -> None:
+def cancel_mapping(drive: str, *, ignore_missing: bool = False) -> None:
     mpr = load_mpr()
-    result = mpr.WNetCancelConnection2W(drive, 0, True)
+    result = mpr.WNetCancelConnection2W(drive, CONNECT_UPDATE_PROFILE, True)
+    if ignore_missing and result == ERROR_NOT_CONNECTED:
+        return
     if result != NO_ERROR:
         raise OSError(f"Bestehendes Mapping konnte nicht getrennt werden: {windows_error(result)}")
 
@@ -119,9 +134,93 @@ def connect_network_provider(drive: str, unc: str, user: str, password: str) -> 
                 f"Laufwerk {drive} ist bereits anders belegt: {existing or 'lokales Laufwerk'}"
             )
     if result != NO_ERROR:
+        raise NetworkProviderError(result)
+
+
+def clear_stale_mapping(drive: str, expected_unc: str) -> None:
+    existing = current_mapping(drive)
+    if existing and existing.casefold() != expected_unc.casefold():
         raise OSError(
-            f"SSHFS-Win Netzwerkprovider fehlgeschlagen ({result}): {windows_error(result)}"
+            f"Laufwerk {drive} ist bereits anders belegt: {existing}"
         )
+    # Also clears remembered-but-currently-disconnected mappings, for which
+    # WNetGetConnectionW may return no remote path at all.
+    cancel_mapping(drive, ignore_missing=True)
+
+
+def find_sshfs() -> str:
+    candidates = [
+        shutil.which("sshfs.exe"),
+        os.path.join(
+            os.environ.get("ProgramFiles", r"C:\Program Files"),
+            "SSHFS-Win",
+            "bin",
+            "sshfs.exe",
+        ),
+        os.path.join(
+            os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+            "SSHFS-Win",
+            "bin",
+            "sshfs.exe",
+        ),
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            return str(candidate)
+    raise FileNotFoundError(
+        "SSHFS-Win wurde nicht gefunden. Installiere WinFsp und SSHFS-Win."
+    )
+
+
+def connect_direct_sshfs(
+    *,
+    drive: str,
+    user: str,
+    host: str,
+    remote: str,
+    password: str,
+    root: Path,
+    wait_seconds: int,
+) -> tuple[bool, str]:
+    command = [
+        find_sshfs(),
+        f"{user}@{host}:{remote}",
+        drive,
+        "-o",
+        "password_stdin",
+        "-o",
+        "reconnect",
+        "-o",
+        "ServerAliveInterval=15",
+        "-o",
+        "ServerAliveCountMax=3",
+        "-o",
+        "idmap=user",
+    ]
+    process = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    assert process.stdin is not None
+    process.stdin.write(password + "\n")
+    process.stdin.flush()
+    process.stdin.close()
+
+    deadline = time.monotonic() + max(1, wait_seconds)
+    while time.monotonic() < deadline:
+        if is_ready(root):
+            return True, ""
+        if process.poll() is not None:
+            detail = process.stderr.read().strip() if process.stderr else ""
+            return False, detail or f"sshfs.exe exit {process.returncode}"
+        time.sleep(1)
+    if process.poll() is None:
+        process.terminate()
+    return False, f"Mount wurde nach {wait_seconds} Sekunden nicht lesbar."
 
 
 def is_ready(root: Path) -> bool:
@@ -164,10 +263,31 @@ def main() -> int:
     unc = sshfs_unc(user, host, remote)
     try:
         try:
+            clear_stale_mapping(drive, unc)
+            time.sleep(0.5)
             connect_network_provider(drive, unc, user, password)
         except OSError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return 1
+            print(f"WARNING: {exc}", file=sys.stderr)
+            try:
+                clear_stale_mapping(drive, unc)
+            except OSError as cleanup_exc:
+                print(f"ERROR: {cleanup_exc}", file=sys.stderr)
+                return 1
+            print("Versuche direkten SSHFS-Mount als Fallback.")
+            connected, detail = connect_direct_sshfs(
+                drive=drive,
+                user=user,
+                host=host,
+                remote=remote,
+                password=password,
+                root=root,
+                wait_seconds=args.wait_seconds,
+            )
+            if not connected:
+                print(f"ERROR: Direkter SSHFS-Mount fehlgeschlagen: {detail}", file=sys.stderr)
+                return 1
+            print(f"LSDF verbunden: {root} -> {user}@{host}:{remote}")
+            return 0
     finally:
         password = ""
 

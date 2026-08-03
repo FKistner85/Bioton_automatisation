@@ -49,6 +49,11 @@ Root-UNC `\\sshfs.r\...`. Das Keyring-Passwort wird direkt ueber die
 Windows-Netzwerk-API uebergeben und erscheint nicht in der Prozess-
 Kommandozeile.
 
+Ist ein altes Laufwerks-Mapping vorhanden, aber nicht mehr lesbar, wird es vor
+dem Neuaufbau entfernt. Akzeptiert der Windows-Netzwerkprovider die Verbindung
+nicht, versucht der Helper einmalig `sshfs.exe` direkt; auch dabei wird das
+Passwort nur ueber die Standardeingabe uebergeben.
+
 ## Lokale Einstellungen
 
 Beim ersten Start wird `local.settings.json` aus
@@ -127,10 +132,14 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_
 
 ## Vorhandene Horeka-Outputs
 
-Der erste inkrementelle Lauf kopiert den Horeka-Outputbestand vollstaendig und
-fortsetzbar in den lokalen Workspace. Bereits lokal neuere Dateien werden
-nicht ueberschrieben. Spaetere Horeka-Ergebnisse werden nur auf ausdruecklichen
-Wunsch erneut abgeglichen:
+Der erste inkrementelle Lauf kopiert finale Horeka-Produkte, Statusdateien und
+Manifeste fortsetzbar in den lokalen Workspace. Reine Zwischenchunk-Ordner wie
+`grid10m_chunks`, `ix_chunks`, `parquet_10` und `_chunk_checkpoints` werden
+nicht ueber SSHFS uebertragen. Bereits lokal neuere Dateien werden nicht
+ueberschrieben. Einzelne temporaere Netzwerkfehler werden wiederholt und als
+`partial` protokolliert; sie blockieren den lokalen Lauf nicht und werden beim
+naechsten Bootstrap erneut versucht. Spaetere Horeka-Ergebnisse werden nur auf
+ausdruecklichen Wunsch erneut abgeglichen:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 `
