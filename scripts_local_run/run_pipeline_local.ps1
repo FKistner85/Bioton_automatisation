@@ -29,7 +29,7 @@ if (-not $SkipEnvironmentSetup) {
 if (-not (Test-Path -LiteralPath $CorePython)) { throw "Core Python fehlt: $CorePython" }
 if (-not (Test-Path -LiteralPath $BacpipePython)) { throw "Bacpipe Python fehlt: $BacpipePython" }
 
-if (-not $SkipMount) {
+if (($Mode -ne "functionality_test") -and (-not $SkipMount)) {
     & $CorePython (Join-Path $LocalRoot "mount_lsdf.py") --settings $Settings
     if ($LASTEXITCODE -ne 0) { throw "LSDF konnte nicht eingebunden werden." }
 }
@@ -42,12 +42,16 @@ if (-not $CpuOnly) {
 Write-Host "Bioakustik-Geraet: $Device"
 
 $GeneratedConfig = Join-Path $LocalRoot "config.local.generated.json"
-& $CorePython (Join-Path $LocalRoot "prepare_local_config.py") `
-    --settings $Settings `
-    --source-config (Join-Path $RepoRoot "config.horeka.json") `
-    --output-config $GeneratedConfig `
-    --repo-root $RepoRoot `
-    --device $Device
+$PrepareArgs = @(
+    (Join-Path $LocalRoot "prepare_local_config.py"),
+    "--settings", $Settings,
+    "--source-config", (Join-Path $RepoRoot "config.horeka.json"),
+    "--output-config", $GeneratedConfig,
+    "--repo-root", $RepoRoot,
+    "--device", $Device
+)
+if ($Mode -eq "functionality_test") { $PrepareArgs += "--skip-cache-copy" }
+& $CorePython @PrepareArgs
 if ($LASTEXITCODE -ne 0) { throw "Lokale Konfiguration konnte nicht erzeugt werden." }
 
 & $CorePython (Join-Path $LocalRoot "local_orchestrator.py") `
