@@ -1,0 +1,18 @@
+Exit code: 0
+Wall time: 3 seconds
+Output:
+{
+  "lsdf_host": "os-login.lsdf.kit.edu",
+  "lsdf_user": "jk3038",
+  "credential_service": "lsdf_kit",
+  "remote_project_root": "/lsdf01/lsdf/kit/ipf/projects/Bio-O-Ton",
+  "mount_drive": "L:",
+  "workspace_dir": "D:/BioOTon_local_workspace",
+  "logical_cpus": 20,
+  "max_parallel_steps": 2,
+  "array_workers": 2,
+  "bioacoustic_array_workers_gpu": 1,
+  "bioacoustic_array_workers_cpu": 2,
+  "prefer_cuda": true
+}
+

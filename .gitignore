@@ -1,6 +1,14 @@
+Exit code: 0
+Wall time: 2.8 seconds
+Output:
 # Python environments and bytecode
 .venv/
 .venv_bacpipe/
+scripts_local_run/.venv_local/
+scripts_local_run/.venv_local_bacpipe/
+scripts_local_run/local.settings.json
+scripts_local_run/config.local.generated.json
+scripts_local_run/workspace/
 __pycache__/
 *.py[cod]
 
@@ -20,3 +28,4 @@ bacpipe/model_checkpoints/
 .idea/
 .DS_Store
 Thumbs.db
+
