@@ -15,7 +15,8 @@ The substeps are:
 - `6_0`: provision checkpoint files, then validate Bacpipe, CUDA and the model registry.
 - `6_1`: select valid audio and create audio/model fingerprints.
 - `6_2`: run checkpointed CPU arrays over model x deterministic ID shard,
-  followed by a verification gate over every expected shard and work key.
+  followed by a verification gate over every required-model shard and work key;
+  optional-model gaps remain warnings.
 - `6_3`: normalise classifier outputs and retain thresholded segment top-k.
 - `6_4`: harmonise taxonomy and add Germany/season plausibility.
 - `6_5`: aggregate segments and model support per recording and species.

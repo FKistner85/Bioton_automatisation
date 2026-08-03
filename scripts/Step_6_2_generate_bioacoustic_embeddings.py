@@ -56,9 +56,15 @@ def verify_shards(config: dict[str, Any]) -> int:
 
     worklist = pd.read_parquet(worklist_path)
     issues: list[str] = []
+    warnings: list[str] = []
     verified_rows = 0
     for model_cfg in models:
         model_name = str(model_cfg["name"])
+        model_required = bool(model_cfg.get("required", False))
+
+        def record(problem: str) -> None:
+            (issues if model_required else warnings).append(problem)
+
         model_rows = worklist[worklist["model"].astype(str) == model_name]
         for shard_index in range(shard_count):
             expected = model_rows[
@@ -72,17 +78,17 @@ def verify_shards(config: dict[str, Any]) -> int:
             )
             state = load_task_state(state_path)
             if not state:
-                issues.append(f"missing_state:{model_name}:{shard_index}")
+                record(f"missing_state:{model_name}:{shard_index}")
                 continue
             if state.get("status") != "complete":
-                issues.append(
+                record(
                     f"non_complete_state:{model_name}:{shard_index}:"
                     f"{state.get('status', '')}"
                 )
             if state.get("failed_by_id"):
-                issues.append(f"failed_ids:{model_name}:{shard_index}")
+                record(f"failed_ids:{model_name}:{shard_index}")
             if int(state.get("shard_count", -1)) != shard_count:
-                issues.append(f"shard_count_mismatch:{model_name}:{shard_index}")
+                record(f"shard_count_mismatch:{model_name}:{shard_index}")
             completed = {
                 str(key): str(value)
                 for key, value in state.get("completed_work_keys", {}).items()
@@ -90,7 +96,7 @@ def verify_shards(config: dict[str, Any]) -> int:
             for row in expected.to_dict("records"):
                 dawn_id = str(row["dawn_chorus_id"])
                 if completed.get(dawn_id) != str(row["work_key"]):
-                    issues.append(
+                    record(
                         f"missing_work_key:{model_name}:{shard_index}:{dawn_id}"
                     )
             verified_rows += len(expected)
@@ -98,6 +104,14 @@ def verify_shards(config: dict[str, Any]) -> int:
     print(f"Verified models : {len(models)}")
     print(f"Verified shards : {len(models) * shard_count}")
     print(f"Verified rows   : {verified_rows:,}")
+    if warnings:
+        print(
+            f"WARNING: {len(warnings)} optional-model shard issue(s) do not "
+            "block completion.",
+            file=sys.stderr,
+        )
+        for warning in warnings[:50]:
+            print(f"- {warning}", file=sys.stderr)
     if issues:
         print(
             f"ERROR: Step 6_2 shard verification found {len(issues)} issue(s).",

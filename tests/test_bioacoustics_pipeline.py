@@ -230,7 +230,10 @@ def test_embedding_shard_verification_gate() -> None:
                 "shard_count": 2,
                 "worklist_parquet": str(worklist_path),
                 "inference_state_dir": str(state_root),
-                "models": [{"name": "birdnet", "required": True}],
+                "models": [
+                    {"name": "birdnet", "required": True},
+                    {"name": "naturebeats", "required": False},
+                ],
             }
         }
         for shard_index in range(2):
@@ -259,6 +262,11 @@ def test_embedding_shard_verification_gate() -> None:
             broken["status"] = "partial"
             broken_path.write_text(json.dumps(broken), encoding="utf-8")
             assert step62.verify_shards(config) == 2
+
+            broken["status"] = "complete"
+            broken_path.write_text(json.dumps(broken), encoding="utf-8")
+            # Missing optional-model states are warnings, not a pipeline blocker.
+            assert step62.verify_shards(config) == 0
 
 
 if __name__ == "__main__":

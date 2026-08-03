@@ -71,9 +71,10 @@ Parquet-Checkpoints. Native Klassenscores werden bereits hier auf den
 konfigurierten Mindestscore und Top-k pro Segment begrenzt, damit keine
 unkontrolliert grossen Zwischenprodukte entstehen.
 
-Nach dem Array prueft ein eigener Verify-Job jeden erwarteten Modell/Shard-
-Status und jeden Worklist-Schluessel. Erst dieser Verify-Job markiert Step 6_2
-als vollstaendig abgeschlossen. Einzelne erfolgreiche Array-Tasks koennen
+Nach dem Array prueft ein eigener Verify-Job jeden erwarteten Pflichtmodell-
+Shard-Status und Worklist-Schluessel. Probleme optionaler Modelle werden als
+Warnung protokolliert und blockieren die Pipeline nicht. Erst dieser Verify-Job
+markiert Step 6_2 als vollstaendig abgeschlossen. Einzelne Array-Tasks koennen
 daher einen unvollstaendigen Full-Rebuild nicht versehentlich als fertig
 kennzeichnen. Bei einem Timeout bleiben deren Checkpoints erhalten; ein
 Folgelauf berechnet nur fehlende oder fehlgeschlagene Worklist-Eintraege neu.
