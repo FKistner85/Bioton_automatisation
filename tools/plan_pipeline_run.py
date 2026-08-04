@@ -371,7 +371,58 @@ def step24_needed(config: dict[str, Any], upstream: bool) -> tuple[bool, list[st
         }
         if state.get("processing") != expected_processing:
             reasons.append("changed_processing_config")
-        if state.get("status") ÷Î-¢G§²ÚîÆ­yÙd = str(state["generation_id"])
+        if state.get("status") != "complete":
+            reasons.append("incomplete_state")
+    return bool(reasons), list(dict.fromkeys(reasons))
+
+
+def full_rebuild_context(
+    config: dict[str, Any],
+    workflow_run_id: str,
+) -> dict[str, Any]:
+    configured_root = config.get("pipeline_control", {}).get("full_rebuild_root")
+    rebuild_root = (
+        Path(configured_root)
+        if configured_root
+        else processed_root_from_config(config) / "step_0_control" / "full_rebuild"
+    )
+    rebuild_root.mkdir(parents=True, exist_ok=True)
+    state_path = rebuild_root / "current.json"
+    expected_steps = list(FULL_REBUILD_STEPS)
+    state = read_json(state_path)
+    resume = False
+
+    if state.get("status") == "in_progress":
+        generation_id = str(state.get("generation_id", ""))
+        marker_value = str(state.get("marker_dir", ""))
+        marker_dir = Path(marker_value) if marker_value else Path()
+        completed_steps = {
+            step
+            for step in expected_steps
+            if marker_value and (marker_dir / f"{step}.json").is_file()
+        }
+        resume = bool(generation_id and marker_value) and not all(
+            step in completed_steps for step in expected_steps
+        )
+
+    if not resume:
+        generation_id = workflow_run_id
+        marker_dir = rebuild_root / generation_id / "completed_steps"
+        state = {
+            "schema_version": "2026-08-04-full-rebuild-state-v2",
+            "generation_id": generation_id,
+            "status": "in_progress",
+            "marker_dir": str(marker_dir),
+            "required_steps": expected_steps,
+            "workflow_runs": [workflow_run_id],
+            "created_utc": utc_now_iso(),
+        }
+    else:
+        previous_required = [str(value) for value in state.get("required_steps", [])]
+        if previous_required != expected_steps:
+            state["migrated_from_required_steps"] = previous_required
+            state["required_steps"] = expected_steps
+        generation_id = str(state["generation_id"])
         marker_dir = Path(state["marker_dir"])
         runs = [str(value) for value in state.get("workflow_runs", [])]
         if workflow_run_id not in runs:
@@ -394,7 +445,6 @@ def step24_needed(config: dict[str, Any], upstream: bool) -> tuple[bool, list[st
         "required_steps": expected_steps,
         "completed_steps": sorted(completed_steps),
     }
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
