@@ -91,6 +91,7 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     (remote / "step_1_metadata").mkdir(parents=True)
     (remote / "step_0_slurm_logs").mkdir(parents=True)
     (remote / "step_0_control" / "run_plans").mkdir(parents=True)
+    (remote / "step_0_control" / "pipeline.lock").mkdir(parents=True)
     (remote / "step_2_4_susi_10m" / "grid10m_chunks").mkdir(parents=True)
     (remote / "step_5_2_weather_download" / "hostrada_cache").mkdir(parents=True)
     (remote / "step_5_3_hostrada_monthly_download" / "netcdf").mkdir(parents=True)
@@ -99,6 +100,9 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     )
     (remote / "step_0_slurm_logs" / "old.out").write_text("old", encoding="utf-8")
     (remote / "step_0_control" / "run_plans" / "old.json").write_text("{}", encoding="utf-8")
+    (remote / "step_0_control" / "pipeline.lock" / "owner.json").write_text(
+        "{}", encoding="utf-8"
+    )
     (remote / "step_2_4_susi_10m" / "grid10m_chunks" / "part.gpkg").write_text(
         "intermediate", encoding="utf-8"
     )
@@ -120,6 +124,7 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     assert (workspace / "outputs/step_1_metadata/metadata_source_fingerprints.csv").is_file()
     assert not (workspace / "outputs/step_0_slurm_logs/old.out").exists()
     assert not (workspace / "outputs/step_0_control/run_plans/old.json").exists()
+    assert not (workspace / "outputs/step_0_control/pipeline.lock/owner.json").exists()
     assert not (
         workspace / "outputs/step_2_4_susi_10m/grid10m_chunks/part.gpkg"
     ).exists()

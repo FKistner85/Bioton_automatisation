@@ -62,11 +62,11 @@ def excluded(
         return True
     if any(part in directory_names for part in parts[:-1]):
         return True
+    if any(part == "pipeline.lock" or part.endswith(".lock") for part in parts):
+        return True
     if parts[0] in EXCLUDED_TOP_LEVEL:
         return True
     if len(parts) >= 2 and parts[0] == "step_0_control" and parts[1] in EXCLUDED_CONTROL_DIRS:
-        return True
-    if relative.name == "pipeline.lock" or relative.name.endswith(".lock"):
         return True
     return relative.suffix.lower() in EXCLUDED_SUFFIXES
 
