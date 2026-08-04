@@ -24,6 +24,9 @@ DEFAULT_SHARED_OUTPUT_PREFIXES = (
     "step_5_2_weather_download/hostrada_cache",
     "step_5_3_hostrada_monthly_download/netcdf",
 )
+DEFAULT_OPTIONAL_LSDF_INPUTS = (
+    "InspireGrid/Vector_Data/grid_public.gpkg",
+)
 
 
 def load_json(path: Path) -> dict:
@@ -56,6 +59,23 @@ def copy_if_changed(source: Path, destination: Path) -> None:
     print(f"CACHE {source} -> {destination}")
     shutil.copy2(source, temporary)
     os.replace(temporary, destination)
+
+
+def copy_config_inputs(
+    cache_sources: dict[Path, Path],
+    *,
+    mounted_project: Path,
+    optional_inputs: set[str],
+) -> None:
+    for source, destination in sorted(cache_sources.items(), key=lambda item: str(item[0])):
+        try:
+            relative = source.relative_to(mounted_project).as_posix().casefold()
+        except ValueError:
+            relative = ""
+        if not source.is_file() and relative in optional_inputs:
+            print(f"CACHE optional nicht vorhanden, uebersprungen: {source}")
+            continue
+        copy_if_changed(source, destination)
 
 
 def project_relative(value: str) -> str | None:
@@ -230,8 +250,19 @@ def main() -> int:
 
     apply_local_resources(config, settings)
     if not args.skip_cache_copy:
-        for source, destination in sorted(cache_sources.items(), key=lambda item: str(item[0])):
-            copy_if_changed(source, destination)
+        optional_inputs = {
+            str(value).replace("\\", "/").strip("/").casefold()
+            for value in settings.get(
+                "optional_lsdf_inputs",
+                DEFAULT_OPTIONAL_LSDF_INPUTS,
+            )
+            if str(value).strip()
+        }
+        copy_config_inputs(
+            cache_sources,
+            mounted_project=mounted_project,
+            optional_inputs=optional_inputs,
+        )
 
     args.output_config.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.output_config.with_suffix(args.output_config.suffix + ".part")

@@ -84,6 +84,28 @@ def test_copy_if_changed_reuses_identical_file(tmp_path: Path) -> None:
     assert destination.stat().st_mtime_ns == first_mtime
 
 
+def test_optional_config_input_does_not_block_cache(tmp_path: Path) -> None:
+    mount = tmp_path / "mount"
+    required = mount / "InspireGrid/Vector_Data/grid.gpkg"
+    optional = mount / "InspireGrid/Vector_Data/grid_public.gpkg"
+    required.parent.mkdir(parents=True)
+    required.write_bytes(b"required")
+    required_destination = tmp_path / "cache/grid.gpkg"
+    optional_destination = tmp_path / "cache/grid_public.gpkg"
+
+    MODULE.copy_config_inputs(
+        {
+            required: required_destination,
+            optional: optional_destination,
+        },
+        mounted_project=mount,
+        optional_inputs={"inspiregrid/vector_data/grid_public.gpkg"},
+    )
+
+    assert required_destination.read_bytes() == b"required"
+    assert not optional_destination.exists()
+
+
 def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     mount = tmp_path / "mount"
     remote = mount / "Data_automatisation_skripts" / "outputs"
@@ -215,6 +237,7 @@ if __name__ == "__main__":
     for test in (
         test_local_path_mapping,
         test_copy_if_changed_reuses_identical_file,
+        test_optional_config_input_does_not_block_cache,
         test_horeka_output_bootstrap_excludes_runtime_files,
         test_local_publish_translates_paths_and_excludes_runtime,
         test_sshfs_root_unc,
