@@ -376,6 +376,29 @@ def step24_needed(config: dict[str, Any], upstream: bool) -> tuple[bool, list[st
     return bool(reasons), list(dict.fromkeys(reasons))
 
 
+def write_id_file(path: Path, reasons_by_id: dict[str, set[str]]) -> None:
+    rows = [
+        {"dawn_chorus_id": dawn_id, "reason": "|".join(sorted(reasons))}
+        for dawn_id, reasons in sorted(
+            reasons_by_id.items(),
+            key=lambda item: int(item[0]) if item[0].isdigit() else item[0],
+        )
+    ]
+    atomic_write_csv(
+        pd.DataFrame(rows, columns=["dawn_chorus_id", "reason"]),
+        path,
+    )
+
+
+def add_reason(
+    target: dict[str, set[str]],
+    ids: Iterable[str],
+    reason: str,
+) -> None:
+    for dawn_id in ids:
+        target.setdefault(str(dawn_id), set()).add(reason)
+
+
 def full_rebuild_context(
     config: dict[str, Any],
     workflow_run_id: str,
