@@ -11,7 +11,10 @@
   "bootstrap_excluded_directories": ["_chunk_checkpoints", "grid10m_chunks", "ix_chunks", "parquet_10"],
   "bootstrap_excluded_relative_directories": ["step_5_2_weather_download/hostrada_cache", "step_5_3_hostrada_monthly_download/netcdf"],
   "shared_lsdf_output_prefixes": ["step_5_2_weather_download/hostrada_cache", "step_5_3_hostrada_monthly_download/netcdf"],
-  "optional_lsdf_inputs": ["InspireGrid/Vector_Data/grid_public.gpkg"],
+  "optional_lsdf_inputs": [
+    "InspireGrid/Vector_Data/grid_public.gpkg",
+    "Biodiversity_data/Bundeslander/LRT_Germany_Clean.gpkg"
+  ],
   "bootstrap_copy_attempts": 3,
   "bootstrap_retry_seconds": 1.0,
   "publish_successful_outputs_to_lsdf": true,

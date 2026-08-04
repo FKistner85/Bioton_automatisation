@@ -192,10 +192,12 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 `
 inkrementellen Lauf mit `-SkipHorekaBootstrap` deaktiviert werden. Cluster und
 lokaler Lauf duerfen waehrend des Abgleichs nicht gleichzeitig schreiben.
 
-Die nur fuer den derzeit nicht orchestrierten Public-LRT-Zweig vorgesehene
-Datei `InspireGrid/Vector_Data/grid_public.gpkg` ist lokal optional. Fehlt sie,
-wird dies protokolliert, ohne die regulaere Pipeline zu blockieren. Alle
-Kerndateien der ausgefuehrten Schritte bleiben Pflichtinputs.
+Die nur fuer den separat gestarteten Public-LRT-Zweig vorgesehenen Dateien
+`InspireGrid/Vector_Data/grid_public.gpkg` und
+`Biodiversity_data/Bundeslander/LRT_Germany_Clean.gpkg` sind lokal optional.
+Fehlen sie, wird dies protokolliert, ohne die regulaere Pipeline oder den
+Step-2-Variantenlauf zu blockieren. Beim expliziten Start von Step 2.5/2.6
+bleiben sie Pflichtinputs.
 
 ## Erfolgreiche lokale Ergebnisse auf LSDF veroeffentlichen
 

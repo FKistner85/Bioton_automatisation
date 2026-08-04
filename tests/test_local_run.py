@@ -104,23 +104,29 @@ def test_copy_if_changed_reuses_identical_file(tmp_path: Path) -> None:
 def test_optional_config_input_does_not_block_cache(tmp_path: Path) -> None:
     mount = tmp_path / "mount"
     required = mount / "InspireGrid/Vector_Data/grid.gpkg"
-    optional = mount / "InspireGrid/Vector_Data/grid_public.gpkg"
+    optional_grid = mount / "InspireGrid/Vector_Data/grid_public.gpkg"
+    optional_lrt = mount / "Biodiversity_data/Bundeslander/LRT_Germany_Clean.gpkg"
     required.parent.mkdir(parents=True)
     required.write_bytes(b"required")
     required_destination = tmp_path / "cache/grid.gpkg"
-    optional_destination = tmp_path / "cache/grid_public.gpkg"
+    optional_grid_destination = tmp_path / "cache/grid_public.gpkg"
+    optional_lrt_destination = tmp_path / "cache/LRT_Germany_Clean.gpkg"
 
     MODULE.copy_config_inputs(
         {
             required: required_destination,
-            optional: optional_destination,
+            optional_grid: optional_grid_destination,
+            optional_lrt: optional_lrt_destination,
         },
         mounted_project=mount,
-        optional_inputs={"inspiregrid/vector_data/grid_public.gpkg"},
+        optional_inputs=MODULE.optional_input_paths(
+            {"optional_lsdf_inputs": ["InspireGrid/Vector_Data/grid_public.gpkg"]}
+        ),
     )
 
     assert required_destination.read_bytes() == b"required"
-    assert not optional_destination.exists()
+    assert not optional_grid_destination.exists()
+    assert not optional_lrt_destination.exists()
 
 
 def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
