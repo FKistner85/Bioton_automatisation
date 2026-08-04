@@ -21,6 +21,10 @@ DEFAULT_EXCLUDED_DIRECTORY_NAMES = {
     "ix_chunks",
     "parquet_10",
 }
+DEFAULT_EXCLUDED_RELATIVE_DIRECTORIES = {
+    "step_5_2_weather_download/hostrada_cache",
+    "step_5_3_hostrada_monthly_download/netcdf",
+}
 
 
 def load_json(path: Path) -> dict:
@@ -35,6 +39,7 @@ def mount_root(settings: dict) -> Path:
 def excluded(
     relative: Path,
     excluded_directory_names: set[str] | None = None,
+    excluded_relative_directories: set[str] | None = None,
 ) -> bool:
     parts = relative.parts
     if not parts:
@@ -44,6 +49,17 @@ def excluded(
         if excluded_directory_names is None
         else excluded_directory_names
     )
+    relative_directories = (
+        DEFAULT_EXCLUDED_RELATIVE_DIRECTORIES
+        if excluded_relative_directories is None
+        else excluded_relative_directories
+    )
+    normalised = "/".join(parts).strip("/").casefold()
+    if any(
+        normalised == prefix or normalised.startswith(prefix + "/")
+        for prefix in relative_directories
+    ):
+        return True
     if any(part in directory_names for part in parts[:-1]):
         return True
     if parts[0] in EXCLUDED_TOP_LEVEL:
@@ -130,15 +146,24 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
         )
         if str(value).strip()
     }
+    excluded_relative_directories = {
+        str(value).replace("\\", "/").strip("/").casefold()
+        for value in settings.get(
+            "bootstrap_excluded_relative_directories",
+            sorted(DEFAULT_EXCLUDED_RELATIVE_DIRECTORIES),
+        )
+        if str(value).strip()
+    }
     copy_attempts = max(1, int(settings.get("bootstrap_copy_attempts", 3)))
     retry_seconds = max(0.0, float(settings.get("bootstrap_retry_seconds", 1.0)))
     state = {
-        "schema_version": "2026-08-03-horeka-output-bootstrap-v2",
+        "schema_version": "2026-08-04-horeka-output-bootstrap-v3",
         "status": "in_progress",
         "source_root": str(source_root),
         "destination_root": str(destination_root),
         "refresh": refresh,
         "excluded_directory_names": sorted(excluded_directory_names),
+        "excluded_relative_directories": sorted(excluded_relative_directories),
         "copy_attempts": copy_attempts,
         "started_unix": started,
     }
@@ -160,6 +185,10 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
         "Nicht uebernommen werden Zwischenchunks: "
         + ", ".join(sorted(excluded_directory_names))
     )
+    print(
+        "Direkt vom LSDF verwendete Downloadcaches: "
+        + ", ".join(sorted(excluded_relative_directories))
+    )
 
     def walk_error(exc: OSError) -> None:
         errors.append(f"directory_scan: {type(exc).__name__}: {exc}")
@@ -173,7 +202,11 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
         kept_directories = []
         for directory in directories:
             relative_directory = (current_path / directory).relative_to(source_root)
-            if directory in excluded_directory_names or excluded(relative_directory / "_", excluded_directory_names):
+            if directory in excluded_directory_names or excluded(
+                relative_directory / "_",
+                excluded_directory_names,
+                excluded_relative_directories,
+            ):
                 excluded_directories += 1
             else:
                 kept_directories.append(directory)
@@ -182,7 +215,11 @@ def sync_outputs(settings: dict, *, refresh: bool = False) -> dict:
         for filename in filenames:
             source = current_path / filename
             relative = source.relative_to(source_root)
-            if excluded(relative, excluded_directory_names):
+            if excluded(
+                relative,
+                excluded_directory_names,
+                excluded_relative_directories,
+            ):
                 excluded_files += 1
                 continue
             examined_files += 1

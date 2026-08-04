@@ -135,7 +135,12 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_
 Der erste inkrementelle Lauf kopiert finale Horeka-Produkte, Statusdateien und
 Manifeste fortsetzbar in den lokalen Workspace. Reine Zwischenchunk-Ordner wie
 `grid10m_chunks`, `ix_chunks`, `parquet_10` und `_chunk_checkpoints` werden
-nicht ueber SSHFS uebertragen. Bereits lokal neuere Dateien werden nicht
+nicht ueber SSHFS uebertragen. Dasselbe gilt fuer die grossen, unveraenderlichen
+HOSTRADA-Downloadcaches aus Step 5.2 und 5.3. Diese werden von lokalen Steps
+direkt unter `L:\Data_automatisation_skripts\outputs` wiederverwendet; neu
+heruntergeladene Quelldateien ergaenzen dort den gemeinsamen Cache. Erzeugte
+Raster, Tabellen, States und Reports bleiben dagegen bis zur erfolgreichen
+Veroeffentlichung lokal. Bereits lokal neuere Dateien werden nicht
 ueberschrieben. Einzelne temporaere Netzwerkfehler werden wiederholt und als
 `partial` protokolliert; sie blockieren den lokalen Lauf nicht und werden beim
 naechsten Bootstrap erneut versucht. Spaetere Horeka-Ergebnisse werden nur auf

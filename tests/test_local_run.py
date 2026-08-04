@@ -43,6 +43,8 @@ def test_local_path_mapping(tmp_path: Path) -> None:
     result = MODULE.transform_value(
         {
             "output": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1/a.csv",
+            "weather_cache": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_2_weather_download/hostrada_cache/a.nc",
+            "monthly_cache": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/netcdf/a.nc",
             "audio": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/SoundRecordings",
             "grid": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/grid.gpkg",
             "reference": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka/reference_data/germany_species_allowlist.csv",
@@ -55,6 +57,14 @@ def test_local_path_mapping(tmp_path: Path) -> None:
     )
 
     assert Path(result["output"]) == (workspace / "outputs/step_1/a.csv").resolve()
+    assert Path(result["weather_cache"]) == (
+        mount
+        / "Data_automatisation_skripts/outputs/step_5_2_weather_download/hostrada_cache/a.nc"
+    ).resolve()
+    assert Path(result["monthly_cache"]) == (
+        mount
+        / "Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/netcdf/a.nc"
+    ).resolve()
     assert Path(result["audio"]) == (mount / "PointData/SoundRecordings").resolve()
     assert Path(result["grid"]) == (cache / "InspireGrid/Vector_Data/grid.gpkg").resolve()
     assert Path(result["reference"]) == (repo / "reference_data/germany_species_allowlist.csv").resolve()
@@ -82,6 +92,8 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     (remote / "step_0_slurm_logs").mkdir(parents=True)
     (remote / "step_0_control" / "run_plans").mkdir(parents=True)
     (remote / "step_2_4_susi_10m" / "grid10m_chunks").mkdir(parents=True)
+    (remote / "step_5_2_weather_download" / "hostrada_cache").mkdir(parents=True)
+    (remote / "step_5_3_hostrada_monthly_download" / "netcdf").mkdir(parents=True)
     (remote / "step_1_metadata" / "metadata_source_fingerprints.csv").write_text(
         "dawn_chorus_id\n1\n", encoding="utf-8"
     )
@@ -89,6 +101,12 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     (remote / "step_0_control" / "run_plans" / "old.json").write_text("{}", encoding="utf-8")
     (remote / "step_2_4_susi_10m" / "grid10m_chunks" / "part.gpkg").write_text(
         "intermediate", encoding="utf-8"
+    )
+    (remote / "step_5_2_weather_download" / "hostrada_cache" / "month.nc").write_text(
+        "shared cache", encoding="utf-8"
+    )
+    (remote / "step_5_3_hostrada_monthly_download" / "netcdf" / "month.nc").write_text(
+        "shared cache", encoding="utf-8"
     )
 
     settings = {
@@ -104,6 +122,12 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     assert not (workspace / "outputs/step_0_control/run_plans/old.json").exists()
     assert not (
         workspace / "outputs/step_2_4_susi_10m/grid10m_chunks/part.gpkg"
+    ).exists()
+    assert not (
+        workspace / "outputs/step_5_2_weather_download/hostrada_cache/month.nc"
+    ).exists()
+    assert not (
+        workspace / "outputs/step_5_3_hostrada_monthly_download/netcdf/month.nc"
     ).exists()
     assert result["excluded_directories"] >= 1
 

@@ -20,6 +20,10 @@ DIRECT_REMOTE_DIRS = (
     "PointData/Weather/Hostrada",
     "PointData/S2",
 )
+DEFAULT_SHARED_OUTPUT_PREFIXES = (
+    "step_5_2_weather_download/hostrada_cache",
+    "step_5_3_hostrada_monthly_download/netcdf",
+)
 
 
 def load_json(path: Path) -> dict:
@@ -75,6 +79,7 @@ def transform_value(
     mounted_project: Path,
     cache_root: Path,
     cache_sources: dict[Path, Path],
+    shared_output_prefixes: tuple[str, ...] = DEFAULT_SHARED_OUTPUT_PREFIXES,
 ) -> Any:
     if isinstance(value, dict):
         return {
@@ -85,6 +90,7 @@ def transform_value(
                 mounted_project=mounted_project,
                 cache_root=cache_root,
                 cache_sources=cache_sources,
+                shared_output_prefixes=shared_output_prefixes,
             )
             for key, item in value.items()
         }
@@ -97,6 +103,7 @@ def transform_value(
                 mounted_project=mounted_project,
                 cache_root=cache_root,
                 cache_sources=cache_sources,
+                shared_output_prefixes=shared_output_prefixes,
             )
             for item in value
         ]
@@ -106,6 +113,18 @@ def transform_value(
     normalised = value.replace("\\", "/")
     if normalised.startswith(REMOTE_OUTPUTS + "/") or normalised == REMOTE_OUTPUTS:
         relative = normalised[len(REMOTE_OUTPUTS):].lstrip("/")
+        relative_casefold = relative.casefold()
+        if any(
+            relative_casefold == prefix
+            or relative_casefold.startswith(prefix + "/")
+            for prefix in shared_output_prefixes
+        ):
+            return windows_path(
+                mounted_project
+                / "Data_automatisation_skripts"
+                / "outputs"
+                / Path(*PurePosixPath(relative).parts)
+            )
         return windows_path(workspace / "outputs" / Path(*PurePosixPath(relative).parts))
     if normalised.startswith(REMOTE_PIPELINE + "/") or normalised == REMOTE_PIPELINE:
         relative = normalised[len(REMOTE_PIPELINE):].lstrip("/")
@@ -176,6 +195,14 @@ def main() -> int:
         raise FileNotFoundError(f"LSDF-Mount ist nicht lesbar: {mounted_project}")
 
     cache_sources: dict[Path, Path] = {}
+    shared_output_prefixes = tuple(
+        str(value).replace("\\", "/").strip("/").casefold()
+        for value in settings.get(
+            "shared_lsdf_output_prefixes",
+            DEFAULT_SHARED_OUTPUT_PREFIXES,
+        )
+        if str(value).strip()
+    )
     config = transform_value(
         source_config,
         repo_root=repo_root,
@@ -183,6 +210,7 @@ def main() -> int:
         mounted_project=mounted_project,
         cache_root=cache_root,
         cache_sources=cache_sources,
+        shared_output_prefixes=shared_output_prefixes,
     )
     config["local_runtime"] = {
         "workspace_dir": windows_path(workspace),
