@@ -390,7 +390,35 @@ class Pipeline:
             self.add("j20", "step_2_0", self.command_runner(
                 "step_2_0", "step_2_0_lrt_cleaning", "scripts/Step_2_0_clean_lrts.py", force,
             ))
-        if self.planÁœm¢Gß≤⁄Óù∆≠y–              "step_3_0b", "step_3_0_photo_inventory", "scripts/Step_3_0_b_photo_inventory.py",
+        if self.plan_run("step_2_1_100m_formation"):
+            self.add("j21", "step_2_1", self.command_runner(
+                "step_2_1", "step_2_1_100m_formation", "scripts/Step_2_1_merge_lrts_and_grid.py", force,
+            ), ["j20"])
+        if self.plan_run("step_2_2_point_assignment"):
+            self.add("j22", "step_2_2", self.command_runner(
+                "step_2_2", "step_2_2_point_assignment", "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+                [*force, "--ids-file", str(point_ids)], cpus=2,
+            ), ["j1", "j21"], master_ids=point_ids)
+        if self.plan_run("step_2_3_grid_aggregation"):
+            self.add("j23", "step_2_3", self.command_runner(
+                "step_2_3", "step_2_3_grid_aggregation", "scripts/Step_2_3_generate_remaining_grid_products.py", force,
+            ), ["j21"])
+        if self.plan_run("step_2_4_10m_formation"):
+            self.add("j24", "step_2_4", self.command_runner(
+                "step_2_4", "step_2_4_10m_formation", "scripts/Step_2_4_generate_10m_formation_status_products.py", force,
+            ), ["j21"], master_global=True)
+
+        self.add("j3pre", "step_3_preflight", self.command_runner(
+            "step_3_preflight", "step_3_path_preflight", "tools/step3_path_preflight.py", cpus=1,
+        ))
+        if quick_incremental or self.plan_run("step_3_0_audio_inventory"):
+            self.add("j30a", "step_3_0a", self.command_runner(
+                "step_3_0a", "step_3_0_audio_inventory", "scripts/Step_3_0_a_audio_inventory.py",
+                ["--list-only"] if quick_incremental else force,
+            ), ["j3pre"])
+        if quick_incremental or self.plan_run("step_3_0_photo_inventory"):
+            self.add("j30b", "step_3_0b", self.command_runner(
+                "step_3_0b", "step_3_0_photo_inventory", "scripts/Step_3_0_b_photo_inventory.py",
                 ["--list-only"] if quick_incremental else force,
             ), ["j3pre"])
         if quick_incremental or self.plan_run("step_3_1_audio_download"):

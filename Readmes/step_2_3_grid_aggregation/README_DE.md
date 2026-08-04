@@ -7,11 +7,11 @@ Aggregiert 100m-Gridprodukte auf groessere Raster.
 `scripts/Step_2_3_generate_remaining_grid_products.py`
 
 ## Eingaben
-- `outputs/step_2_1/majority_formation_grid.parquet`
+- `outputs/step_2_variants/<suffix>/step_2_1/majority_formation_grid_<suffix>.parquet`
 
 ## Outputs
-- `outputs/step_2_3/*.csv`
-- `outputs/step_2_3/state.json`
+- `outputs/step_2_variants/<suffix>/step_2_3/*.csv`
+- `outputs/step_2_variants/<suffix>/step_2_3/state.json`
 
 ## Abhaengigkeiten und Invalidierung
 Die verbindlichen Abhaengigkeiten, der Scope und die Invalidierungsregeln stehen in `pipeline_steps.json` unter `step_2_3_grid_aggregation`. Der zentrale Run-Planer gibt nur betroffene IDs weiter und plant globale Schritte nur bei geaenderten Inputs, ergebnisrelevanter Konfiguration oder fehlenden Outputs.

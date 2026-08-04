@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bio-o-ton.local/schemas/master-table-row-v3.json",
+  "$id": "https://bio-o-ton.local/schemas/master-table-row-v4.json",
   "schema_name": "bio_o_ton_master_table_row",
-  "schema_version": "2026-07-24-mastertable-v3",
+  "schema_version": "2026-08-04-mastertable-v4",
   "type": "object",
   "required": [
     "mastertable_schema_version",
@@ -24,7 +24,7 @@
     "release_status"
   ],
   "properties": {
-    "mastertable_schema_version": {"const": "2026-07-24-mastertable-v3"},
+    "mastertable_schema_version": {"const": "2026-08-04-mastertable-v4"},
     "workflow_run_id": {"type": "string", "minLength": 1},
     "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
     "source_fingerprint": {"type": ["string", "null"]},
@@ -82,6 +82,11 @@
     "formation_10m_status": {"$ref": "#/$defs/status"},
     "formation_100m_10m_agree": {"type": "boolean"},
     "formation_status_100m_10m_agree": {"type": "boolean"},
+    "formation_primary_variant": {"type": "string"},
+    "formation_variant_count_expected": {"type": "integer", "minimum": 0},
+    "formation_variants_with_100m_majority": {"type": "integer", "minimum": 0},
+    "formation_variants_with_10m_majority": {"type": "integer", "minimum": 0},
+    "formation_variant_products_complete": {"type": "boolean"},
     "bioacoustic_status": {"$ref": "#/$defs/status"},
     "bioacoustic_has_issues": {"type": "boolean"},
     "bioacoustic_issue_codes": {"type": "string"},

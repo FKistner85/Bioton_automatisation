@@ -8,6 +8,19 @@ Bio_O_Ton_Mastertable.parquet
 Bio_O_Ton_Mastertable_summary.json
 ```
 
+Die LRT-Sensitivitaetsanalyse schreibt zusaetzlich:
+
+```text
+Bio_O_Ton_Formation_Variants.csv
+Bio_O_Ton_Formation_Variants.parquet
+Bio_O_Ton_Formation_Variants_summary.json
+```
+
+Diese normalisierte Tabelle hat eine Zeile pro `dawn_chorus_id` und
+`lrt_variant`. Die Haupt-Mastertabelle bleibt bei einer Zeile pro ID und nutzt
+fuer ihre detaillierten Formation-Felder die konfigurierte Primaervariante
+`no_K_post2017_threshold_50`.
+
 Die Tabelle wird durch `scripts/Step_7_0_update_master_table.py` fortlaufend
 aktualisiert. Der Slurm-Orchestrator reiht nach jedem relevanten Datenbereich
 einen serialisierten Teilupdate ein. Mit `--ids-file` werden nur die betroffenen
@@ -30,6 +43,7 @@ Readmes/step_1_metadata/
 Readmes/step_2_1_100m_formation_status/
 Readmes/step_2_2_point_assignment/
 Readmes/step_2_4_10m_formation_status/
+Readmes/step_2_variants/
 Readmes/step_3_media/
 Readmes/step_4_sentinel2/
 Readmes/step_5_2_weather/
@@ -43,8 +57,9 @@ Readmes/validation_and_comparison/
 | Bereich | Wichtigste Quelle |
 |---|---|
 | Metadaten/Zeit/GPS | `outputs/step_1_metadata/dawnchorus_metadata_clean.csv` und `dawnchorus_metadata_log.csv` |
-| 100m-Formation | `outputs/step_2_2/DawnChorus_LRT_Grid_Assignment.csv` |
-| 10m-Formation | `outputs/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode.parquet` |
+| 100m-Formation | `outputs/step_2_variants/<primary_suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<primary_suffix>.csv` |
+| 10m-Formation | `outputs/step_2_variants/<primary_suffix>/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode_<primary_suffix>.parquet` |
+| Formation-Varianten | `outputs/Bio_O_Ton_Formation_Variants.parquet` und CSV |
 | Audio | `outputs/step_3_0_a_audio_inventory/*` und `outputs/step_3_1_a_audio_download/audio_download_retry_log.csv` |
 | Fotos | `outputs/step_3_0_b_photo_inventory/*` und `outputs/step_3_1_b_photo_download/photo_download_retry_log.csv` |
 | Sentinel-2 | `outputs/step_4_0_Sentinel2_inventory/*` |
@@ -114,6 +129,11 @@ Readmes/validation_and_comparison/
 | `formation_10m_status` | Kanonischer Status der 10m-Zuordnung und Majority Formation. |
 | `formation_100m_10m_agree` | `True`, wenn die 100m- und 10m-Majority-Formation identisch sind. |
 | `formation_status_100m_10m_agree` | `True`, wenn der Majority-Formation-Status in 100m und 10m identisch ist. |
+| `formation_primary_variant` | Suffix des LRT-Datensatzes, dessen detaillierte Formation-Felder in dieser Hauptzeile stehen. |
+| `formation_variant_count_expected` | Anzahl der im Eingangsordner erkannten LRT-Varianten. |
+| `formation_variants_with_100m_majority` | Anzahl Varianten, die fuer diese ID eine 100m-Majority-Formation liefern. |
+| `formation_variants_with_10m_majority` | Anzahl Varianten, die fuer diese ID eine 10m-Majority-Formation liefern. |
+| `formation_variant_products_complete` | Globales Flag: 100m- und 10m-Endprodukte aller erwarteten Varianten liegen vor. |
 | `bioacoustic_status` | Kanonischer Step-6-Status: `validated`, `partial`, `failed` oder `missing`. |
 | `bioacoustic_has_issues` | `True`, wenn mindestens ein erforderliches Modell fehlt oder eine Modellinferenz fehlgeschlagen ist. |
 | `bioacoustic_issue_codes` | Kompakte Step-6-Fehlercodes, z.B. `required_models_incomplete` oder `model_inference_failed`. |

@@ -8,11 +8,11 @@ Assigns Dawn Chorus points to grid cells and LRT polygons.
 
 ## Inputs
 - `outputs/step_1_metadata/dawnchorus_metadata_clean.csv`
-- `outputs/step_2_1/LRT_Grid_Majority.csv`
+- `outputs/step_2_variants/<suffix>/step_2_1/LRT_Grid_Majority_<suffix>.csv`
 
 ## Outputs
-- `outputs/step_2_2/DawnChorus_LRT_Grid_Assignment.csv`
-- `outputs/step_2_2/DawnChorus_LRT_Polygon_Matches.csv`
+- `outputs/step_2_variants/<suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<suffix>.csv`
+- `outputs/step_2_variants/<suffix>/step_2_2/DawnChorus_LRT_Polygon_Matches_<suffix>.csv`
 
 ## Dependencies And Invalidation
 Authoritative dependencies, scope and invalidation rules are defined in `pipeline_steps.json` under `step_2_2_point_assignment`. The central run planner passes only affected IDs and schedules global work only for changed inputs, result-relevant config or missing outputs.

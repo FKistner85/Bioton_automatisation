@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import math
 import re
 import sys
@@ -32,7 +33,7 @@ from common import (
 )
 
 
-SCHEMA_VERSION = "2026-07-24-mastertable-v3"
+SCHEMA_VERSION = "2026-08-04-mastertable-v4"
 MASTER_COLUMNS = [
     "mastertable_schema_version",
     "workflow_run_id",
@@ -92,6 +93,11 @@ MASTER_COLUMNS = [
     "formation_10m_status",
     "formation_100m_10m_agree",
     "formation_status_100m_10m_agree",
+    "formation_primary_variant",
+    "formation_variant_count_expected",
+    "formation_variants_with_100m_majority",
+    "formation_variants_with_10m_majority",
+    "formation_variant_products_complete",
     "bioacoustic_status",
     "bioacoustic_has_issues",
     "bioacoustic_issue_codes",
@@ -985,6 +991,87 @@ def add_10m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFra
     return table
 
 
+def add_formation_variant_status(
+    table: pd.DataFrame,
+    config: dict[str, Any],
+) -> pd.DataFrame:
+    settings = config.get("lrt_variants", {})
+    primary = str(settings.get("primary_suffix", ""))
+    path = Path(settings.get("master_parquet", ""))
+    expected = 0
+    index_path = Path(settings.get("index_json", ""))
+    if index_path.is_file():
+        try:
+            expected = int(
+                json.loads(index_path.read_text(encoding="utf-8")).get(
+                    "variant_count", 0
+                )
+            )
+        except (OSError, ValueError, json.JSONDecodeError):
+            expected = 0
+
+    table["formation_primary_variant"] = primary
+    table["formation_variant_count_expected"] = expected
+    table["formation_variants_with_100m_majority"] = 0
+    table["formation_variants_with_10m_majority"] = 0
+    table["formation_variant_products_complete"] = False
+    if not path.is_file():
+        return table
+
+    columns = [
+        "dawn_chorus_id",
+        "lrt_variant",
+        "grid_100m_has_majority_formation",
+        "grid_10m_has_majority_formation",
+        "variant_100m_product_exists",
+        "variant_10m_product_exists",
+    ]
+    variants = pd.read_parquet(path, columns=columns)
+    variants = normalise_id_column(variants, ["dawn_chorus_id"])
+    if variants.empty:
+        return table
+    for column in [
+        "grid_100m_has_majority_formation",
+        "grid_10m_has_majority_formation",
+        "variant_100m_product_exists",
+        "variant_10m_product_exists",
+    ]:
+        variants[column] = bool_series(variants[column])
+    counts = variants.groupby("dawn_chorus_id", as_index=False).agg(
+        formation_variants_with_100m_majority=(
+            "grid_100m_has_majority_formation", "sum"
+        ),
+        formation_variants_with_10m_majority=(
+            "grid_10m_has_majority_formation", "sum"
+        ),
+    )
+    table = table.drop(
+        columns=[
+            "formation_variants_with_100m_majority",
+            "formation_variants_with_10m_majority",
+        ],
+        errors="ignore",
+    ).merge(counts, on="dawn_chorus_id", how="left")
+    table["formation_variants_with_100m_majority"] = (
+        pd.to_numeric(
+            table["formation_variants_with_100m_majority"], errors="coerce"
+        ).fillna(0).astype("Int64")
+    )
+    table["formation_variants_with_10m_majority"] = (
+        pd.to_numeric(
+            table["formation_variants_with_10m_majority"], errors="coerce"
+        ).fillna(0).astype("Int64")
+    )
+    product_status = variants.groupby("lrt_variant")[[
+        "variant_100m_product_exists",
+        "variant_10m_product_exists",
+    ]].all().all(axis=1)
+    actual_variants = int(variants["lrt_variant"].nunique())
+    complete = bool(product_status.all()) and actual_variants == expected and expected > 0
+    table["formation_variant_products_complete"] = complete
+    return table
+
+
 def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
     table["formation_100m_10m_agree"] = (
         table["majority_formation_100m"].notna()
@@ -1301,6 +1388,7 @@ def main() -> int:
             table = add_weather_raster_status(table, config)
             table = add_100m_formation(table, config)
             table = add_10m_formation(table, config)
+            table = add_formation_variant_status(table, config)
             table = add_agreement_and_ready_flags(table)
 
             for column in MASTER_COLUMNS:

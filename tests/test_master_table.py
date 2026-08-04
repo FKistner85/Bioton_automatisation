@@ -201,9 +201,42 @@ def test_mixed_timezone_local_wall_times() -> None:
     assert pd.isna(parsed.iloc[2])
 
 
+def test_formation_variant_status_is_summarised() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        variant_table = root / "formation_variants.parquet"
+        index_path = root / "variant_index.json"
+        pd.DataFrame(
+            {
+                "dawn_chorus_id": [1, 1, 2, 2],
+                "lrt_variant": ["primary", "alternative", "primary", "alternative"],
+                "grid_100m_has_majority_formation": [True, True, True, False],
+                "grid_10m_has_majority_formation": [True, False, True, False],
+                "variant_100m_product_exists": [True] * 4,
+                "variant_10m_product_exists": [True] * 4,
+            }
+        ).to_parquet(variant_table, index=False)
+        index_path.write_text(json.dumps({"variant_count": 2}), encoding="utf-8")
+        result = master.add_formation_variant_status(
+            pd.DataFrame({"dawn_chorus_id": ["1", "2", "3"]}),
+            {
+                "lrt_variants": {
+                    "primary_suffix": "primary",
+                    "master_parquet": str(variant_table),
+                    "index_json": str(index_path),
+                }
+            },
+        ).set_index("dawn_chorus_id")
+        assert result.loc["1", "formation_variants_with_100m_majority"] == 2
+        assert result.loc["2", "formation_variants_with_10m_majority"] == 1
+        assert result.loc["3", "formation_variants_with_100m_majority"] == 0
+        assert result["formation_variant_products_complete"].all()
+
+
 if __name__ == "__main__":
     test_master_table_minimal_build()
     test_incremental_master_merge_preserves_unaffected_rows()
     test_mixed_timezone_local_wall_times()
+    test_formation_variant_status_is_summarised()
     print("test_master_table.py: OK")
 

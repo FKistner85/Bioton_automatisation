@@ -7,8 +7,8 @@ Erzeugt checkpointfaehige 10m-Formation-Status-Produkte.
 `scripts/Step_2_4_generate_10m_formation_status_products.py`
 
 ## Eingaben
-- `outputs/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet`
-- `outputs/step_2_0/lrt.gpkg`
+- `outputs/step_2_variants/<suffix>/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet`
+- `outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg`
 
 Es wird kein separates originales INSPIRE-10m-Grid eingelesen. Wie in Susis
 `3_10mgrid_prep.py` werden die 100 10m-Zellen je 100m-INSPIRE-ID in EPSG:3035
@@ -16,7 +16,7 @@ deterministisch abgeleitet: `x0=E100*100`, `y0=N100*100`, anschliessend
 `grid_id_10=10mN(N100*10+dy)E(E100*10+dx)` fuer `dx,dy=0..9`.
 
 ## Outputs
-- `outputs/step_2_4_susi_10m/*`
+- `outputs/step_2_variants/<suffix>/step_2_4_susi_10m/*`
 
 ## Abhaengigkeiten und Invalidierung
 Die verbindlichen Abhaengigkeiten, der Scope und die Invalidierungsregeln stehen in `pipeline_steps.json` unter `step_2_4_10m_formation`. Der zentrale Run-Planer gibt nur betroffene IDs weiter und plant globale Schritte nur bei geaenderten Inputs, ergebnisrelevanter Konfiguration oder fehlenden Outputs.

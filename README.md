@@ -30,6 +30,19 @@ Alle vier rufen `submit_bio_o_ton_horeka.sh` auf.
 | `slurm_from_scratch.sh` | Logischer Vollauf aller Kernschritte; Originaldownloads werden nicht geloescht |
 | `slurm_compare_formation_status.sh` | Vergleich der eigenen Formation-Produkte mit Referenzprodukten |
 
+Die regulaere Pipeline verwendet fuer Step 2 die Primaervariante
+`All_Bundeslander_no_K_post2017_threshold_50.gpkg`. Alle vorhandenen
+`All_Bundeslander_*.gpkg` koennen als getrennte Sensitivitaetszweige gestartet
+werden:
+
+```bash
+bash submit_step2_variants_horeka.sh add_new_ids
+```
+
+Ausgaben liegen unter `outputs/step_2_variants/<suffix>/`; die normalisierte
+Vergleichstabelle liegt unter `outputs/Bio_O_Ton_Formation_Variants.*`.
+Details: [`Readmes/step_2_variants/README_DE.md`](Readmes/step_2_variants/README_DE.md).
+
 Optional kann fuer einen Checkpoint-Test jede Slurm-Laufzeit auf 30 Minuten
 begrenzt werden:
 

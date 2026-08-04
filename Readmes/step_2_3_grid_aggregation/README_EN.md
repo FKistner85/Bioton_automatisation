@@ -7,11 +7,11 @@ Aggregates 100m grid products to coarser grid resolutions.
 `scripts/Step_2_3_generate_remaining_grid_products.py`
 
 ## Inputs
-- `outputs/step_2_1/majority_formation_grid.parquet`
+- `outputs/step_2_variants/<suffix>/step_2_1/majority_formation_grid_<suffix>.parquet`
 
 ## Outputs
-- `outputs/step_2_3/*.csv`
-- `outputs/step_2_3/state.json`
+- `outputs/step_2_variants/<suffix>/step_2_3/*.csv`
+- `outputs/step_2_variants/<suffix>/step_2_3/state.json`
 
 ## Dependencies And Invalidation
 Authoritative dependencies, scope and invalidation rules are defined in `pipeline_steps.json` under `step_2_3_grid_aggregation`. The central run planner passes only affected IDs and schedules global work only for changed inputs, result-relevant config or missing outputs.

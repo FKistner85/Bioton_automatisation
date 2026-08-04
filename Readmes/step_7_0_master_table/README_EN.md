@@ -12,8 +12,9 @@ raster status.
 ```text
 outputs/step_1_metadata/dawnchorus_metadata_clean.csv
 outputs/step_1_metadata/dawnchorus_metadata_log.csv
-outputs/step_2_2/DawnChorus_LRT_Grid_Assignment.csv
-outputs/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode.parquet
+outputs/step_2_variants/<primary_suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<primary_suffix>.csv
+outputs/step_2_variants/<primary_suffix>/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode_<primary_suffix>.parquet
+outputs/Bio_O_Ton_Formation_Variants.parquet
 outputs/step_3_0_a_audio_inventory/audio_inventory_*.csv
 outputs/step_3_0_b_photo_inventory/photo_inventory_*.csv
 outputs/step_4_0_Sentinel2_inventory/sentinel2_inventory_*.csv
@@ -29,9 +30,13 @@ Bio_O_Ton_Mastertable.csv
 Bio_O_Ton_Mastertable.parquet
 Bio_O_Ton_Mastertable_summary.json
 outputs/step_0_control/status_events.csv
+Bio_O_Ton_Formation_Variants.csv
+Bio_O_Ton_Formation_Variants.parquet
 ```
 
-The output files are written directly to the `bio_o_ton_pipeline` folder.
+The output files are written directly below `Data_automatisation_skripts/outputs`.
+Step 7_1 creates the normalized variant table; Step 7_0 reads it to add compact
+coverage and completeness counts.
 
 ## Dependencies
 

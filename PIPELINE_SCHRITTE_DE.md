@@ -89,19 +89,24 @@ Abhaengig: Step 2_2, Step 3_1, Step 4, Step 5.1/5.2 und Step 6.
 
 ## Step 2_0: LRT-Bereinigung und Formation
 
+Step 2 wird variantenweise ausgefuehrt. `<suffix>` bezeichnet den Dateinamen
+nach `All_Bundeslander_`; Details stehen in
+`Readmes/step_2_variants/README_DE.md`. Die folgenden Pfade sind daher
+Pfadvorlagen.
+
 Skript: `scripts/Step_2_0_clean_lrts.py`
 
 Inputs:
 
 ```text
-Biodiversity_data/Bundeslander/*.gpkg
+Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_<suffix>.gpkg
 ```
 
 Outputs:
 
 ```text
-outputs/step_2_0/lrt.gpkg
-outputs/step_2_0/state.json
+outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg
+outputs/step_2_variants/<suffix>/step_2_0/state.json
 ```
 
 Der Step normalisiert LRT-Polygone, Status und Formation. Das finale GPKG wird
@@ -117,25 +122,22 @@ Inputs:
 
 ```text
 InspireGrid/Vector_Data/grid.gpkg
-outputs/step_2_0/lrt.gpkg
+outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg
 ```
 
 Kernoutputs:
 
 ```text
-outputs/step_2_1/LRT_Grid_Majority.csv
-outputs/step_2_1/majority_formation_grid.gpkg
-outputs/step_2_1/majority_formation_grid.parquet
-outputs/step_2_1/state.json
+outputs/step_2_variants/<suffix>/step_2_1/LRT_Grid_Majority_<suffix>.csv
+outputs/step_2_variants/<suffix>/step_2_1/majority_formation_grid_<suffix>.gpkg
+outputs/step_2_variants/<suffix>/step_2_1/majority_formation_grid_<suffix>.parquet
+outputs/step_2_variants/<suffix>/step_2_1/state.json
 ```
 
 Vergleichbare Formation-Status-Matrix:
 
 ```text
-outputs/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet
-outputs/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.csv
-outputs/step_2_1_susi_compatible/Formation_Status_Grid.csv
-outputs/step_2_1_susi_compatible/ix.csv
+outputs/step_2_variants/<suffix>/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet
 ```
 
 Der Overlay laeuft in Chunks. Flaechenanteile werden als Centi-Prozent
@@ -152,18 +154,18 @@ Inputs:
 
 ```text
 outputs/step_1_metadata/dawnchorus_metadata_clean.csv
-outputs/step_2_0/lrt.gpkg
-outputs/step_2_1/LRT_Grid_Majority.csv
+outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg
+outputs/step_2_variants/<suffix>/step_2_1/LRT_Grid_Majority_<suffix>.csv
 InspireGrid/Vector_Data/grid.gpkg
 ```
 
 Outputs:
 
 ```text
-outputs/step_2_2/DawnChorus_LRT_Grid_Assignment.csv
-outputs/step_2_2/DawnChorus_LRT_Polygon_Matches.csv
-outputs/step_2_2/point_processing_log.csv
-outputs/step_2_2/state.json
+outputs/step_2_variants/<suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<suffix>.csv
+outputs/step_2_variants/<suffix>/step_2_2/DawnChorus_LRT_Polygon_Matches_<suffix>.csv
+outputs/step_2_variants/<suffix>/step_2_2/point_processing_log_<suffix>.csv
+outputs/step_2_variants/<suffix>/step_2_2/state.json
 ```
 
 Nur IDs mit geaenderten Koordinaten beziehungsweise durch Step 2_1
@@ -178,16 +180,16 @@ Skript: `scripts/Step_2_3_generate_remaining_grid_products.py`
 Input:
 
 ```text
-outputs/step_2_1/majority_formation_grid.parquet
+outputs/step_2_variants/<suffix>/step_2_1/majority_formation_grid_<suffix>.parquet
 ```
 
 Outputs:
 
 ```text
-outputs/step_2_3/*1km*
-outputs/step_2_3/*5km*
-outputs/step_2_3/*10km*
-outputs/step_2_3/state.json
+outputs/step_2_variants/<suffix>/step_2_3/*1km*
+outputs/step_2_variants/<suffix>/step_2_3/*5km*
+outputs/step_2_variants/<suffix>/step_2_3/*10km*
+outputs/step_2_variants/<suffix>/step_2_3/state.json
 ```
 
 Abhaengig: Abschlussvalidierung.
@@ -199,18 +201,18 @@ Skript: `scripts/Step_2_4_generate_10m_formation_status_products.py`
 Inputs:
 
 ```text
-outputs/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet
-outputs/step_2_0/lrt.gpkg
+outputs/step_2_variants/<suffix>/step_2_1_susi_compatible/Formation_Status_Grid_withLRTCode.parquet
+outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg
 ```
 
 Outputs:
 
 ```text
-outputs/step_2_4_susi_10m/grid10m_chunks/*.gpkg
-outputs/step_2_4_susi_10m/ix_chunks/*.csv
-outputs/step_2_4_susi_10m/parquet_10/*.parquet
-outputs/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode.parquet
-outputs/step_2_4_susi_10m/state.json
+outputs/step_2_variants/<suffix>/step_2_4_susi_10m/grid10m_chunks/*.gpkg
+outputs/step_2_variants/<suffix>/step_2_4_susi_10m/ix_chunks/*.csv
+outputs/step_2_variants/<suffix>/step_2_4_susi_10m/parquet_10/*.parquet
+outputs/step_2_variants/<suffix>/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode_<suffix>.parquet
+outputs/step_2_variants/<suffix>/step_2_4_susi_10m/state.json
 ```
 
 Die 100m- und 10m-Matrizen verwenden dieselbe Spalten-, Skalierungs- und

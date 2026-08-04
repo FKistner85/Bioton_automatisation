@@ -8,11 +8,11 @@ Ordnet Dawn-Chorus-Punkte Gridzellen und LRT-Polygonen zu.
 
 ## Eingaben
 - `outputs/step_1_metadata/dawnchorus_metadata_clean.csv`
-- `outputs/step_2_1/LRT_Grid_Majority.csv`
+- `outputs/step_2_variants/<suffix>/step_2_1/LRT_Grid_Majority_<suffix>.csv`
 
 ## Outputs
-- `outputs/step_2_2/DawnChorus_LRT_Grid_Assignment.csv`
-- `outputs/step_2_2/DawnChorus_LRT_Polygon_Matches.csv`
+- `outputs/step_2_variants/<suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<suffix>.csv`
+- `outputs/step_2_variants/<suffix>/step_2_2/DawnChorus_LRT_Polygon_Matches_<suffix>.csv`
 
 ## Abhaengigkeiten und Invalidierung
 Die verbindlichen Abhaengigkeiten, der Scope und die Invalidierungsregeln stehen in `pipeline_steps.json` unter `step_2_2_point_assignment`. Der zentrale Run-Planer gibt nur betroffene IDs weiter und plant globale Schritte nur bei geaenderten Inputs, ergebnisrelevanter Konfiguration oder fehlenden Outputs.

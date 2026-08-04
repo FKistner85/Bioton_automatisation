@@ -8,11 +8,11 @@ Overlays LRTs with the 100m grid and creates majority and formation-status produ
 
 ## Inputs
 - `InspireGrid/Vector_Data/grid.gpkg`
-- `outputs/step_2_0/lrt.gpkg`
+- `outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg`
 
 ## Outputs
-- `outputs/step_2_1/*`
-- `outputs/step_2_1_susi_compatible/*`
+- `outputs/step_2_variants/<suffix>/step_2_1/*`
+- `outputs/step_2_variants/<suffix>/step_2_1_susi_compatible/*`
 
 The Susi-compatible matrix stores all formation and LRT shares as integer
 percentages with a factor of 100 (`10000 = 100 percent`). Formation totals

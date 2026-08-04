@@ -6,6 +6,7 @@
 - `step_2_2_point_assignment`: [Step 2_2 Point Assignment](step_2_2_point_assignment/README_DE.md)
 - `step_2_3_grid_aggregation`: [Step 2_3 Grid Aggregation](step_2_3_grid_aggregation/README_DE.md)
 - `step_2_4_10m_formation_status`: [Step 2_4 10m Formation Status](step_2_4_10m_formation_status/README_DE.md)
+- `step_2_variants`: [Step 2 Varianten und Sensitivitaetsanalyse](step_2_variants/README_DE.md)
 - `step_3_media`: [Step 3 Media Inventory And Download](step_3_media/README_DE.md)
 - `step_4_sentinel2`: [Step 4 Sentinel-2 Mirror And Inventory](step_4_sentinel2/README_DE.md)
 - `step_5_2_weather`: [Step 5_2 HOSTRADA Weather Per Recording](step_5_2_weather/README_DE.md)

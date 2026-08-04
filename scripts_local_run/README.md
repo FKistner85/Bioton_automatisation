@@ -102,6 +102,23 @@ Inkrementell fuer neue, geaenderte oder problematische IDs:
 powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_ids
 ```
 
+Die normale lokale Pipeline verarbeitet die konfigurierte Primaervariante.
+Alle GeoPackages im neuen Bundeslaender-Ordner werden separat mit folgendem
+Einstieg verarbeitet:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_step2_variants_local.ps1 `
+  -Mode add_new_ids -SkipEnvironmentSetup
+```
+
+Die Eingangs-GPKGs werden direkt ueber `L:\Biodiversity_data\Bundeslander\All_Bundeslander`
+gelesen und wegen ihrer Groesse nicht in den lokalen Cache kopiert. Die
+Ergebnisse liegen lokal unter `outputs\step_2_variants\<suffix>` und werden
+nach einem erfolgreichen Lauf wie andere kompatible Outputs nach LSDF
+publiziert. Der erste Vollauf aller 12 Varianten ist rechen- und
+speicherintensiv; lokale Parallelitaet bleibt deshalb standardmaessig auf zwei
+Varianten begrenzt.
+
 `add_new_ids` verwendet lokal bewusst einen schnellen LSDF-Modus:
 
 1. Audio, Fotos und Wetter werden zunaechst nur als Dateiliste mit Groesse und

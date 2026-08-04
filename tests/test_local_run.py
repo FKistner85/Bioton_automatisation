@@ -55,6 +55,8 @@ def test_local_path_mapping(tmp_path: Path) -> None:
             "weather_cache": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_2_weather_download/hostrada_cache/a.nc",
             "monthly_cache": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/netcdf/a.nc",
             "audio": "/lsdf/kit/ipf/projects/Bio-O-Ton/PointData/SoundRecordings",
+            "lrt_variants": "/lsdf/kit/ipf/projects/Bio-O-Ton/Biodiversity_data/Bundeslander/All_Bundeslander",
+            "lrt_variant": "/lsdf/kit/ipf/projects/Bio-O-Ton/Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_base_v2.gpkg",
             "grid": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/grid.gpkg",
             "reference": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka/reference_data/germany_species_allowlist.csv",
         },
@@ -75,6 +77,12 @@ def test_local_path_mapping(tmp_path: Path) -> None:
         / "Data_automatisation_skripts/outputs/step_5_3_hostrada_monthly_download/netcdf/a.nc"
     ).resolve()
     assert Path(result["audio"]) == (mount / "PointData/SoundRecordings").resolve()
+    assert Path(result["lrt_variants"]) == (
+        mount / "Biodiversity_data/Bundeslander/All_Bundeslander"
+    ).resolve()
+    assert Path(result["lrt_variant"]) == (
+        mount / "Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_base_v2.gpkg"
+    ).resolve()
     assert Path(result["grid"]) == (cache / "InspireGrid/Vector_Data/grid.gpkg").resolve()
     assert Path(result["reference"]) == (repo / "reference_data/germany_species_allowlist.csv").resolve()
     assert sources == {

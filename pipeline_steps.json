@@ -63,6 +63,13 @@
       "input_sections": ["susi_10m_products"],
       "outputs": ["susi_10m_products.final_parquet"]
     },
+    "step_2_variants": {
+      "scope": "per_lrt_variant",
+      "script": "tools/step2_variants.py",
+      "depends_on": ["step_1_metadata"],
+      "input_sections": ["lrt_variants", "lrt_cleaning", "lrt_grid_merge", "point_lrt_assignment", "lrt_grid_aggregation", "susi_10m_products"],
+      "outputs": ["lrt_variants.output_root", "lrt_variants.index_json"]
+    },
     "step_3_0_audio_inventory": {
       "scope": "per_file",
       "script": "scripts/Step_3_0_a_audio_inventory.py",
@@ -251,6 +258,17 @@
         "master_table.output_csv",
         "master_table.output_parquet",
         "pipeline_control.status_event_csv"
+      ]
+    },
+    "step_7_1_formation_variant_table": {
+      "scope": "per_id_lrt_variant",
+      "script": "scripts/Step_7_1_update_formation_variant_table.py",
+      "depends_on": ["step_2_variants"],
+      "input_sections": ["lrt_variants", "point_lrt_assignment.metadata_csv"],
+      "outputs": [
+        "lrt_variants.master_csv",
+        "lrt_variants.master_parquet",
+        "lrt_variants.master_summary_json"
       ]
     }
   }

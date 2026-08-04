@@ -15,6 +15,7 @@ REMOTE_PROJECT = "/lsdf/kit/ipf/projects/Bio-O-Ton"
 REMOTE_OUTPUTS = REMOTE_PROJECT + "/Data_automatisation_skripts/outputs"
 REMOTE_PIPELINE = REMOTE_PROJECT + "/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka"
 DIRECT_REMOTE_DIRS = (
+    "Biodiversity_data/Bundeslander/All_Bundeslander",
     "PointData/SoundRecordings",
     "PointData/Images_SoundRecordings",
     "PointData/Weather/Hostrada",

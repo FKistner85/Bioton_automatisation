@@ -338,7 +338,52 @@ afterok_jobs() {
   echo "${dependency/afterany:/afterok:}"
 }
 
-if [[ "${MODE}" == "susi_compare" ]]; thenç^m¢G§²ÚîÆ­yÝ-mode "${MODE}" |
+if [[ "${MODE}" == "susi_compare" ]]; then
+  MODE="formation_compare"
+fi
+
+RUN_PLAN=""
+if [[ "${MODE}" == "functionality_test" ]]; then
+  job="$(submit_python bio_func functionality_test 2 "00:10:00" "" tools/functionality_test.py)"
+  echo "Functionality test job: ${job}"
+  echo "Workflow run ID: ${RUN_ID}"
+  echo "Monitor with: squeue -u ${USER}"
+  exit 0
+fi
+
+if [[ "${MODE}" == "formation_compare" ]]; then
+  job="$(submit_bash bio_form_cmp formation_compare "${FORMATION_COMPARE_CPUS}" "02:00:00" "" run_formation_status_comparison.sh)"
+  echo "Formation comparison job: ${job}"
+  echo "Workflow run ID: ${RUN_ID}"
+  echo "Monitor with: squeue -u ${USER}"
+  exit 0
+fi
+
+"${PYTHON}" -c "import pandas, geopandas, pyogrio, shapely, pyarrow, av; from PIL import Image; import rasterio, requests, xarray" || {
+  echo "Missing Python dependencies in selected environment." >&2
+  exit 1
+}
+
+"${PYTHON}" "${PIPELINE_DIR}/tools/pipeline_lock.py" \
+  --config "${CONFIG}" acquire --run-id "${RUN_ID}"
+
+SUBMISSION_STARTED=0
+release_on_early_error() {
+  if [[ "${SUBMISSION_STARTED}" -eq 0 ]]; then
+    "${PYTHON}" "${PIPELINE_DIR}/tools/pipeline_lock.py" \
+      --config "${CONFIG}" release --run-id "${RUN_ID}" || true
+  else
+    echo "Submission failed after jobs were queued. The pipeline lock remains active." >&2
+    echo "Inspect queued jobs, then use the documented force-release command if needed." >&2
+  fi
+}
+trap release_on_early_error ERR INT TERM
+
+RUN_PLAN="$(
+  "${PYTHON}" "${PIPELINE_DIR}/tools/plan_pipeline_run.py" \
+    --config "${CONFIG}" \
+    --run-id "${RUN_ID}" \
+    --mode "${MODE}" |
     tail -n 1
 )"
 [[ -f "${RUN_PLAN}" ]] || { echo "Run plan was not created: ${RUN_PLAN}" >&2; exit 1; }

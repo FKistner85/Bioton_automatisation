@@ -8,11 +8,11 @@ Verschneidet LRTs mit dem 100m-Grid und erzeugt Majority- und Formation-Status-P
 
 ## Eingaben
 - `InspireGrid/Vector_Data/grid.gpkg`
-- `outputs/step_2_0/lrt.gpkg`
+- `outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg`
 
 ## Outputs
-- `outputs/step_2_1/*`
-- `outputs/step_2_1_susi_compatible/*`
+- `outputs/step_2_variants/<suffix>/step_2_1/*`
+- `outputs/step_2_variants/<suffix>/step_2_1_susi_compatible/*`
 
 Die Susi-kompatible Matrix speichert alle Formation- und LRT-Anteile als
 ganzzahlige Prozentwerte mit Faktor 100 (`10000 = 100 Prozent`). Formation-

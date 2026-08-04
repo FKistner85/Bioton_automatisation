@@ -7,11 +7,11 @@ Bereinigt LRT-Polygone, normalisiert Codes, Status und Formation.
 `scripts/Step_2_0_clean_lrts.py`
 
 ## Eingaben
-- `Biodiversity_data/Bundeslander/*.gpkg`
+- `Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_<suffix>.gpkg`
 
 ## Outputs
-- `outputs/step_2_0/lrt.gpkg`
-- `outputs/step_2_0/state.json`
+- `outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg`
+- `outputs/step_2_variants/<suffix>/step_2_0/state.json`
 
 ## Abhaengigkeiten und Invalidierung
 Die verbindlichen Abhaengigkeiten, der Scope und die Invalidierungsregeln stehen in `pipeline_steps.json` unter `step_2_0_lrt_cleaning`. Der zentrale Run-Planer gibt nur betroffene IDs weiter und plant globale Schritte nur bei geaenderten Inputs, ergebnisrelevanter Konfiguration oder fehlenden Outputs.

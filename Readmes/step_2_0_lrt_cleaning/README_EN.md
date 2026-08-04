@@ -7,11 +7,11 @@ Cleans LRT polygons and normalises code, status and formation fields.
 `scripts/Step_2_0_clean_lrts.py`
 
 ## Inputs
-- `Biodiversity_data/Bundeslander/*.gpkg`
+- `Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_<suffix>.gpkg`
 
 ## Outputs
-- `outputs/step_2_0/lrt.gpkg`
-- `outputs/step_2_0/state.json`
+- `outputs/step_2_variants/<suffix>/step_2_0/lrt_<suffix>.gpkg`
+- `outputs/step_2_variants/<suffix>/step_2_0/state.json`
 
 ## Dependencies And Invalidation
 Authoritative dependencies, scope and invalidation rules are defined in `pipeline_steps.json` under `step_2_0_lrt_cleaning`. The central run planner passes only affected IDs and schedules global work only for changed inputs, result-relevant config or missing outputs.
