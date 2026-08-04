@@ -7,6 +7,8 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -70,6 +72,88 @@ def test_domain_fingerprint_change_detection() -> None:
         previous,
         "audio_fingerprint",
     ) == (set(), set(), set())
+
+
+def test_add_reason_accumulates_per_id() -> None:
+    reasons: dict[str, set[str]] = {}
+    planner.add_reason(reasons, {1, "2"}, "new_id")
+    planner.add_reason(reasons, ["2"], "changed:audio_fingerprint")
+    assert reasons == {
+        "1": {"new_id"},
+        "2": {"new_id", "changed:audio_fingerprint"},
+    }
+
+
+def test_add_new_ids_planner_main_path() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        source_path = root / "dawn.csv"
+        source_path.write_text("id\n1\n", encoding="utf-8")
+        plan_root = root / "plans"
+        config = {
+            "dawn_chorus_csv": str(source_path),
+            "status_dir": str(root / "status"),
+            "metadata_extraction": {
+                "fingerprint_csv": str(root / "previous.csv"),
+            },
+            "pipeline_control": {"run_plan_dir": str(plan_root)},
+            "point_lrt_assignment": {"output_csv": str(root / "points.csv")},
+            "weather_inventory": {},
+            "bioacoustics": {"enabled": False},
+            "master_table": {},
+        }
+        fingerprint_columns = [
+            "source_fingerprint",
+            *planner.FINGERPRINT_GROUPS,
+        ]
+        current = pd.DataFrame(
+            {
+                "dawn_chorus_id": ["1"],
+                **{column: [f"{column}-value"] for column in fingerprint_columns},
+            }
+        )
+        previous = pd.DataFrame(
+            columns=["dawn_chorus_id", *fingerprint_columns]
+        )
+
+        with (
+            patch.object(
+                planner,
+                "parse_args",
+                return_value=SimpleNamespace(
+                    config=root / "config.json",
+                    run_id="test-run",
+                    mode="add_new_ids",
+                ),
+            ),
+            patch.object(planner, "load_config", return_value=config),
+            patch.object(
+                planner,
+                "read_source",
+                return_value=pd.DataFrame({"dawn_chorus_id": ["1"]}),
+            ),
+            patch.object(planner, "build_fingerprints", return_value=current),
+            patch.object(
+                planner,
+                "read_previous_fingerprints",
+                return_value=previous,
+            ),
+            patch.object(planner, "read_master", return_value=pd.DataFrame()),
+            patch.object(planner, "step20_needed", return_value=(False, [])),
+            patch.object(planner, "step21_needed", return_value=(False, [])),
+            patch.object(planner, "step23_needed", return_value=(False, [])),
+            patch.object(planner, "step24_needed", return_value=(False, [])),
+        ):
+            assert planner.main() == 0
+
+        plan = json.loads(
+            (plan_root / "test-run" / "run_plan.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert plan["mode"] == "add_new_ids"
+        assert plan["id_counts"]["metadata"] == 1
+        assert plan["steps"]["step_1_metadata"]["run"] is True
 
 
 def test_run_plan_schema_contract() -> None:
@@ -258,6 +342,8 @@ def test_full_rebuild_step_contract_and_legacy_migration() -> None:
 if __name__ == "__main__":
     test_lock_ownership()
     test_domain_fingerprint_change_detection()
+    test_add_reason_accumulates_per_id()
+    test_add_new_ids_planner_main_path()
     test_run_plan_schema_contract()
     test_result_config_invalidates_global_steps()
     test_full_rebuild_generation_resume()
