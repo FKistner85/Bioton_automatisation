@@ -31,6 +31,31 @@ from bioacoustics_common import (
 )
 
 
+DEFAULT_AUDIO_SUFFIXES = {
+    ".aac",
+    ".flac",
+    ".m4a",
+    ".mp3",
+    ".ogg",
+    ".opus",
+    ".wav",
+    ".wave",
+}
+
+
+def configure_embedder_audio_suffixes(embedder: Any, paths: Any) -> None:
+    """Work around Bacpipe 1.3.1 direct-API suffix initialisation."""
+    configured = set(getattr(embedder, "audio_suffixes", ()) or ())
+    configured.update(DEFAULT_AUDIO_SUFFIXES)
+    for value in paths:
+        suffix = Path(str(value)).suffix
+        if suffix:
+            configured.add(suffix)
+            configured.add(suffix.lower())
+            configured.add(suffix.upper())
+    embedder.audio_suffixes = tuple(sorted(configured))
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -414,6 +439,7 @@ def main() -> int:
 
     configure_bacpipe_runtime(bacpipe, section)
     embedder = bacpipe.Embedder(model_name)
+    configure_embedder_audio_suffixes(embedder, pending["source_path"])
     batch_size = max(1, int(section.get("checkpoint_batch_size", 16)))
     threshold = float(section.get("classifier_threshold", 0.1))
     top_k = int(section.get("classifier_top_k", 5))

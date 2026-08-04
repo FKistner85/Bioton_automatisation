@@ -66,6 +66,8 @@ def test_weather_inventory_good_and_missing() -> None:
                 "metadata_id_column": "id",
                 "metadata_datetime_column": "datetime",
                 "detailed_log": str(processed / "weather_inventory_detailed.csv"),
+                "file_list_log": str(processed / "weather_file_list.csv"),
+                "missing_ids_log": str(processed / "weather_missing_ids.csv"),
                 "compact_log": str(processed / "weather_inventory_compact.csv"),
                 "required_columns": [
                     "datetime",
@@ -92,6 +94,22 @@ def test_weather_inventory_good_and_missing() -> None:
             },
         }
         config_path.write_text(json.dumps(config), encoding="utf-8")
+
+        old_argv = sys.argv
+        try:
+            sys.argv = [
+                "Step_5_1_Weather_inventory.py",
+                "--config",
+                str(config_path),
+                "--list-only",
+            ]
+            assert inventory.main() == 0
+        finally:
+            sys.argv = old_argv
+        file_list = pd.read_csv(processed / "weather_file_list.csv")
+        missing_ids = pd.read_csv(processed / "weather_missing_ids.csv")
+        assert file_list["dawn_chorus_id"].astype(str).tolist() == ["1"]
+        assert missing_ids["dawn_chorus_id"].astype(str).tolist() == ["2"]
 
         old_argv = sys.argv
         try:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -31,6 +33,13 @@ MOUNT_SPEC = importlib.util.spec_from_file_location("mount_lsdf", MOUNT_MODULE_P
 assert MOUNT_SPEC and MOUNT_SPEC.loader
 MOUNT_MODULE = importlib.util.module_from_spec(MOUNT_SPEC)
 MOUNT_SPEC.loader.exec_module(MOUNT_MODULE)
+
+ORCHESTRATOR_PATH = ROOT / "scripts_local_run" / "local_orchestrator.py"
+ORCHESTRATOR_SPEC = importlib.util.spec_from_file_location("local_orchestrator", ORCHESTRATOR_PATH)
+assert ORCHESTRATOR_SPEC and ORCHESTRATOR_SPEC.loader
+ORCHESTRATOR_MODULE = importlib.util.module_from_spec(ORCHESTRATOR_SPEC)
+sys.modules[ORCHESTRATOR_SPEC.name] = ORCHESTRATOR_MODULE
+ORCHESTRATOR_SPEC.loader.exec_module(ORCHESTRATOR_MODULE)
 
 
 def test_local_path_mapping(tmp_path: Path) -> None:
@@ -233,6 +242,51 @@ def test_stale_sshfs_mapping_is_cleared(_tmp_path: Path) -> None:
             raise AssertionError("An unrelated drive mapping must not be removed.")
 
 
+def test_transport_error_log_detection(tmp_path: Path) -> None:
+    log = tmp_path / "step.err"
+    log.write_text("old text\n", encoding="utf-8")
+    offset = log.stat().st_size
+    with log.open("a", encoding="utf-8") as handle:
+        handle.write("OSError: [WinError 995] transport interrupted\n")
+    assert ORCHESTRATOR_MODULE.log_has_transport_error(log, offset)
+    assert not ORCHESTRATOR_MODULE.log_has_transport_error(log, log.stat().st_size)
+
+
+def test_stale_foreign_local_lock_is_released(tmp_path: Path) -> None:
+    lock = tmp_path / "pipeline.lock"
+    lock.mkdir()
+    (lock / "owner.json").write_text(
+        json.dumps({"host": "cluster.example", "pid": 999999}),
+        encoding="utf-8",
+    )
+    assert ORCHESTRATOR_MODULE.release_stale_local_lock(
+        {"pipeline_control": {"lock_dir": str(lock)}}
+    )
+    assert not lock.exists()
+
+
+def test_live_local_lock_is_preserved(tmp_path: Path) -> None:
+    lock = tmp_path / "pipeline.lock"
+    lock.mkdir()
+    (lock / "owner.json").write_text(
+        json.dumps({"host": ORCHESTRATOR_MODULE.socket.gethostname(), "pid": os.getpid()}),
+        encoding="utf-8",
+    )
+    assert not ORCHESTRATOR_MODULE.release_stale_local_lock(
+        {"pipeline_control": {"lock_dir": str(lock)}}
+    )
+    assert lock.exists()
+
+
+def test_local_dependencies_require_success_by_default(_tmp_path: Path) -> None:
+    pipeline = ORCHESTRATOR_MODULE.Pipeline.__new__(ORCHESTRATOR_MODULE.Pipeline)
+    pipeline.steps = {}
+    pipeline.add("upstream", "upstream", lambda: 0)
+    pipeline.add("downstream", "downstream", lambda: 0, ["upstream"])
+    assert pipeline.steps["downstream"].dependencies == ["upstream"]
+    assert pipeline.steps["downstream"].require_success == ["upstream"]
+
+
 if __name__ == "__main__":
     for test in (
         test_local_path_mapping,
@@ -242,6 +296,10 @@ if __name__ == "__main__":
         test_local_publish_translates_paths_and_excludes_runtime,
         test_sshfs_root_unc,
         test_stale_sshfs_mapping_is_cleared,
+        test_transport_error_log_detection,
+        test_stale_foreign_local_lock_is_released,
+        test_live_local_lock_is_preserved,
+        test_local_dependencies_require_success_by_default,
     ):
         with tempfile.TemporaryDirectory() as directory:
             test(Path(directory))

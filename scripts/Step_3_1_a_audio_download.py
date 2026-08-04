@@ -111,6 +111,13 @@ def read_csv_dict(path: Path, key: str) -> dict[str, dict[str, str]]:
         }
 
 
+def row_has_nonempty_file(row: dict[str, Any]) -> bool:
+    try:
+        return int(float(str(row.get("size_bytes", "0") or "0"))) > 0
+    except (TypeError, ValueError):
+        return False
+
+
 def write_csv_atomic(
     path: Path,
     rows: list[dict[str, Any]],
@@ -504,6 +511,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="CSV containing IDs whose source URL changed or needs reconciliation.",
     )
+    parser.add_argument(
+        "--missing-only",
+        action="store_true",
+        help="Download only IDs absent from the fast file list; ignore legacy QC flags.",
+    )
 
     return parser.parse_args()
 
@@ -535,6 +547,9 @@ def main() -> int:
 
         detail_csv = resolve_output_path(inventory["detailed_log"])
         compact_csv = resolve_output_path(inventory["compact_log"])
+        file_list_csv = resolve_output_path(
+            inventory.get("file_list_log", detail_csv.parent / "audio_file_list.csv")
+        )
 
         retry_csv = resolve_output_path(
             settings.get(
@@ -612,6 +627,13 @@ def main() -> int:
             retry_csv,
             "dawn_chorus_id",
         )
+        file_list_rows = read_csv_dict(file_list_csv, "source_relative_path")
+        ids_with_existing_audio = {
+            str(row.get("dawn_chorus_id", "")).strip()
+            for row in file_list_rows.values()
+            if str(row.get("dawn_chorus_id", "")).strip()
+            and row_has_nonempty_file(row)
+        }
 
         ids_with_good_audio = {
             str(
@@ -653,12 +675,19 @@ def main() -> int:
                 == "true"
             )
 
-            if (
-                args.force
-                or dawn_id in requested_ids
-                or dawn_id not in ids_with_good_audio
-                or compact_issue
-            ):
+            if args.missing_only:
+                selected = (
+                    dawn_id not in ids_with_existing_audio
+                    and (args.ids_file is None or dawn_id in requested_ids)
+                )
+            else:
+                selected = (
+                    args.force
+                    or dawn_id in requested_ids
+                    or dawn_id not in ids_with_good_audio
+                    or compact_issue
+                )
+            if selected:
                 candidates.append(
                     (dawn_id, url)
                 )
@@ -671,6 +700,7 @@ def main() -> int:
             f"Good audio IDs in inventory  : "
             f"{len(ids_with_good_audio):,}"
         )
+        print(f"Audio IDs in fast file list : {len(ids_with_existing_audio):,}")
         print(
             f"Missing/problem IDs           : "
             f"{len(candidates):,}"

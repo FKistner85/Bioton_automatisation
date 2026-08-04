@@ -19,6 +19,7 @@ if str(SCRIPTS) not in sys.path:
 from Step_6_1_prepare_bioacoustic_worklist import build_worklist
 import Step_6_2_generate_bioacoustic_embeddings as step62
 from Step_6_2_generate_bioacoustic_embeddings import select_predictions
+from Step_6_2_generate_bioacoustic_embeddings import configure_embedder_audio_suffixes
 from Step_6_4_filter_germany_taxonomy import apply_filter
 from Step_6_5_aggregate_bioacoustic_results import aggregate_predictions
 from Step_6_6_bioacoustic_quality_control import build_qc
@@ -188,6 +189,21 @@ def test_prediction_threshold_and_top_k() -> None:
     assert "accepted_scientific_name" in empty_species.columns
 
 
+def test_bacpipe_direct_api_suffix_compatibility() -> None:
+    class FakeEmbedder:
+        pass
+
+    embedder = FakeEmbedder()
+    configure_embedder_audio_suffixes(
+        embedder,
+        ["one.wav", "two.M4A", "three.flac"],
+    )
+    assert ".wav" in embedder.audio_suffixes
+    assert ".M4A" in embedder.audio_suffixes
+    assert ".m4a" in embedder.audio_suffixes
+    assert ".flac" in embedder.audio_suffixes
+
+
 def test_checkpoint_repair_helpers() -> None:
     assert checkpoint_error_is_repairable(
         "PytorchStreamReader failed finding central directory"
@@ -272,6 +288,7 @@ def test_embedding_shard_verification_gate() -> None:
 if __name__ == "__main__":
     test_bioacoustic_data_flow()
     test_prediction_threshold_and_top_k()
+    test_bacpipe_direct_api_suffix_compatibility()
     test_checkpoint_repair_helpers()
     test_embedding_shard_verification_gate()
     print("test_bioacoustics_pipeline.py: OK")

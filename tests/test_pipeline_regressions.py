@@ -21,6 +21,10 @@ from common import output_is_nonempty, should_skip, source_signature, write_batc
 from final_validation_report import master_readiness
 from plan_pipeline_run import inventory_problem_ids
 from run_hostrada_raster_all import complete_years
+from Step_3_0_a_audio_inventory import expected_download_ids as expected_audio_ids
+from Step_3_0_b_photo_inventory import expected_download_ids as expected_photo_ids
+from Step_3_1_a_audio_download import row_has_nonempty_file as audio_file_exists
+from Step_3_1_b_photo_download import row_has_nonempty_file as photo_file_exists
 
 
 FORMATION_COLUMNS = [
@@ -153,6 +157,22 @@ def test_media_log_download_selection() -> None:
         }
     )
     assert ids_needing_media_download(log) == {2, 3}
+
+
+def test_fast_media_inventory_missing_id_inputs() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        metadata = Path(raw) / "dawn.csv"
+        pd.DataFrame({
+            "id": [1, 2, 3, "bad"],
+            "audio": ["https://audio/1", "", "https://audio/3", "https://audio/x"],
+            "photo": ["", "https://photo/2", "https://photo/3", ""],
+        }).to_csv(metadata, index=False)
+        assert expected_audio_ids(metadata, "audio") == {"1", "3"}
+        assert expected_photo_ids(metadata, "photo") == {"2", "3"}
+        assert audio_file_exists({"size_bytes": "42"})
+        assert photo_file_exists({"size_bytes": "42.0"})
+        assert not audio_file_exists({"size_bytes": "corrupt"})
+        assert not photo_file_exists({})
 
 
 def test_weather_resume_uses_nonempty_files() -> None:

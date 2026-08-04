@@ -102,6 +102,26 @@ Inkrementell fuer neue, geaenderte oder problematische IDs:
 powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_ids
 ```
 
+`add_new_ids` verwendet lokal bewusst einen schnellen LSDF-Modus:
+
+1. Audio, Fotos und Wetter werden zunaechst nur als Dateiliste mit Groesse und
+   Aenderungszeit erfasst. Legacy-Dateien werden dabei nicht dekodiert oder
+   inhaltlich gelesen.
+2. Aus Metadaten und Dateiliste entsteht pro Datentyp eine atomare
+   `*_missing_ids.csv`.
+3. Nur diese fehlenden IDs werden heruntergeladen. Medien werden direkt im
+   Download-Step dekodiert bzw. mit Pillow geprueft; neue Wetter-CSVs werden
+   unmittelbar danach nur fuer die angeforderten IDs validiert.
+4. Alte QC-Fehler werden in diesem schnellen Modus nicht erneut bearbeitet.
+   Der vollstaendige Legacy-Sanity-Check bleibt `from_scratch` und den
+   regulaeren Horeka-Inventursteps vorbehalten.
+
+Die schnellen Listen liegen unter `outputs/step_3_0_a_audio_inventory`,
+`outputs/step_3_0_b_photo_inventory` und
+`outputs/step_5_1_weather_inventory`. Sie werden bei jedem lokalen
+`add_new_ids`-Lauf neu erzeugt, auch wenn der aeltere Run-Plan keinen
+Downloadbedarf erkannt hatte.
+
 Kompletter Neuaufbau mit den gleichen `--force`-Regeln wie auf dem Cluster:
 
 ```powershell
@@ -190,9 +210,12 @@ Ein Abbruch mit `Ctrl+C` behaelt alle fachlichen Checkpoints. Beim naechsten
 Aufruf erkennt `plan_pipeline_run.py` neue und problematische IDs erneut und
 die Steps verwenden vorhandene Chunk-, Datei- und Batch-States.
 
-Lokale Logs tragen einen UTC-Zeitstempel. Ein Step-Fehler laesst unabhaengige
-Zweige weiterlaufen. Abhaengige Bioakustik-Schritte werden nach einem Fehler in
-Model-Preflight, Worklist oder Inferenz nicht gestartet.
+Lokale Logs tragen einen UTC-Zeitstempel. Ein Step-Fehler laesst nur wirklich
+unabhaengige Zweige weiterlaufen; alle deklarierten Abhaengigkeiten verlangen
+einen erfolgreichen Vorgaenger. Vor jedem LSDF-abhaengigen Step wird der Mount
+mit einer kleinen Sentinel-Datei geprueft. Bei einem erkannten Transportfehler
+wird einmal neu verbunden und der Step einmal wiederholt. Mastertable-Updates
+und die finale Validierung laufen nicht auf fehlgeschlagenen Teilprodukten.
 
 Das lokale Lock liegt ausschliesslich im lokalen Workspace. Cluster- und
 lokaler Lauf duerfen trotzdem nicht gleichzeitig Originaldateien herunterladen

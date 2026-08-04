@@ -34,7 +34,7 @@ def read_owner(path: Path) -> dict:
         return {}
 
 
-def acquire(path: Path, run_id: str) -> int:
+def acquire(path: Path, run_id: str, owner_pid: int | None = None) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         path.mkdir()
@@ -54,7 +54,7 @@ def acquire(path: Path, run_id: str) -> int:
             "workflow_run_id": run_id,
             "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "host": socket.gethostname(),
-            "pid": os.getpid(),
+            "pid": int(owner_pid or os.getpid()),
             "user": os.environ.get("USER") or os.environ.get("USERNAME", ""),
         },
     )
@@ -84,6 +84,7 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("command", choices=["acquire", "status", "release"])
     parser.add_argument("--run-id", default=os.environ.get("BIOOTON_RUN_ID", ""))
+    parser.add_argument("--owner-pid", type=int)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
@@ -96,7 +97,7 @@ def main() -> int:
         print("ERROR: --run-id is required.", file=sys.stderr)
         return 2
     if args.command == "acquire":
-        return acquire(path, args.run_id)
+        return acquire(path, args.run_id, args.owner_pid)
     return release(path, args.run_id, args.force)
 
 

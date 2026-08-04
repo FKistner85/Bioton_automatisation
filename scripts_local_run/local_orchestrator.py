@@ -8,6 +8,8 @@ import csv
 import json
 import os
 import re
+import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -19,6 +21,60 @@ from typing import Callable
 
 
 Runner = Callable[[], int]
+TRANSPORT_ERROR_MARKERS = tuple(
+    f"WinError {code}" for code in (53, 64, 121, 995, 1203)
+)
+
+
+def log_has_transport_error(path: Path, offset: int = 0) -> bool:
+    markers = [marker.encode("ascii") for marker in TRANSPORT_ERROR_MARKERS]
+    overlap = max(len(marker) for marker in markers) - 1
+    try:
+        with path.open("rb") as handle:
+            handle.seek(offset)
+            previous = b""
+            while chunk := handle.read(1024 * 1024):
+                content = previous + chunk
+                if any(marker in content for marker in markers):
+                    return True
+                previous = content[-overlap:]
+    except OSError:
+        return False
+    return False
+
+
+def process_is_running(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def release_stale_local_lock(config: dict) -> bool:
+    """Remove only locks that cannot belong to a live local process."""
+    configured = config.get("pipeline_control", {}).get("lock_dir")
+    if not configured:
+        return False
+    path = Path(configured)
+    owner_path = path / "owner.json"
+    if not path.exists():
+        return False
+    try:
+        owner = json.loads(owner_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        owner = {}
+    owner_host = str(owner.get("host", ""))
+    owner_pid = int(owner.get("pid", 0) or 0)
+    local_hosts = {socket.gethostname().casefold(), os.environ.get("COMPUTERNAME", "").casefold()}
+    same_host = owner_host.casefold() in local_hosts
+    if same_host and process_is_running(owner_pid):
+        return False
+    shutil.rmtree(path)
+    print(f"Stale local pipeline lock released: {path}")
+    return True
 
 
 @dataclass
@@ -68,6 +124,7 @@ class Pipeline:
         self.steps: dict[str, LocalStep] = {}
         self.outcomes: dict[str, int] = {}
         self.master_lock = threading.Lock()
+        self.mount_lock = threading.Lock()
         self.master_failures: list[str] = []
 
     def safe_label(self, label: str) -> str:
@@ -81,6 +138,7 @@ class Pipeline:
         cpus: int | None = None,
         suffix: str = "",
         target_python: Path | None = None,
+        requires_lsdf: bool = False,
     ) -> int:
         safe = self.safe_label(label + (f"_{suffix}" if suffix else ""))
         stdout_path = self.logs / f"{self.log_stamp}_{safe}.out"
@@ -93,22 +151,59 @@ class Pipeline:
         if target_python == self.bacpipe:
             environment["OMP_NUM_THREADS"] = str(max(1, cpus or self.step_cpus))
 
-        print(f"START {label}{' [' + suffix + ']' if suffix else ''}")
-        print(f"  stdout: {stdout_path}")
-        with stdout_path.open("w", encoding="utf-8", errors="replace") as stdout_handle, stderr_path.open(
-            "w", encoding="utf-8", errors="replace"
-        ) as stderr_handle:
-            result = subprocess.run(
-                command,
-                cwd=self.repo,
-                env=environment,
-                stdout=stdout_handle,
-                stderr=stderr_handle,
-                check=False,
+        retries = max(0, int(self.settings.get("lsdf_step_retry_attempts", 1))) if requires_lsdf else 0
+        for attempt in range(retries + 1):
+            if requires_lsdf and self.ensure_lsdf(remount=attempt > 0) != 0:
+                print(f"END   {label}: FAILED LSDF mount unavailable", file=sys.stderr)
+                return 70
+            mode = "w" if attempt == 0 else "a"
+            stdout_offset = stdout_path.stat().st_size if stdout_path.exists() and mode == "a" else 0
+            stderr_offset = stderr_path.stat().st_size if stderr_path.exists() and mode == "a" else 0
+            print(f"START {label}{' [' + suffix + ']' if suffix else ''} attempt={attempt + 1}")
+            print(f"  stdout: {stdout_path}")
+            with stdout_path.open(mode, encoding="utf-8", errors="replace") as stdout_handle, stderr_path.open(
+                mode, encoding="utf-8", errors="replace"
+            ) as stderr_handle:
+                if attempt:
+                    marker = f"\n=== RETRY AFTER LSDF TRANSPORT FAILURE: {attempt + 1} ===\n"
+                    stdout_handle.write(marker)
+                    stderr_handle.write(marker)
+                result = subprocess.run(
+                    command,
+                    cwd=self.repo,
+                    env=environment,
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    check=False,
+                )
+            transport_failed = requires_lsdf and (
+                log_has_transport_error(stdout_path, stdout_offset)
+                or log_has_transport_error(stderr_path, stderr_offset)
             )
-        state = "OK" if result.returncode == 0 else f"FAILED exit={result.returncode}"
-        print(f"END   {label}{' [' + suffix + ']' if suffix else ''}: {state}")
-        return int(result.returncode)
+            if transport_failed and attempt < retries:
+                print(f"LSDF transport failed in {label}; reconnecting and retrying.", file=sys.stderr)
+                continue
+            code = 70 if transport_failed else int(result.returncode)
+            state = "OK" if code == 0 else f"FAILED exit={code}"
+            print(f"END   {label}{' [' + suffix + ']' if suffix else ''}: {state}")
+            return code
+        return 70
+
+    def ensure_lsdf(self, *, remount: bool = False) -> int:
+        if os.name != "nt" or not bool(self.settings.get("mount_check_before_steps", True)):
+            return 0
+        command = [
+            str(self.core),
+            str(self.repo / "scripts_local_run" / "mount_lsdf.py"),
+            "--settings",
+            str(self.args.settings.resolve()),
+            "--wait-seconds",
+            str(max(1, int(self.settings.get("lsdf_mount_wait_seconds", 45)))),
+        ]
+        if remount:
+            command.append("--remount")
+        with self.mount_lock:
+            return subprocess.run(command, cwd=self.repo, check=False).returncode
 
     def manifest_command(
         self,
@@ -143,6 +238,7 @@ class Pipeline:
         *,
         target_python: Path | None = None,
         cpus: int | None = None,
+        requires_lsdf: bool = True,
     ) -> Runner:
         command = self.manifest_command(
             step_name,
@@ -155,6 +251,7 @@ class Pipeline:
             command,
             cpus=cpus,
             target_python=target_python,
+            requires_lsdf=requires_lsdf,
         )
 
     def array_runner(
@@ -167,6 +264,7 @@ class Pipeline:
         *,
         target_python: Path | None = None,
         max_workers: int | None = None,
+        requires_lsdf: bool = True,
     ) -> Runner:
         workers = max(1, min(max_workers or self.array_workers, task_count))
         cpus_per_task = max(1, self.logical_cpus // workers)
@@ -187,6 +285,7 @@ class Pipeline:
                     cpus=cpus_per_task,
                     suffix=f"task_{index:03d}",
                     target_python=target_python,
+                    requires_lsdf=requires_lsdf,
                 )
 
             with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -245,23 +344,40 @@ class Pipeline:
         master_ids: Path | None = None,
         master_global: bool = False,
     ) -> None:
+        dependencies = [item for item in dependencies or [] if item in self.steps]
+        required = dependencies if require_success is None else [
+            item for item in require_success if item in self.steps
+        ]
         self.steps[key] = LocalStep(
             key=key,
             label=label,
             runner=runner,
-            dependencies=[item for item in dependencies or [] if item in self.steps],
-            require_success=[item for item in require_success or [] if item in self.steps],
+            dependencies=dependencies,
+            require_success=required,
             master_ids=master_ids,
             master_global=master_global,
         )
 
     def build_steps(self) -> None:
         force = ["--force"] if self.args.mode == "from_scratch" else []
+        quick_incremental = self.args.mode == "add_new_ids"
         metadata_ids = self.ids_file("metadata")
         point_ids = self.ids_file("point_assignment")
         audio_ids = self.ids_file("audio")
         photo_ids = self.ids_file("photo")
         weather_ids = self.ids_file("weather")
+        audio_missing_ids = Path(self.config["audio_inventory"].get(
+            "missing_ids_log",
+            Path(self.config["audio_inventory"]["file_list_log"]).with_name("audio_missing_ids.csv"),
+        ))
+        photo_missing_ids = Path(self.config["photo_inventory"].get(
+            "missing_ids_log",
+            Path(self.config["photo_inventory"]["file_list_log"]).with_name("photo_missing_ids.csv"),
+        ))
+        weather_missing_ids = Path(self.config["weather_inventory"].get(
+            "missing_ids_log",
+            Path(self.config["weather_inventory"]["file_list_log"]).with_name("weather_missing_ids.csv"),
+        ))
         bio_ids = self.ids_file("bioacoustic")
         sentinel_ids = self.ids_file("sentinel")
 
@@ -274,49 +390,26 @@ class Pipeline:
             self.add("j20", "step_2_0", self.command_runner(
                 "step_2_0", "step_2_0_lrt_cleaning", "scripts/Step_2_0_clean_lrts.py", force,
             ))
-        if self.plan_run("step_2_1_100m_formation"):
-            self.add("j21", "step_2_1", self.command_runner(
-                "step_2_1", "step_2_1_100m_formation", "scripts/Step_2_1_merge_lrts_and_grid.py", force,
-            ), ["j20"])
-        if self.plan_run("step_2_2_point_assignment"):
-            self.add("j22", "step_2_2", self.command_runner(
-                "step_2_2", "step_2_2_point_assignment", "scripts/Step_2_2_assign_points_to_lrt_grid.py",
-                [*force, "--ids-file", str(point_ids)], cpus=2,
-            ), ["j1", "j21"], master_ids=point_ids)
-        if self.plan_run("step_2_3_grid_aggregation"):
-            self.add("j23", "step_2_3", self.command_runner(
-                "step_2_3", "step_2_3_grid_aggregation", "scripts/Step_2_3_generate_remaining_grid_products.py", force,
-            ), ["j21"])
-        if self.plan_run("step_2_4_10m_formation"):
-            self.add("j24", "step_2_4", self.command_runner(
-                "step_2_4", "step_2_4_10m_formation", "scripts/Step_2_4_generate_10m_formation_status_products.py", force,
-            ), ["j21"], master_global=True)
-
-        self.add("j3pre", "step_3_preflight", self.command_runner(
-            "step_3_preflight", "step_3_path_preflight", "tools/step3_path_preflight.py", cpus=1,
-        ))
-        if self.plan_run("step_3_0_audio_inventory"):
-            self.add("j30a", "step_3_0a", self.command_runner(
-                "step_3_0a", "step_3_0_audio_inventory", "scripts/Step_3_0_a_audio_inventory.py", force,
+        if self.plançÏm¢G§²ÚîÆ­yÐ              "step_3_0b", "step_3_0_photo_inventory", "scripts/Step_3_0_b_photo_inventory.py",
+                ["--list-only"] if quick_incremental else force,
             ), ["j3pre"])
-        if self.plan_run("step_3_0_photo_inventory"):
-            self.add("j30b", "step_3_0b", self.command_runner(
-                "step_3_0b", "step_3_0_photo_inventory", "scripts/Step_3_0_b_photo_inventory.py", force,
-            ), ["j3pre"])
-        if self.plan_run("step_3_1_audio_download"):
+        if quick_incremental or self.plan_run("step_3_1_audio_download"):
+            selected_audio_ids = audio_missing_ids if quick_incremental else audio_ids
             self.add("j31a", "step_3_1a", self.command_runner(
                 "step_3_1a", "step_3_1_audio_download", "scripts/Step_3_1_a_audio_download.py",
-                [*force, "--ids-file", str(audio_ids)],
-            ), ["j30a"])
-        if self.plan_run("step_3_0_audio_inventory_post"):
+                [*force, "--ids-file", str(selected_audio_ids), *(["--missing-only"] if quick_incremental else [])],
+            ), ["j30a"], master_ids=selected_audio_ids if quick_incremental else None)
+        if quick_incremental or self.plan_run("step_3_0_audio_inventory_post"):
             self.add("j30apost", "step_3_0a_post", self.command_runner(
                 "step_3_0a_post", "step_3_0_audio_inventory_post", "scripts/Step_3_0_a_audio_inventory.py",
-            ), ["j31a"], master_ids=audio_ids)
-        if self.plan_run("step_3_1_photo_download"):
+                ["--list-only"] if quick_incremental else [],
+            ), ["j31a"], master_ids=None if quick_incremental else audio_ids)
+        if quick_incremental or self.plan_run("step_3_1_photo_download"):
+            selected_photo_ids = photo_missing_ids if quick_incremental else photo_ids
             self.add("j31b", "step_3_1b", self.command_runner(
                 "step_3_1b", "step_3_1_photo_download", "scripts/Step_3_1_b_photo_download.py",
-                [*force, "--ids-file", str(photo_ids)],
-            ), ["j30b"], master_ids=photo_ids)
+                [*force, "--ids-file", str(selected_photo_ids), *(["--missing-only"] if quick_incremental else [])],
+            ), ["j30b"], master_ids=selected_photo_ids)
 
         if self.plan_run("step_4_1_sentinel2_mirror"):
             self.add("j41", "step_4_1", self.command_runner(
@@ -327,25 +420,28 @@ class Pipeline:
                 "step_4_0", "step_4_0_sentinel2_inventory", "scripts/Step_4_0_Sentinel2_inventory.py", force,
             ), ["j41"], master_ids=sentinel_ids)
 
-        if self.plan_run("step_5_1_weather_inventory"):
+        if quick_incremental or self.plan_run("step_5_1_weather_inventory"):
             self.add("j51pre", "step_5_1_pre", self.command_runner(
-                "step_5_1_pre", "step_5_1_weather_inventory", "scripts/Step_5_1_Weather_inventory.py", force,
+                "step_5_1_pre", "step_5_1_weather_inventory", "scripts/Step_5_1_Weather_inventory.py",
+                ["--list-only"] if quick_incremental else force,
             ), ["j1"])
-        if self.plan_run("step_5_2_weather_download"):
-            count = self.id_count(weather_ids)
+        if quick_incremental or self.plan_run("step_5_2_weather_download"):
+            selected_weather_ids = weather_missing_ids if quick_incremental else weather_ids
+            count = self.id_count(selected_weather_ids)
             shards = max(1, min(int(self.config["weather_download"].get("slurm_shard_count", 8)), (count + 4999) // 5000 or 1))
             self.add("j52", "step_5_2", self.array_runner(
                 "step_5_2", "step_5_2_weather_download_array_task", "scripts/Step_5_2_download_weather_data.py",
                 shards,
-                lambda index: [*force, "--ids-file", str(weather_ids), "--task-index", str(index), "--task-count", str(shards)],
+                lambda index: [*force, "--ids-file", str(selected_weather_ids), "--task-index", str(index), "--task-count", str(shards), *(["--missing-only"] if quick_incremental else [])],
             ), ["j51pre"])
             self.add("j52verify", "step_5_2_verify", self.command_runner(
                 "step_5_2_verify", "step_5_2_weather_download", "scripts/Step_5_2_download_weather_data.py",
-                ["--verify-shards", "--ids-file", str(weather_ids)], cpus=1,
+                ["--verify-shards", "--ids-file", str(selected_weather_ids)], cpus=1,
             ), ["j52"])
             self.add("j51post", "step_5_1_post", self.command_runner(
                 "step_5_1_post", "step_5_1_weather_inventory_post", "scripts/Step_5_1_Weather_inventory.py",
-            ), ["j52verify"], master_ids=weather_ids)
+                ["--ids-file", str(selected_weather_ids)] if quick_incremental else [],
+            ), ["j52verify"], master_ids=selected_weather_ids)
 
         if self.plan_run("step_5_3_hostrada_monthly"):
             self.add("j53", "step_5_3", self.command_runner(
@@ -460,15 +556,22 @@ class Pipeline:
                             print(f"FAILED {step.label}: {exc}", file=sys.stderr)
                             code = 1
                         self.outcomes[step.key] = code
-                        if step.master_ids is not None:
+                        if code == 0 and step.master_ids is not None:
                             self.update_master(step.label, step.master_ids)
-                        elif step.master_global:
+                        elif code == 0 and step.master_global:
                             self.update_master(step.label)
                     made_progress = True
 
                 if not made_progress and pending:
                     unresolved = {key: step.dependencies for key, step in pending.items()}
                     raise RuntimeError(f"Nicht aufloesbare lokale Abhaengigkeiten: {unresolved}")
+
+        failed_steps = [key for key, code in self.outcomes.items() if code not in (0, 99)]
+        if failed_steps or self.master_failures:
+            print(f"Fehlgeschlagene Steps: {failed_steps}", file=sys.stderr)
+            print(f"Fehlgeschlagene Master-Updates: {self.master_failures}", file=sys.stderr)
+            print("Final master/validation skipped because required work failed.", file=sys.stderr)
+            return 1
 
         final_master = self.update_master("final")
         validation = self.run_logged(
@@ -481,15 +584,22 @@ class Pipeline:
             self.manifest_command("step_9_visual_reports", "tools/generate_pipeline_visual_reports.py"),
             cpus=1,
         )
-        failed_steps = [key for key, code in self.outcomes.items() if code not in (0, 99)]
-        if failed_steps or self.master_failures or final_master != 0 or validation != 0 or visual != 0:
+        if self.master_failures or final_master != 0 or validation != 0 or visual != 0:
             print(f"Fehlgeschlagene Steps: {failed_steps}", file=sys.stderr)
             print(f"Fehlgeschlagene Master-Updates: {self.master_failures}", file=sys.stderr)
             return 1
         return 0
 
 
-def run_lock(core: Path, repo: Path, config: Path, command: str, run_id: str, force: bool = False) -> int:
+def run_lock(
+    core: Path,
+    repo: Path,
+    config: Path,
+    command: str,
+    run_id: str,
+    force: bool = False,
+    owner_pid: int | None = None,
+) -> int:
     args = [
         str(core),
         str(repo / "tools" / "pipeline_lock.py"),
@@ -501,6 +611,8 @@ def run_lock(core: Path, repo: Path, config: Path, command: str, run_id: str, fo
         args.append("--force")
     else:
         args.extend(["--run-id", run_id])
+        if command == "acquire" and owner_pid is not None:
+            args.extend(["--owner-pid", str(owner_pid)])
     return subprocess.run(args, cwd=repo, check=False).returncode
 
 
@@ -529,7 +641,15 @@ def main() -> int:
         )
 
     os.environ["BIOOTON_RUN_ID"] = pipeline.run_id
-    if run_lock(args.core_python, args.repo_root, args.config, "acquire", pipeline.run_id) != 0:
+    release_stale_local_lock(config)
+    if run_lock(
+        args.core_python,
+        args.repo_root,
+        args.config,
+        "acquire",
+        pipeline.run_id,
+        owner_pid=os.getpid(),
+    ) != 0:
         return 3
     try:
         pipeline.create_plan()

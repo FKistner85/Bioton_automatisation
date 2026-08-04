@@ -22,7 +22,7 @@ from typing import Any
 
 import pandas as pd
 
-from common import atomic_write_csv, atomic_write_json, utc_now_iso
+from common import atomic_write_csv, atomic_write_json, read_ids_file, utc_now_iso
 
 
 FILENAME_RE = re.compile(r"^weather_(?P<id>.+)\.csv$", re.IGNORECASE)
@@ -90,6 +90,16 @@ def parse_args() -> argparse.Namespace:
         "--force",
         action="store_true",
         help="Revalidate every weather CSV instead of reusing clean unchanged rows.",
+    )
+    parser.add_argument(
+        "--list-only",
+        action="store_true",
+        help="Create a fast file list without reading legacy weather CSV content.",
+    )
+    parser.add_argument(
+        "--ids-file",
+        type=Path,
+        help="Only sanity-check these IDs while retaining prior validated rows.",
     )
     return parser.parse_args()
 
@@ -491,7 +501,59 @@ def main() -> int:
         detailed_log = Path(settings["detailed_log"])
         compact_log = Path(settings["compact_log"])
         state_file = Path(settings["state_file"])
+        file_list_log = Path(
+            settings.get("file_list_log", detailed_log.parent / "weather_file_list.csv")
+        )
+        missing_ids_log = Path(
+            settings.get("missing_ids_log", detailed_log.parent / "weather_missing_ids.csv")
+        )
+        if args.list_only:
+            file_rows = []
+            for path in files:
+                stat = path.stat()
+                file_rows.append({
+                    "dawn_chorus_id": weather_id_from_path(path),
+                    "filename": path.name,
+                    "path": str(path),
+                    "size_bytes": stat.st_size,
+                    "mtime_ns": stat.st_mtime_ns,
+                })
+            atomic_write_csv(
+                pd.DataFrame(
+                    file_rows,
+                    columns=[
+                        "dawn_chorus_id",
+                        "filename",
+                        "path",
+                        "size_bytes",
+                        "mtime_ns",
+                    ],
+                ),
+                file_list_log,
+            )
+            missing_ids = sorted(
+                expected_ids - discovered_ids,
+                key=lambda value: int(value) if value.isdigit() else value,
+            )
+            atomic_write_csv(
+                pd.DataFrame({"dawn_chorus_id": missing_ids}),
+                missing_ids_log,
+            )
+            atomic_write_json(state_file, {
+                "mode": "list_only",
+                "directory": str(directory),
+                "weather_files_found": len(file_rows),
+                "file_list_log": str(file_list_log),
+                "missing_weather_ids": len(missing_ids),
+                "missing_ids_log": str(missing_ids_log),
+            })
+            print(f"Fast weather file list rows: {len(file_rows):,}")
+            print(f"Missing weather IDs        : {len(missing_ids):,}")
+            print(f"File list                  : {file_list_log}")
+            print(f"Missing IDs                : {missing_ids_log}")
+            return 0
         previous_by_path = read_previous_detail(detailed_log)
+        requested_ids = read_ids_file(args.ids_file)
 
         allocated = int(os.environ.get("SLURM_CPUS_PER_TASK", "1") or "1")
         configured_workers = int(settings.get("workers", allocated))
@@ -503,6 +565,10 @@ def main() -> int:
         for path in files:
             dawn_id = weather_id_from_path(path)
             previous = previous_by_path.get(str(path))
+            if args.ids_file is not None and dawn_id not in requested_ids:
+                if previous is not None:
+                    reused_rows.append(previous)
+                continue
             if previous_row_is_reusable(
                 previous,
                 path,
@@ -537,7 +603,10 @@ def main() -> int:
                     )
 
         rows.extend(reused_rows)
-        for dawn_id in sorted(expected_ids - discovered_ids, key=lambda value: int(value) if value.isdigit() else value):
+        missing_ids = expected_ids - discovered_ids
+        if args.ids_file is not None:
+            missing_ids &= requested_ids
+        for dawn_id in sorted(missing_ids, key=lambda value: int(value) if value.isdigit() else value):
             rows.append(missing_row(dawn_id, settings))
 
         detail = pd.DataFrame(rows, columns=DETAIL_COLUMNS)

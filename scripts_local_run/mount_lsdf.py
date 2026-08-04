@@ -224,7 +224,15 @@ def connect_direct_sshfs(
 
 
 def is_ready(root: Path) -> bool:
-    return root.is_dir() and (root / "PointData").is_dir()
+    sentinel = root / "PointData" / "dawn-chorus-soundscape.csv"
+    try:
+        if not root.is_dir() or not sentinel.is_file():
+            return False
+        with sentinel.open("rb") as handle:
+            handle.read(1)
+        return True
+    except OSError:
+        return False
 
 
 def main() -> int:
@@ -233,6 +241,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--settings", type=Path, required=True)
     parser.add_argument("--wait-seconds", type=int, default=30)
+    parser.add_argument(
+        "--remount",
+        action="store_true",
+        help="Reconnect even if the mount still looks superficially available.",
+    )
     args = parser.parse_args()
 
     if os.name != "nt":
@@ -241,7 +254,7 @@ def main() -> int:
 
     settings = load_settings(args.settings)
     root = mount_root(settings)
-    if is_ready(root):
+    if is_ready(root) and not args.remount:
         print(f"LSDF bereits eingebunden: {root}")
         return 0
 
