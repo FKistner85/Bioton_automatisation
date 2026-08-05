@@ -25,6 +25,10 @@
   "logical_cpus": 20,
   "max_parallel_steps": 2,
   "array_workers": 2,
+  "step2_10m_write_grid_chunks": false,
+  "step2_10m_write_ix_chunks": false,
+  "step2_offload_completed_parquet_chunks": true,
+  "step2_offload_verification": "size",
   "bioacoustic_array_workers_gpu": 1,
   "bioacoustic_array_workers_cpu": 2,
   "prefer_cuda": true

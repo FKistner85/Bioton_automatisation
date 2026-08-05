@@ -199,6 +199,28 @@ Fehlen sie, wird dies protokolliert, ohne die regulaere Pipeline oder den
 Step-2-Variantenlauf zu blockieren. Beim expliziten Start von Step 2.5/2.6
 bleiben sie Pflichtinputs.
 
+## Lokalen Speicher fuer Step 2 begrenzen
+
+Lokale Runs erzeugen standardmaessig keine `grid10m_chunks` und `ix_chunks`.
+Diese beiden QA-Zwischenprodukte werden fuer Resume und Endprodukte nicht
+benoetigt und koennen bei grossen Varianten jeweils viele GiB belegen. Die
+notwendigen `parquet_10`-Checkpoints bleiben bis zum erfolgreichen Merge lokal.
+Danach werden auch sie auf LSDF ausgelagert; das finale 10m-Parquet bleibt
+lokal und wird regulaer veroeffentlicht.
+
+Bereits vorhandene Zwischenprodukte werden einmalig so verschoben:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\offload_step2_local_storage.ps1
+```
+
+Das Skript kopiert Datei fuer Datei nach
+`Data_automatisation_skripts/outputs/step_2_variants`, prueft standardmaessig
+die Dateigroesse und loescht die lokale Datei erst nach erfolgreicher
+Verifikation. Fuer eine vollstaendige Hash-Pruefung kann
+`-Verification sha256` verwendet werden; dies ist ueber SSHFS deutlich
+langsamer. Ein aktiver Pipeline-Lock verhindert die manuelle Auslagerung.
+
 ## Erfolgreiche lokale Ergebnisse auf LSDF veroeffentlichen
 
 Nach einem vollstaendig erfolgreichen `add_new_ids`- oder `from_scratch`-Lauf

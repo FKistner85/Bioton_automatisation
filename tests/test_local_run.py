@@ -28,6 +28,14 @@ assert PUBLISH_SPEC and PUBLISH_SPEC.loader
 PUBLISH_MODULE = importlib.util.module_from_spec(PUBLISH_SPEC)
 PUBLISH_SPEC.loader.exec_module(PUBLISH_MODULE)
 
+OFFLOAD_MODULE_PATH = ROOT / "scripts_local_run" / "offload_step2_local_storage.py"
+OFFLOAD_SPEC = importlib.util.spec_from_file_location(
+    "offload_step2_local_storage", OFFLOAD_MODULE_PATH
+)
+assert OFFLOAD_SPEC and OFFLOAD_SPEC.loader
+OFFLOAD_MODULE = importlib.util.module_from_spec(OFFLOAD_SPEC)
+OFFLOAD_SPEC.loader.exec_module(OFFLOAD_MODULE)
+
 MOUNT_MODULE_PATH = ROOT / "scripts_local_run" / "mount_lsdf.py"
 MOUNT_SPEC = importlib.util.spec_from_file_location("mount_lsdf", MOUNT_MODULE_PATH)
 assert MOUNT_SPEC and MOUNT_SPEC.loader
@@ -129,6 +137,15 @@ def test_optional_config_input_does_not_block_cache(tmp_path: Path) -> None:
     assert not optional_lrt_destination.exists()
 
 
+def test_local_resources_disable_large_step24_qa_chunks(_tmp_path: Path) -> None:
+    config = json.loads((ROOT / "config.horeka.json").read_text(encoding="utf-8"))
+
+    MODULE.apply_local_resources(config, {"logical_cpus": 20})
+
+    assert config["susi_10m_products"]["write_grid_chunks"] is False
+    assert config["susi_10m_products"]["write_ix_chunks"] is False
+
+
 def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     mount = tmp_path / "mount"
     remote = mount / "Data_automatisation_skripts" / "outputs"
@@ -219,6 +236,82 @@ def test_local_publish_translates_paths_and_excludes_runtime(tmp_path: Path) -> 
     assert not (remote / "step_0_local_logs/local.log").exists()
 
 
+def test_step2_offload_keeps_required_incomplete_parquet(tmp_path: Path) -> None:
+    mount = tmp_path / "mount"
+    workspace = tmp_path / "workspace"
+    (mount / "PointData").mkdir(parents=True)
+    step24 = (
+        workspace
+        / "outputs/step_2_variants/base_v2/step_2_4_susi_10m"
+    )
+    grid = step24 / "grid10m_chunks/grid_part.gpkg"
+    ix = step24 / "ix_chunks/ix_part.csv"
+    parquet = step24 / "parquet_10/X_part_0001.parquet"
+    for path, content in ((grid, b"grid"), (ix, b"ix"), (parquet, b"parquet")):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    (step24 / "state.json").write_text(
+        json.dumps({"status": "in_progress"}), encoding="utf-8"
+    )
+    settings = {
+        "mount_drive": str(mount),
+        "workspace_dir": str(workspace),
+        "horeka_outputs_relative": "Data_automatisation_skripts/outputs",
+    }
+    remote_grid = (
+        mount
+        / "Data_automatisation_skripts/outputs/step_2_variants/base_v2"
+        / "step_2_4_susi_10m/grid10m_chunks/grid_part.gpkg"
+    )
+    remote_grid.parent.mkdir(parents=True)
+    remote_grid.write_bytes(b"xxxx")
+
+    result = OFFLOAD_MODULE.offload(settings)
+
+    remote = mount / "Data_automatisation_skripts/outputs"
+    assert result["files"] == 2
+    assert not grid.exists()
+    assert not ix.exists()
+    assert parquet.read_bytes() == b"parquet"
+    assert remote_grid.read_bytes() == b"grid"
+
+
+def test_step2_offload_removes_completed_parquet_chunks(tmp_path: Path) -> None:
+    mount = tmp_path / "mount"
+    workspace = tmp_path / "workspace"
+    (mount / "PointData").mkdir(parents=True)
+    step24 = (
+        workspace
+        / "outputs/step_2_variants/base_v2/step_2_4_susi_10m"
+    )
+    final = step24 / "Formation_Status_10m_Grid_withLRTCode_base_v2.parquet"
+    chunk = step24 / "parquet_10/X_part_0001.parquet"
+    final.parent.mkdir(parents=True, exist_ok=True)
+    final.write_bytes(b"final")
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"chunk")
+    (step24 / "state.json").write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "processing": {"final_parquet": str(final)},
+            }
+        ),
+        encoding="utf-8",
+    )
+    settings = {
+        "mount_drive": str(mount),
+        "workspace_dir": str(workspace),
+        "horeka_outputs_relative": "Data_automatisation_skripts/outputs",
+    }
+
+    result = OFFLOAD_MODULE.offload(settings)
+
+    assert result["files"] == 1
+    assert final.read_bytes() == b"final"
+    assert not chunk.exists()
+
+
 def test_sshfs_root_unc(_tmp_path: Path) -> None:
     assert MOUNT_MODULE.sshfs_unc(
         "jk3038",
@@ -306,8 +399,11 @@ if __name__ == "__main__":
         test_local_path_mapping,
         test_copy_if_changed_reuses_identical_file,
         test_optional_config_input_does_not_block_cache,
+        test_local_resources_disable_large_step24_qa_chunks,
         test_horeka_output_bootstrap_excludes_runtime_files,
         test_local_publish_translates_paths_and_excludes_runtime,
+        test_step2_offload_keeps_required_incomplete_parquet,
+        test_step2_offload_removes_completed_parquet_chunks,
         test_sshfs_root_unc,
         test_stale_sshfs_mapping_is_cleared,
         test_transport_error_log_detection,

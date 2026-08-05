@@ -5,7 +5,8 @@ param(
     [string]$Settings = "",
     [switch]$SkipEnvironmentSetup,
     [switch]$SkipMount,
-    [switch]$SkipLsdfPublish
+    [switch]$SkipLsdfPublish,
+    [switch]$SkipStorageOffload
 )
 
 $ErrorActionPreference = "Stop"
@@ -74,6 +75,20 @@ try {
         & $CorePython (Join-Path $LocalRoot "publish_local_outputs.py") `
             --settings $Settings --repo-root $RepoRoot
         if ($LASTEXITCODE -ne 0) { throw "LSDF-Veroeffentlichung fehlgeschlagen." }
+    }
+
+    $AutoOffload = $true
+    if ($null -ne $LocalSettings.step2_offload_completed_parquet_chunks) {
+        $AutoOffload = [bool]$LocalSettings.step2_offload_completed_parquet_chunks
+    }
+    if (-not $SkipStorageOffload -and $AutoOffload) {
+        $Verification = [string]$LocalSettings.step2_offload_verification
+        if (-not $Verification) { $Verification = "size" }
+        & $CorePython (Join-Path $LocalRoot "offload_step2_local_storage.py") `
+            --settings $Settings `
+            --verification $Verification `
+            --allow-active-lock
+        if ($LASTEXITCODE -ne 0) { throw "Automatische Step-2-Auslagerung fehlgeschlagen." }
     }
 }
 finally {

@@ -542,6 +542,17 @@ def main() -> int:
             not same_inputs
             or (args.force and not resume_full_generation)
         )
+        if (
+            same_inputs
+            and previous_state.get("status") == "complete"
+            and final_parquet.is_file()
+            and final_parquet.stat().st_size > 0
+            and not args.force
+        ):
+            print("Step 2_4 already complete; reusing final 10 m parquet.")
+            print(f"Output     : {final_parquet}")
+            print(f"State file : {state_file}")
+            return 0
         full_rebuild_requested = bool(
             args.force
             or (
