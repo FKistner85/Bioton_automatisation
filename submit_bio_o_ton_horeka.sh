@@ -43,6 +43,7 @@ Modes:
   formation_compare   Compare generated formation products with reference data
 
 Useful environment variables:
+  BIOOTON_SKIP_GIT_UPDATE=1   Skip automatic git pull before start
   BIOOTON_PARTITION=cpuonly
   BIOOTON_ACCOUNT=<account>
   BIOOTON_PIPELINE_TIME_OVERRIDE=00:30:00
@@ -69,6 +70,11 @@ case "${MODE}" in
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 2 ;;
 esac
+
+if [[ "${BIOOTON_SKIP_GIT_UPDATE:-0}" != "1" ]]; then
+  echo "Aktualisiere Git-Repository auf neuesten Stand..."
+  bash "${PIPELINE_DIR}/update_horeka_from_git.sh"
+fi
 
 if [[ ! -x "${PYTHON}" ]]; then
   PYTHON="$(bash "${PIPELINE_DIR}/bootstrap_env.sh" | tail -n 1)"
