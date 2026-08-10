@@ -24,6 +24,8 @@ if (-not (Test-Path -LiteralPath $Settings)) {
 }
 
 $LocalSettings = Get-Content -Raw -LiteralPath $Settings | ConvertFrom-Json
+$HostradaExecution = [string]$LocalSettings.hostrada_execution
+$RefreshForHorekaOnly = $HostradaExecution.Trim().ToLowerInvariant() -eq "horeka_only"
 $EnvironmentRoot = [string]$LocalSettings.environment_dir
 if (-not $EnvironmentRoot) { $EnvironmentRoot = "D:\BioOTon_envs" }
 $EnvironmentRoot = [Environment]::ExpandEnvironmentVariables($EnvironmentRoot)
@@ -61,7 +63,7 @@ else {
 }
 if (($Mode -eq "add_new_ids") -and (-not $SkipHorekaBootstrap) -and $BootstrapEnabled) {
     $BootstrapArguments = @((Join-Path $LocalRoot "sync_horeka_outputs.py"), "--settings", $Settings)
-    if ($RefreshHorekaOutputs) { $BootstrapArguments += "--refresh" }
+    if ($RefreshHorekaOutputs -or $RefreshForHorekaOnly) { $BootstrapArguments += "--refresh" }
     & $CorePython @BootstrapArguments
     if ($LASTEXITCODE -ne 0) { throw "Horeka-Outputs konnten nicht lokal uebernommen werden." }
 }

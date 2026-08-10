@@ -15,15 +15,18 @@ REMOTE_PROJECT = "/lsdf/kit/ipf/projects/Bio-O-Ton"
 REMOTE_OUTPUTS = REMOTE_PROJECT + "/Data_automatisation_skripts/outputs"
 REMOTE_PIPELINE = REMOTE_PROJECT + "/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka"
 DIRECT_REMOTE_DIRS = (
-    "Biodiversity_data/Bundeslander/All_Bundeslander",
     "PointData/SoundRecordings",
     "PointData/Images_SoundRecordings",
     "PointData/Weather/Hostrada",
     "PointData/S2",
 )
+LOCAL_CACHE_DIRECTORIES = (
+    "Biodiversity_data/Bundeslander/All_Bundeslander",
+)
 DEFAULT_SHARED_OUTPUT_PREFIXES = (
     "step_5_2_weather_download/hostrada_cache",
     "step_5_3_hostrada_monthly_download/netcdf",
+    "step_5_4_hostrada_raster_products",
 )
 DEFAULT_OPTIONAL_LSDF_INPUTS = (
     "InspireGrid/Vector_Data/grid_public.gpkg",
@@ -78,6 +81,15 @@ def copy_config_inputs(
             print(f"CACHE optional nicht vorhanden, uebersprungen: {source}")
             continue
         copy_if_changed(source, destination)
+
+
+def copy_directory_if_changed(source: Path, destination: Path) -> None:
+    """Mirror a required input directory into the local cache."""
+    if not source.is_dir():
+        raise FileNotFoundError(f"LSDF-Eingabeordner fehlt: {source}")
+    for item in source.rglob("*"):
+        if item.is_file():
+            copy_if_changed(item, destination / item.relative_to(source))
 
 
 def optional_input_paths(settings: dict) -> set[str]:
@@ -172,6 +184,9 @@ def transform_value(
     if any(relative == prefix or relative.startswith(prefix + "/") for prefix in DIRECT_REMOTE_DIRS):
         return windows_path(mounted_project / relative_path)
 
+    if any(relative == prefix or relative.startswith(prefix + "/") for prefix in LOCAL_CACHE_DIRECTORIES):
+        return windows_path(cache_root / relative_path)
+
     source = mounted_project / relative_path
     destination = cache_root / relative_path
     cache_sources[source] = destination
@@ -232,6 +247,14 @@ def main() -> int:
     if not args.skip_cache_copy and not (mounted_project / "PointData").is_dir():
         raise FileNotFoundError(f"LSDF-Mount ist nicht lesbar: {mounted_project}")
 
+    if not args.skip_cache_copy:
+        for relative in LOCAL_CACHE_DIRECTORIES:
+            relative_path = Path(*PurePosixPath(relative).parts)
+            copy_directory_if_changed(
+                mounted_project / relative_path,
+                cache_root / relative_path,
+            )
+
     cache_sources: dict[Path, Path] = {}
     shared_output_prefixes = tuple(
         str(value).replace("\\", "/").strip("/").casefold()
@@ -256,6 +279,9 @@ def main() -> int:
         "logical_cpus": int(settings.get("logical_cpus", 20)),
         "max_parallel_steps": int(settings.get("max_parallel_steps", 2)),
         "array_workers": int(settings.get("array_workers", 2)),
+        "hostrada_execution": str(
+            settings.get("hostrada_execution", "local")
+        ).strip().casefold(),
     }
     config["slurm_log_dir"] = windows_path(workspace / "outputs" / "step_0_local_logs")
     config["bioacoustics"]["device"] = args.device

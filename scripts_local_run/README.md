@@ -111,8 +111,10 @@ powershell -ExecutionPolicy Bypass -File .\run_step2_variants_local.ps1 `
   -Mode add_new_ids -SkipEnvironmentSetup
 ```
 
-Die Eingangs-GPKGs werden direkt ueber `L:\Biodiversity_data\Bundeslander\All_Bundeslander`
-gelesen und wegen ihrer Groesse nicht in den lokalen Cache kopiert. Die
+Die Eingangs-GPKGs werden vor der Verarbeitung nach
+`D:\BioOTon_local_workspace\lsdf_cache\Biodiversity_data\Bundeslander\All_Bundeslander`
+gespiegelt und danach lokal gelesen. Unveraenderte Dateien werden anhand von
+Groesse und Aenderungszeit wiederverwendet. Die
 Ergebnisse liegen lokal unter `outputs\step_2_variants\<suffix>` und werden
 nach einem erfolgreichen Lauf wie andere kompatible Outputs nach LSDF
 publiziert. Der erste Vollauf aller 12 Varianten ist rechen- und
@@ -244,6 +246,42 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 `
 
 Dauerhaft steuerbar ist das Verhalten in `local.settings.json` mit
 `publish_successful_outputs_to_lsdf`.
+
+## HOSTRADA nur auf Horeka ausfuehren
+
+Lokale Einstellungen verwenden standardmaessig
+`"hostrada_execution": "horeka_only"`. Dadurch markieren lokale Run-Plaene
+die Schritte 5.1 bis 5.5 mit `execution_policy:horeka_only`, und der lokale
+Orchestrator startet sie auch im schnellen `add_new_ids`-Modus nicht. Die
+Horeka-Pipeline bleibt unveraendert fuer Inventur, Download, Monats-NetCDF,
+Rastererzeugung und QC verantwortlich. Alle anderen geplanten Schritte laufen
+weiter lokal.
+
+Der Horeka-Bootstrap uebernimmt weiterhin die kleinen States, Inventare und
+QC-Berichte, aber nicht die grossen HOSTRADA-Caches. So koennen Mastertable und
+Diagnose den Horeka-Stand verwenden, ohne die lokalen NetCDF- und Rasterdaten
+zu duplizieren. Im `horeka_only`-Modus wird dieser kleine Statusabgleich bei
+jedem inkrementellen lokalen Lauf aktualisiert; die ausgeschlossenen
+HOSTRADA-Payloads werden dabei nicht uebertragen.
+
+Vorhandene lokale HOSTRADA-Payloads werden zuerst nur geprueft:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\cleanup_local_hostrada.ps1
+```
+
+Das Skript verlangt fuer jede lokale Datei ein gleich grosses Gegenstueck im
+kanonischen Horeka/LSDF-Outputordner. Fehlt eine Datei oder weicht ihre Groesse
+ab, wird ohne Loeschung abgebrochen. Nach erfolgreicher Pruefung entfernt
+folgender Aufruf die lokalen Payload-Ordner:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\cleanup_local_hostrada.ps1 -Apply
+```
+
+Ein aktiver lokaler Pipeline-Lock blockiert das Cleanup. Kleine Status- und
+Logdateien bleiben absichtlich lokal; entfernt werden nur `hostrada_cache`,
+die Monats-`netcdf`-Daten und die erzeugten HOSTRADA-Rasterprodukte.
 
 ## Resume und Fehler
 

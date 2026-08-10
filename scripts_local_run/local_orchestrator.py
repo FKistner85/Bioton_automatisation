@@ -361,6 +361,14 @@ class Pipeline:
     def build_steps(self) -> None:
         force = ["--force"] if self.args.mode == "from_scratch" else []
         quick_incremental = self.args.mode == "add_new_ids"
+        hostrada_local = (
+            str(self.config.get("local_runtime", {}).get("hostrada_execution", "local"))
+            .strip()
+            .casefold()
+            != "horeka_only"
+        )
+        if not hostrada_local:
+            print("HOSTRADA execution policy: horeca_only (local steps 5.1-5.5 skipped)")
         metadata_ids = self.ids_file("metadata")
         point_ids = self.ids_file("point_assignment")
         audio_ids = self.ids_file("audio")
@@ -448,12 +456,12 @@ class Pipeline:
                 "step_4_0", "step_4_0_sentinel2_inventory", "scripts/Step_4_0_Sentinel2_inventory.py", force,
             ), ["j41"], master_ids=sentinel_ids)
 
-        if quick_incremental or self.plan_run("step_5_1_weather_inventory"):
+        if hostrada_local and (quick_incremental or self.plan_run("step_5_1_weather_inventory")):
             self.add("j51pre", "step_5_1_pre", self.command_runner(
                 "step_5_1_pre", "step_5_1_weather_inventory", "scripts/Step_5_1_Weather_inventory.py",
                 ["--list-only"] if quick_incremental else force,
             ), ["j1"])
-        if quick_incremental or self.plan_run("step_5_2_weather_download"):
+        if hostrada_local and (quick_incremental or self.plan_run("step_5_2_weather_download")):
             selected_weather_ids = weather_missing_ids if quick_incremental else weather_ids
             count = self.id_count(selected_weather_ids)
             shards = max(1, min(int(self.config["weather_download"].get("slurm_shard_count", 8)), (count + 4999) // 5000 or 1))
@@ -471,11 +479,11 @@ class Pipeline:
                 ["--ids-file", str(selected_weather_ids)] if quick_incremental else [],
             ), ["j52verify"], master_ids=selected_weather_ids)
 
-        if self.plan_run("step_5_3_hostrada_monthly"):
+        if hostrada_local and self.plan_run("step_5_3_hostrada_monthly"):
             self.add("j53", "step_5_3", self.command_runner(
                 "step_5_3", "step_5_3_hostrada_monthly", "scripts/Step_5_3_download_hostrada_monthly.py",
             ))
-        if self.plan_run("step_5_4_hostrada_rasters"):
+        if hostrada_local and self.plan_run("step_5_4_hostrada_rasters"):
             count_command = [str(self.core), str(self.repo / "tools/run_hostrada_raster_all.py"), "--config", str(self.config_path), "--task-count"]
             count_result = subprocess.run(count_command, cwd=self.repo, text=True, capture_output=True, check=False)
             if count_result.returncode != 0 or not count_result.stdout.strip().splitlines()[-1].isdigit():
@@ -488,7 +496,7 @@ class Pipeline:
             self.add("j54verify", "step_5_4_verify", self.command_runner(
                 "step_5_4_verify", "step_5_4_hostrada_rasters", "tools/run_hostrada_raster_all.py", ["--verify-array"], cpus=1,
             ), ["j54"])
-        if self.plan_run("step_5_5_hostrada_raster_qc"):
+        if hostrada_local and self.plan_run("step_5_5_hostrada_raster_qc"):
             self.add("j55", "step_5_5", self.command_runner(
                 "step_5_5", "step_5_5_hostrada_raster_qc", "scripts/Step_5_5_check_hostrada_raster_products.py",
             ), ["j54verify"], master_global=True)

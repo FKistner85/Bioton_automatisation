@@ -687,6 +687,18 @@ def main() -> int:
         run23, reasons23 = step23_needed(config, run21)
         run24, reasons24 = step24_needed(config, run21)
 
+    hostrada_local = (
+        str(config.get("local_runtime", {}).get("hostrada_execution", "local"))
+        .strip()
+        .casefold()
+        != "horeka_only"
+    )
+    hostrada_reasons = (
+        ["filesystem_reconciliation"]
+        if hostrada_local
+        else ["execution_policy:horeka_only"]
+    )
+
     steps = {
         "step_1_metadata": {
             "run": bool(id_reasons["metadata"]),
@@ -724,23 +736,39 @@ def main() -> int:
             "ids_file": id_files["sentinel"],
         },
         "step_4_0_sentinel2_inventory": {"run": True, "reasons": ["filesystem_reconciliation"]},
-        "step_5_1_weather_inventory": {"run": True, "reasons": ["filesystem_reconciliation"]},
+        "step_5_1_weather_inventory": {"run": hostrada_local, "reasons": hostrada_reasons},
         "step_5_2_weather_download": {
-            "run": True,
-            "reasons": ["fresh_inventory_selection"],
+            "run": hostrada_local,
+            "reasons": (
+                ["fresh_inventory_selection"]
+                if hostrada_local
+                else ["execution_policy:horeka_only"]
+            ),
             "ids_file": id_files["weather"],
         },
         "step_5_3_hostrada_monthly": {
-            "run": True,
-            "reasons": ["remote_monthly_reconciliation"],
+            "run": hostrada_local,
+            "reasons": (
+                ["remote_monthly_reconciliation"]
+                if hostrada_local
+                else ["execution_policy:horeka_only"]
+            ),
         },
         "step_5_4_hostrada_rasters": {
-            "run": True,
-            "reasons": ["checkpointed_raster_reconciliation"],
+            "run": hostrada_local,
+            "reasons": (
+                ["checkpointed_raster_reconciliation"]
+                if hostrada_local
+                else ["execution_policy:horeka_only"]
+            ),
         },
         "step_5_5_hostrada_raster_qc": {
-            "run": True,
-            "reasons": ["incremental_raster_quality_reconciliation"],
+            "run": hostrada_local,
+            "reasons": (
+                ["incremental_raster_quality_reconciliation"]
+                if hostrada_local
+                else ["execution_policy:horeka_only"]
+            ),
         },
         "step_6_0_bioacoustic_model_preflight": {
             "run": bio_enabled and (

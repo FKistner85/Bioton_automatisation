@@ -24,6 +24,7 @@ DEFAULT_EXCLUDED_DIRECTORY_NAMES = {
 DEFAULT_EXCLUDED_RELATIVE_DIRECTORIES = {
     "step_5_2_weather_download/hostrada_cache",
     "step_5_3_hostrada_monthly_download/netcdf",
+    "step_5_4_hostrada_raster_products",
 }
 
 

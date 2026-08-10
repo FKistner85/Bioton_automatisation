@@ -86,10 +86,10 @@ def test_local_path_mapping(tmp_path: Path) -> None:
     ).resolve()
     assert Path(result["audio"]) == (mount / "PointData/SoundRecordings").resolve()
     assert Path(result["lrt_variants"]) == (
-        mount / "Biodiversity_data/Bundeslander/All_Bundeslander"
+        cache / "Biodiversity_data/Bundeslander/All_Bundeslander"
     ).resolve()
     assert Path(result["lrt_variant"]) == (
-        mount / "Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_base_v2.gpkg"
+        cache / "Biodiversity_data/Bundeslander/All_Bundeslander/All_Bundeslander_base_v2.gpkg"
     ).resolve()
     assert Path(result["grid"]) == (cache / "InspireGrid/Vector_Data/grid.gpkg").resolve()
     assert Path(result["reference"]) == (repo / "reference_data/germany_species_allowlist.csv").resolve()
@@ -157,6 +157,7 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     (remote / "step_2_4_susi_10m" / "grid10m_chunks").mkdir(parents=True)
     (remote / "step_5_2_weather_download" / "hostrada_cache").mkdir(parents=True)
     (remote / "step_5_3_hostrada_monthly_download" / "netcdf").mkdir(parents=True)
+    (remote / "step_5_4_hostrada_raster_products" / "Hostrada_Ta").mkdir(parents=True)
     (remote / "step_1_metadata" / "metadata_source_fingerprints.csv").write_text(
         "dawn_chorus_id\n1\n", encoding="utf-8"
     )
@@ -173,6 +174,9 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     )
     (remote / "step_5_3_hostrada_monthly_download" / "netcdf" / "month.nc").write_text(
         "shared cache", encoding="utf-8"
+    )
+    (remote / "step_5_4_hostrada_raster_products" / "Hostrada_Ta" / "tile.tif").write_text(
+        "remote raster", encoding="utf-8"
     )
 
     settings = {
@@ -195,6 +199,9 @@ def test_horeka_output_bootstrap_excludes_runtime_files(tmp_path: Path) -> None:
     ).exists()
     assert not (
         workspace / "outputs/step_5_3_hostrada_monthly_download/netcdf/month.nc"
+    ).exists()
+    assert not (
+        workspace / "outputs/step_5_4_hostrada_raster_products/Hostrada_Ta/tile.tif"
     ).exists()
     assert result["excluded_directories"] >= 1
 
