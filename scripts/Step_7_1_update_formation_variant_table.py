@@ -38,6 +38,8 @@ VARIANT_COLUMNS = [
     "source_gpkg",
     "variant_100m_product_exists",
     "variant_10m_product_exists",
+    "variant_row_count",
+    "variant_complete_recording_count",
     "grid_100m_id",
     "grid_100m_assignment_exists",
     "grid_100m_has_majority_formation",
@@ -127,6 +129,11 @@ def build_variant_rows(
     table["source_gpkg"] = str(source_gpkg)
     table["variant_100m_product_exists"] = assignment.is_file()
     table["variant_10m_product_exists"] = ten_m.is_file()
+    row_count = len(table)
+    table["variant_row_count"] = row_count
+    complete = assignment.is_file() and ten_m.is_file()
+    complete_ids = int(table["dawn_chorus_id"].nunique()) if complete else 0
+    table["variant_complete_recording_count"] = complete_ids if complete else 0
     table["formation_100m_10m_agree"] = (
         table["majority_formation_100m"].notna()
         & table["majority_formation_10m"].notna()
@@ -168,6 +175,12 @@ def main() -> int:
         output_csv = Path(settings["master_csv"])
         output_parquet = Path(settings["master_parquet"])
         summary_json = Path(settings["master_summary_json"])
+        variant_summary_csv = Path(
+            settings.get(
+                "variant_summary_csv",
+                output_csv.parent / "Bio_O_Ton_Variant_Summary.csv",
+            )
+        )
         part_dir = Path(settings["output_root"]) / "_master_parts"
         metadata = load_metadata(base)
         parts: list[Path] = []
@@ -223,6 +236,25 @@ def main() -> int:
         ).reset_index(drop=True)
         write_csv_atomic(combined, output_csv)
         write_parquet_atomic(combined, output_parquet)
+
+        # Per-variant summary: one row per variant with key counts
+        variant_stats = (
+            combined.groupby("lrt_variant", sort=False)
+            .agg(
+                source_gpkg=("source_gpkg", "first"),
+                is_primary=("lrt_variant_is_primary", "first"),
+                row_count=("dawn_chorus_id", "count"),
+                recording_count=("dawn_chorus_id", "nunique"),
+                complete_recording_count=("variant_complete_recording_count", "first"),
+                product_100m_exists=("variant_100m_product_exists", "first"),
+                product_10m_exists=("variant_10m_product_exists", "first"),
+                record_status=("variant_record_status", "first"),
+            )
+            .reset_index()
+            .rename(columns={"lrt_variant": "suffix"})
+        )
+        variant_stats["computed_at"] = utc_now()
+        write_csv_atomic(variant_stats, variant_summary_csv)
         summary = {
             "created_utc": utc_now(),
             "primary_suffix": primary,
@@ -238,6 +270,7 @@ def main() -> int:
             ),
             "output_csv": str(output_csv),
             "output_parquet": str(output_parquet),
+            "variant_summary_csv": str(variant_summary_csv),
         }
         summary_json.parent.mkdir(parents=True, exist_ok=True)
         summary_json.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
@@ -245,6 +278,7 @@ def main() -> int:
         print(f"Rows               : {len(combined):,}")
         print(f"CSV                : {output_csv}")
         print(f"Parquet            : {output_parquet}")
+        print(f"Variant summary    : {variant_summary_csv}")
         return 0
     except Exception as exc:
         print(f"ERROR in Step 7_1 formation variant table: {exc}", file=sys.stderr)

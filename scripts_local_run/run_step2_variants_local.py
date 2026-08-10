@@ -15,7 +15,9 @@ python scripts_local_run/run_step2_variants_local.py \\
     [--stages 2_0 2_1 2_2 2_3 2_4]    \\
     [--force]                          \\
     [--ids-file path/to/ids.csv]       \\
-    [--dry-run]
+    [--cleanup-chunks]                 \\
+    [--dry-run]                        \\
+    [--status]
 """
 
 from __future__ import annotations
@@ -154,8 +156,17 @@ def run_stage_all(
     return 0
 
 
+def _run_checker(config: Path, python: Path, *, cleanup: bool = False) -> int:
+    """Delegate to tools/check_step2_variants_status.py."""
+    checker = Path(__file__).resolve().parents[1] / "tools" / "check_step2_variants_status.py"
+    cmd = [str(python), str(checker), "--config", str(config)]
+    if cleanup:
+        cmd.append("--cleanup")
+    result = subprocess.run(cmd, check=False)
+    return result.returncode
+
+
 def parse_args() -> argparse.Namespace:
-    repo_root = Path(__file__).resolve().parents[1]
     default_python = Path(sys.executable)
     parser = argparse.ArgumentParser(
         description="Run all Step-2 LRT variants locally, skipping already-computed stages.",
@@ -201,6 +212,25 @@ def parse_args() -> argparse.Namespace:
         help="IDs file forwarded to stage 2_2 (point assignment).",
     )
     parser.add_argument(
+        "--cleanup-chunks",
+        action="store_true",
+        help=(
+            "After all stages finish, remove intermediate chunk directories "
+            "(grid10m_chunks, ix_chunks, parquet_10, _chunk_checkpoints) for "
+            "each variant whose final parquet already exists. "
+            "Safe to use: only deletes data that can be recomputed."
+        ),
+    )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help=(
+            "Only print a completion-status and disk-usage report "
+            "(delegates to tools/check_step2_variants_status.py) then exit. "
+            "Does not run any pipeline stages."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print commands without executing them.",
@@ -218,6 +248,10 @@ def main() -> int:
         print(f"Python not found: {args.python}", file=sys.stderr)
         return 2
 
+    # --status: just show the status report and exit
+    if args.status:
+        return _run_checker(args.config, args.python)
+
     # Resolve max_parallel from config if not given on CLI
     max_parallel = args.max_parallel
     if max_parallel is None:
@@ -228,12 +262,13 @@ def main() -> int:
     # Sort requested stages to preserve pipeline order
     requested = [s for s in STAGE_ORDER if s in set(args.stages)]
 
-    print(f"Config      : {args.config}")
-    print(f"Python      : {args.python}")
-    print(f"Stages      : {', '.join(requested)}")
-    print(f"Max parallel: {max_parallel}")
-    print(f"Force       : {args.force}")
-    print(f"Dry-run     : {args.dry_run}")
+    print(f"Config         : {args.config}")
+    print(f"Python         : {args.python}")
+    print(f"Stages         : {', '.join(requested)}")
+    print(f"Max parallel   : {max_parallel}")
+    print(f"Force          : {args.force}")
+    print(f"Cleanup chunks : {args.cleanup_chunks}")
+    print(f"Dry-run        : {args.dry_run}")
 
     # Step 1: write per-variant config files (lightweight, always needed)
     print("\n--- Preparing variant configs ---", flush=True)
@@ -261,9 +296,6 @@ def main() -> int:
     # so we run them with full parallelism across variants.
     # Stage 2_0 and 2_1 are run serially between themselves (2_1 depends on 2_0).
     for stage in requested:
-        # For the parallel stages (2_2/2_3/2_4) we allow full max_parallel;
-        # for 2_0 and 2_1 we also allow parallelism across *variants* (each variant is independent).
-        stage_parallel = max_parallel
         code = run_stage_all(
             args.python,
             args.config,
@@ -271,7 +303,7 @@ def main() -> int:
             variant_count,
             force=args.force,
             ids_file=args.ids_file if stage == "2_2" else None,
-            max_parallel=stage_parallel,
+            max_parallel=max_parallel,
             dry_run=args.dry_run,
         )
         if code != 0:
@@ -279,6 +311,12 @@ def main() -> int:
             return code
 
     print("\nAll requested stages completed successfully.", flush=True)
+
+    # Step 4: optional chunk cleanup
+    if args.cleanup_chunks and not args.dry_run:
+        print("\n--- Cleaning up intermediate chunk directories ---", flush=True)
+        _run_checker(args.config, args.python, cleanup=True)
+
     return 0
 
 
