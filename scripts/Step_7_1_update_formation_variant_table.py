@@ -24,6 +24,7 @@ from Step_7_0_update_master_table import (
     normalise_id_column,
     read_csv_optional,
 )
+from common import workflow_run_id
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
 if str(TOOLS) not in sys.path:
@@ -36,8 +37,15 @@ VARIANT_COLUMNS = [
     "lrt_variant",
     "lrt_variant_is_primary",
     "source_gpkg",
+    "step_2_0_status",
+    "step_2_1_status",
+    "step_2_2_status",
+    "step_2_3_status",
+    "step_2_4_status",
     "variant_100m_product_exists",
     "variant_10m_product_exists",
+    "variant_products_complete",
+    "variant_issue_codes",
     "variant_row_count",
     "variant_complete_recording_count",
     "grid_100m_id",
@@ -79,6 +87,81 @@ def fingerprint(path: Path) -> dict[str, Any]:
         "size_bytes": int(stat.st_size),
         "mtime_ns": int(stat.st_mtime_ns),
     }
+
+
+def read_state(path: Path) -> tuple[dict[str, Any], str | None]:
+    if not path.is_file():
+        return {}, "missing_state"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return {}, "invalid_state"
+    if not isinstance(payload, dict):
+        return {}, "invalid_state"
+    return payload, None
+
+
+def file_ready(path: Path) -> bool:
+    try:
+        return path.is_file() and path.stat().st_size > 0
+    except OSError:
+        return False
+
+
+def inspect_variant_stages(config: dict[str, Any]) -> tuple[dict[str, str], list[str]]:
+    susi_100m = (
+        Path(config["lrt_grid_merge"]["susi_compatible_outputs"]["output_dir"])
+        / "Formation_Status_Grid_withLRTCode.parquet"
+    )
+    definitions: dict[str, tuple[Path, list[Path]]] = {
+        "2_0": (
+            Path(config["lrt_cleaning"]["state_file"]),
+            [Path(config["lrt_cleaning"]["output_gpkg"])],
+        ),
+        "2_1": (
+            Path(config["lrt_grid_merge"]["state_file"]),
+            [Path(config["lrt_grid_merge"]["output_grid_parquet"]), susi_100m],
+        ),
+        "2_2": (
+            Path(config["point_lrt_assignment"]["state_file"]),
+            [Path(config["point_lrt_assignment"]["output_csv"])],
+        ),
+        "2_3": (
+            Path(config["lrt_grid_aggregation"]["state_file"]),
+            [],
+        ),
+        "2_4": (
+            Path(config["susi_10m_products"]["state_file"]),
+            [Path(config["susi_10m_products"]["final_parquet"])],
+        ),
+    }
+    statuses: dict[str, str] = {}
+    issues: list[str] = []
+    for stage, (state_path, outputs) in definitions.items():
+        state, state_issue = read_state(state_path)
+        if state_issue:
+            statuses[stage] = "not_started" if state_issue == "missing_state" else "invalid"
+            issues.append(f"step_{stage}:{state_issue}")
+            continue
+        explicit = str(state.get("status", "")).strip().lower()
+        if explicit and explicit != "complete":
+            statuses[stage] = explicit
+            issues.append(f"step_{stage}:state_{explicit}")
+            continue
+        if stage == "2_3":
+            state_outputs = [Path(value) for value in state.get("outputs", []) if value]
+            if not state_outputs:
+                statuses[stage] = "partial"
+                issues.append("step_2_3:missing_output_manifest")
+                continue
+            outputs.extend(state_outputs)
+        missing = [str(path) for path in outputs if not file_ready(path)]
+        if missing:
+            statuses[stage] = "partial"
+            issues.append(f"step_{stage}:missing_or_empty_output")
+            continue
+        statuses[stage] = "complete"
+    return statuses, issues
 
 
 def write_parquet_atomic(frame: pd.DataFrame, path: Path) -> None:
@@ -127,13 +210,18 @@ def build_variant_rows(
     table["lrt_variant"] = suffix
     table["lrt_variant_is_primary"] = suffix == primary
     table["source_gpkg"] = str(source_gpkg)
-    table["variant_100m_product_exists"] = assignment.is_file()
-    table["variant_10m_product_exists"] = ten_m.is_file()
+    statuses, issues = inspect_variant_stages(config)
+    for stage, status in statuses.items():
+        table[f"step_{stage}_status"] = status
+    table["variant_100m_product_exists"] = file_ready(assignment)
+    table["variant_10m_product_exists"] = file_ready(ten_m)
+    products_complete = all(status == "complete" for status in statuses.values())
+    table["variant_products_complete"] = products_complete
+    table["variant_issue_codes"] = ";".join(issues)
     row_count = len(table)
     table["variant_row_count"] = row_count
-    complete = assignment.is_file() and ten_m.is_file()
-    complete_ids = int(table["dawn_chorus_id"].nunique()) if complete else 0
-    table["variant_complete_recording_count"] = complete_ids if complete else 0
+    complete_ids = int(table["dawn_chorus_id"].nunique()) if products_complete else 0
+    table["variant_complete_recording_count"] = complete_ids
     table["formation_100m_10m_agree"] = (
         table["majority_formation_100m"].notna()
         & table["majority_formation_10m"].notna()
@@ -150,8 +238,15 @@ def build_variant_rows(
             == table["majority_formation_status_10m"].astype(str)
         )
     )
-    complete_products = assignment.is_file() and ten_m.is_file()
-    table["variant_record_status"] = "complete" if complete_products else "partial"
+    if products_complete:
+        record_status = "complete"
+    elif any(status == "in_progress" for status in statuses.values()):
+        record_status = "in_progress"
+    elif any(status == "complete" for status in statuses.values()):
+        record_status = "partial"
+    else:
+        record_status = "not_started"
+    table["variant_record_status"] = record_status
     table["updated_utc"] = utc_now()
     for column in VARIANT_COLUMNS:
         if column not in table.columns:
@@ -197,6 +292,16 @@ def main() -> int:
                 "assignment_100m": fingerprint(assignment),
                 "formation_10m": fingerprint(ten_m),
                 "metadata": fingerprint(Path(base["point_lrt_assignment"]["metadata_csv"])),
+                "stage_states": {
+                    stage: fingerprint(Path(config[section]["state_file"]))
+                    for stage, section in {
+                        "2_0": "lrt_cleaning",
+                        "2_1": "lrt_grid_merge",
+                        "2_2": "point_lrt_assignment",
+                        "2_3": "lrt_grid_aggregation",
+                        "2_4": "susi_10m_products",
+                    }.items()
+                },
             }
             previous = {}
             if state_path.is_file():
@@ -246,14 +351,22 @@ def main() -> int:
                 row_count=("dawn_chorus_id", "count"),
                 recording_count=("dawn_chorus_id", "nunique"),
                 complete_recording_count=("variant_complete_recording_count", "first"),
+                step_2_0_status=("step_2_0_status", "first"),
+                step_2_1_status=("step_2_1_status", "first"),
+                step_2_2_status=("step_2_2_status", "first"),
+                step_2_3_status=("step_2_3_status", "first"),
+                step_2_4_status=("step_2_4_status", "first"),
                 product_100m_exists=("variant_100m_product_exists", "first"),
                 product_10m_exists=("variant_10m_product_exists", "first"),
+                products_complete=("variant_products_complete", "first"),
+                issue_codes=("variant_issue_codes", "first"),
                 record_status=("variant_record_status", "first"),
             )
             .reset_index()
             .rename(columns={"lrt_variant": "suffix"})
         )
         variant_stats["computed_at"] = utc_now()
+        variant_stats["workflow_run_id"] = workflow_run_id()
         write_csv_atomic(variant_stats, variant_summary_csv)
         summary = {
             "created_utc": utc_now(),
@@ -263,11 +376,9 @@ def main() -> int:
             "recording_count": int(combined["dawn_chorus_id"].nunique()),
             "rebuilt_variants": rebuilt,
             "complete_variant_products": int(
-                combined.groupby("lrt_variant")[[
-                    "variant_100m_product_exists",
-                    "variant_10m_product_exists",
-                ]].all().all(axis=1).sum()
+                combined.groupby("lrt_variant")["variant_products_complete"].all().sum()
             ),
+            "workflow_run_id": workflow_run_id(),
             "output_csv": str(output_csv),
             "output_parquet": str(output_parquet),
             "variant_summary_csv": str(variant_summary_csv),

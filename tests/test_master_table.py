@@ -214,6 +214,8 @@ def test_formation_variant_status_is_summarised() -> None:
                 "grid_10m_has_majority_formation": [True, False, True, False],
                 "variant_100m_product_exists": [True] * 4,
                 "variant_10m_product_exists": [True] * 4,
+                "variant_products_complete": [True] * 4,
+                "variant_record_status": ["complete"] * 4,
             }
         ).to_parquet(variant_table, index=False)
         index_path.write_text(json.dumps({"variant_count": 2}), encoding="utf-8")
@@ -230,6 +232,7 @@ def test_formation_variant_status_is_summarised() -> None:
         assert result.loc["1", "formation_variants_with_100m_majority"] == 2
         assert result.loc["2", "formation_variants_with_10m_majority"] == 1
         assert result.loc["3", "formation_variants_with_100m_majority"] == 0
+        assert result["formation_variant_count_complete"].eq(2).all()
         assert result["formation_variant_products_complete"].all()
 
 

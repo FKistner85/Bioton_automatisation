@@ -25,11 +25,12 @@ Eingangs-GPKG
   -> Step 7_0 kompakte Haupt-Mastertabelle
 ```
 
-Step 2_2, 2_3 und 2_4 beginnen nach Abschluss der Step-2_1-Arraystufe. Ein
-fehlender Vorgaengeroutput laesst nur den betroffenen Task mit einem klaren
-Fehler enden. Die Abhaengigkeit `afterany` verhindert dauerhaft wartende
-`DependencyNeverSatisfied`-Jobs. Auf Horeka laufen verschiedene Varianten als
-Slurm-Array parallel. Lokal wird die Parallelitaet durch
+Auf Horeka ist jede Array-Aufgabe eine vollstaendige, isolierte Variantenkette
+von Step 2_0 bis Step 2_4. Eine fehlgeschlagene Stufe beendet nur diese Variante;
+andere Varianten laufen weiter. Bei einem erneuten `add_new_ids`-Submit werden
+aktuelle Stufen uebersprungen und vorhandene Chunk-Checkpoints aus Step 2_1 und
+Step 2_4 fortgesetzt. Dadurch kann derselbe Submit nach einem Zeitlimit sicher
+wiederholt werden. Lokal wird die Parallelitaet durch
 `local_max_parallel_variants` begrenzt.
 
 ## Ausgaben
@@ -56,7 +57,10 @@ outputs/Bio_O_Ton_Formation_Variants_summary.json
 
 Die Varianten-Mastertabelle hat genau eine Zeile pro
 `dawn_chorus_id` und `lrt_variant`. Sie enthaelt 100m-/10m-Majority,
-Conservation Status, Majority-Werte, Disputed-Flags und Produktstatus.
+Conservation Status, Majority-Werte, Disputed-Flags, die Statuswerte aller
+Step-2-Stufen und maschinenlesbare Issue-Codes. Eine Variante gilt nur dann als
+vollstaendig, wenn alle fuenf Stufen einen gueltigen State und ihre erwarteten
+Ausgaben besitzen.
 
 ## Inkrementelles Verhalten
 
@@ -74,6 +78,21 @@ Horeka:
 bash submit_step2_variants_horeka.sh add_new_ids
 bash submit_step2_variants_horeka.sh from_scratch
 ```
+
+Empfohlener inkrementeller Start auf Horeka:
+
+```bash
+BIOOTON_STEP2_VARIANT_CONCURRENCY=2 \
+BIOOTON_STEP2_VARIANT_CPUS=16 \
+BIOOTON_STEP2_VARIANT_MEMORY=64G \
+BIOOTON_STEP2_VARIANT_TIME=24:00:00 \
+bash submit_step2_variants_horeka.sh add_new_ids
+```
+
+Wenn Array-Aufgaben ihr Zeitlimit erreichen, nach Abschluss des nachgeschalteten
+Master- und Unlock-Jobs denselben Befehl erneut ausfuehren. `from_scratch` ist
+fuer diese iterative Fortsetzung nicht geeignet, weil es bewusst `--force`
+uebergibt.
 
 Lokal:
 

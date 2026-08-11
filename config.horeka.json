@@ -35,8 +35,9 @@
     "master_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Formation_Variants.csv",
     "master_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Formation_Variants.parquet",
     "master_summary_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Formation_Variants_summary.json",
+    "variant_summary_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Variant_Summary.csv",
     "local_max_parallel_variants": 2,
-    "slurm_max_concurrent_variants": 4
+    "slurm_max_concurrent_variants": 2
   },
   "lrt_grid_merge": {
     "grid_gpkg": "/lsdf/kit/ipf/projects/Bio-O-Ton/InspireGrid/Vector_Data/grid.gpkg",
