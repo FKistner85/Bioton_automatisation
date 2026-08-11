@@ -33,7 +33,7 @@ from common import (
 )
 
 
-SCHEMA_VERSION = "2026-08-04-mastertable-v4"
+SCHEMA_VERSION = "2026-08-11-mastertable-v5"
 MASTER_COLUMNS = [
     "mastertable_schema_version",
     "workflow_run_id",
@@ -95,6 +95,7 @@ MASTER_COLUMNS = [
     "formation_status_100m_10m_agree",
     "formation_primary_variant",
     "formation_variant_count_expected",
+    "formation_variant_count_complete",
     "formation_variants_with_100m_majority",
     "formation_variants_with_10m_majority",
     "formation_variant_products_complete",
@@ -1012,13 +1013,14 @@ def add_formation_variant_status(
 
     table["formation_primary_variant"] = primary
     table["formation_variant_count_expected"] = expected
+    table["formation_variant_count_complete"] = 0
     table["formation_variants_with_100m_majority"] = 0
     table["formation_variants_with_10m_majority"] = 0
     table["formation_variant_products_complete"] = False
     if not path.is_file():
         return table
 
-    columns = [
+    base_columns = [
         "dawn_chorus_id",
         "lrt_variant",
         "grid_100m_has_majority_formation",
@@ -1026,7 +1028,13 @@ def add_formation_variant_status(
         "variant_100m_product_exists",
         "variant_10m_product_exists",
     ]
-    variants = pd.read_parquet(path, columns=columns)
+    optional_columns = ["variant_products_complete", "variant_record_status"]
+    try:
+        variants = pd.read_parquet(path, columns=base_columns + optional_columns)
+    except Exception:
+        # Backward compatibility for a pre-v5 variant table. The next Step 7_1
+        # run rewrites it with the explicit completion columns.
+        variants = pd.read_parquet(path, columns=base_columns)
     variants = normalise_id_column(variants, ["dawn_chorus_id"])
     if variants.empty:
         return table
@@ -1062,12 +1070,26 @@ def add_formation_variant_status(
             table["formation_variants_with_10m_majority"], errors="coerce"
         ).fillna(0).astype("Int64")
     )
-    product_status = variants.groupby("lrt_variant")[[
-        "variant_100m_product_exists",
-        "variant_10m_product_exists",
-    ]].all().all(axis=1)
+    if "variant_products_complete" in variants.columns:
+        variants["variant_products_complete"] = bool_series(
+            variants["variant_products_complete"]
+        )
+        product_status = variants.groupby("lrt_variant")[
+            "variant_products_complete"
+        ].all()
+    elif "variant_record_status" in variants.columns:
+        product_status = variants.assign(
+            _complete=variants["variant_record_status"].astype(str).str.casefold().eq("complete")
+        ).groupby("lrt_variant")["_complete"].all()
+    else:
+        product_status = variants.groupby("lrt_variant")[[
+            "variant_100m_product_exists",
+            "variant_10m_product_exists",
+        ]].all().all(axis=1)
     actual_variants = int(variants["lrt_variant"].nunique())
-    complete = bool(product_status.all()) and actual_variants == expected and expected > 0
+    complete_variants = int(product_status.sum())
+    table["formation_variant_count_complete"] = complete_variants
+    complete = complete_variants == expected and actual_variants == expected and expected > 0
     table["formation_variant_products_complete"] = complete
     return table
 

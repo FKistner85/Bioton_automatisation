@@ -95,7 +95,49 @@ def test_missing_primary_is_rejected() -> None:
             raise AssertionError("A missing primary variant must stop preparation.")
 
 
+def test_task_index_all_stages_runs_one_variant_in_order() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        config = base_config(root)
+        config_path = root / "config.json"
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        calls: list[tuple[str, str]] = []
+        original_run_stage = variants.run_stage
+        original_argv = sys.argv
+
+        def fake_run_stage(repo_root, python, variant, stage, *, force, ids_file):
+            calls.append((variant.suffix, stage))
+            return 0
+
+        try:
+            variants.run_stage = fake_run_stage
+            sys.argv = [
+                "step2_variants.py",
+                "--config", str(config_path),
+                "--python", sys.executable,
+                "--task-index", "0",
+                "--all-stages",
+            ]
+            assert variants.main() == 0
+        finally:
+            variants.run_stage = original_run_stage
+            sys.argv = original_argv
+
+        assert calls == [("base_v2", stage) for stage in variants.STAGE_ORDER]
+
+
+def test_horeka_submit_uses_one_resumable_array() -> None:
+    submit = (ROOT / "submit_step2_variants_horeka.sh").read_text(encoding="utf-8")
+    assert '--job-name="bio_v2all"' in submit
+    assert '--all-stages --task-index' in submit
+    assert '--mem="${VARIANT_MEMORY}"' in submit
+    assert 'afterany:${j2all}' in submit
+    assert "submit_array bio_v20" not in submit
+
+
 if __name__ == "__main__":
     test_prepare_creates_isolated_configs()
     test_missing_primary_is_rejected()
+    test_task_index_all_stages_runs_one_variant_in_order()
+    test_horeka_submit_uses_one_resumable_array()
     print("test_step2_variants.py: OK")

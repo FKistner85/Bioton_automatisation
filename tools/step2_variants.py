@@ -314,16 +314,24 @@ def main() -> int:
     if args.task_index is not None:
         if not 0 <= args.task_index < len(variants):
             raise ValueError(f"--task-index must be between 0 and {len(variants) - 1}")
-        if args.stage is None:
-            raise ValueError("--stage is required with --task-index")
-        return run_stage(
-            repo_root,
-            args.python,
-            variants[args.task_index],
-            args.stage,
-            force=args.force,
-            ids_file=args.ids_file,
-        )
+        if args.stage is not None and args.all_stages:
+            raise ValueError("Select either --stage or --all-stages with --task-index")
+        task_stages = STAGE_ORDER if args.all_stages else ((args.stage,) if args.stage else ())
+        if not task_stages:
+            raise ValueError("--stage or --all-stages is required with --task-index")
+        variant = variants[args.task_index]
+        for stage in task_stages:
+            code = run_stage(
+                repo_root,
+                args.python,
+                variant,
+                stage,
+                force=args.force,
+                ids_file=args.ids_file,
+            )
+            if code != 0:
+                return code
+        return 0
 
     stages = STAGE_ORDER if args.all_stages else ((args.stage,) if args.stage else ())
     if not stages:

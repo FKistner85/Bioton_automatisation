@@ -67,11 +67,18 @@ STAGE_ORDER = ("2_0", "2_1", "2_2", "2_3", "2_4")
 
 
 def _check_state(state_path: Path, output_file: Path) -> str:
-    """Return 'ok', 'stale', or 'missing'."""
-    if not output_file.is_file():
+    """Return a concise state/output status."""
+    if not output_file.is_file() or output_file.stat().st_size == 0:
         return "missing"
     if not state_path.is_file():
         return "stale"
+    try:
+        state = load_json(state_path)
+    except (OSError, json.JSONDecodeError):
+        return "invalid"
+    explicit = str(state.get("status", "")).strip().lower()
+    if explicit and explicit != "complete":
+        return explicit
     return "ok"
 
 
@@ -103,7 +110,7 @@ def check_variant(variant_config: dict[str, Any], variant_suffix: str) -> dict[s
         "_chunk_checkpoints": Path(variant_config["lrt_grid_merge"]["chunk_checkpoint_dir"]),
     }
     final_parquet = Path(variant_config["susi_10m_products"]["final_parquet"])
-    can_cleanup = final_parquet.is_file()
+    can_cleanup = s["2_4"] == "ok" and final_parquet.is_file()
     cleanable: dict[str, int] = {}
     for name, path in chunk_dirs.items():
         sz = dir_size_bytes(path)
@@ -212,9 +219,14 @@ def main() -> int:
             "ok": "✓",
             "stale": "~",
             "missing": " ",
+            "invalid": "!",
+            "in_progress": "~",
+            "failed": "!",
+            "partial": "~",
         }
         stage_line = "  ".join(
-            f"[{stage_symbols[stages[s]]}] {s}" for s in STAGE_ORDER
+            f"[{stage_symbols.get(stages[s], '!')}] {s}:{stages[s]}"
+            for s in STAGE_ORDER
         )
 
         print(f"\nVariant: {suffix}")

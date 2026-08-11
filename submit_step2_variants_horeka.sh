@@ -14,7 +14,9 @@ PARTITION="${BIOOTON_PARTITION:-cpuonly}"
 ACCOUNT="${BIOOTON_ACCOUNT:-}"
 LOGDIR="${BIOOTON_LOGDIR:-}"
 MAX_CONCURRENT="${BIOOTON_STEP2_VARIANT_CONCURRENCY:-}"
-TIME_OVERRIDE="${BIOOTON_STEP2_VARIANT_TIME_OVERRIDE:-}"
+VARIANT_CPUS="${BIOOTON_STEP2_VARIANT_CPUS:-16}"
+VARIANT_MEMORY="${BIOOTON_STEP2_VARIANT_MEMORY:-64G}"
+VARIANT_TIME="${BIOOTON_STEP2_VARIANT_TIME:-${BIOOTON_STEP2_VARIANT_TIME_OVERRIDE:-24:00:00}}"
 
 if [[ ! -x "${PYTHON}" ]]; then
   PYTHON="$(bash "${PIPELINE_DIR}/bootstrap_env.sh" | tail -n 1)"
@@ -46,22 +48,16 @@ force_args=()
 "${PYTHON}" "${PIPELINE_DIR}/tools/pipeline_lock.py" \
   --config "${CONFIG}" acquire --run-id "${RUN_ID}" --owner-pid "$$"
 
-walltime() {
-  if [[ -n "${TIME_OVERRIDE}" ]]; then echo "${TIME_OVERRIDE}"; else echo "$1"; fi
-}
-
-submit_array() {
-  local name="$1" stage="$2" cpus="$3" requested_time="$4" dependency="$5"
-  local dependency_args=()
-  [[ -n "${dependency}" ]] && dependency_args=(--dependency="${dependency}")
+submit_variant_array() {
   sbatch --parsable \
-    --job-name="${name}" --partition="${PARTITION}" --constraint=LSDF \
-    --nodes=1 --ntasks=1 --cpus-per-task="${cpus}" --time="$(walltime "${requested_time}")" \
+    --job-name="bio_v2all" --partition="${PARTITION}" --constraint=LSDF \
+    --nodes=1 --ntasks=1 --cpus-per-task="${VARIANT_CPUS}" \
+    --mem="${VARIANT_MEMORY}" --time="${VARIANT_TIME}" \
     --array="0-${LAST_TASK}%${MAX_CONCURRENT}" \
-    --output="${LOGDIR}/${STAMP}_${name}_%A_%a.out" \
-    --error="${LOGDIR}/${STAMP}_${name}_%A_%a.err" \
-    "${account_args[@]}" "${dependency_args[@]}" \
-    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1; '${PYTHON}' tools/step2_variants.py --config '${CONFIG}' --python '${PYTHON}' --stage '${stage}' --task-index \${SLURM_ARRAY_TASK_ID} ${force_args[*]}"
+    --output="${LOGDIR}/${STAMP}_bio_v2all_%A_%a.out" \
+    --error="${LOGDIR}/${STAMP}_bio_v2all_%A_%a.err" \
+    "${account_args[@]}" \
+    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}'; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1; '${PYTHON}' tools/step2_variants.py --config '${CONFIG}' --python '${PYTHON}' --all-stages --task-index \${SLURM_ARRAY_TASK_ID} ${force_args[*]}"
 }
 
 submit_job() {
@@ -73,19 +69,15 @@ submit_job() {
   [[ -n "${dependency}" ]] && dependency_args=(--dependency="${dependency}")
   sbatch --parsable \
     --job-name="${name}" --partition="${PARTITION}" --constraint=LSDF \
-    --nodes=1 --ntasks=1 --cpus-per-task="${cpus}" --time="$(walltime "${requested_time}")" \
+    --nodes=1 --ntasks=1 --cpus-per-task="${cpus}" --time="${requested_time}" \
     --output="${LOGDIR}/${STAMP}_${name}_%j.out" \
     --error="${LOGDIR}/${STAMP}_${name}_%j.err" \
     "${account_args[@]}" "${dependency_args[@]}" \
-    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; '${PYTHON}' '${target}' --config '${CONFIG}' ${job_force}"
+    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}'; '${PYTHON}' '${target}' --config '${CONFIG}' ${job_force}"
 }
 
-j20="$(submit_array bio_v20 2_0 16 04:00:00 '')"
-j21="$(submit_array bio_v21 2_1 16 06:00:00 "afterany:${j20}")"
-j22="$(submit_array bio_v22 2_2 2 01:00:00 "afterany:${j21}")"
-j23="$(submit_array bio_v23 2_3 3 01:00:00 "afterany:${j21}")"
-j24="$(submit_array bio_v24 2_4 16 08:00:00 "afterany:${j21}")"
-j71="$(submit_job bio_vmaster 4 02:00:00 "afterany:${j22}:${j23}:${j24}" "${PIPELINE_DIR}/scripts/Step_7_1_update_formation_variant_table.py")"
+j2all="$(submit_variant_array)"
+j71="$(submit_job bio_vmaster 4 02:00:00 "afterany:${j2all}" "${PIPELINE_DIR}/scripts/Step_7_1_update_formation_variant_table.py")"
 j70="$(submit_job bio_master 2 01:00:00 "afterany:${j71}" "${PIPELINE_DIR}/scripts/Step_7_0_update_master_table.py" 0)"
 junlock="$(sbatch --parsable \
   --job-name=bio_vunlock --partition="${PARTITION}" --constraint=LSDF \
@@ -98,11 +90,8 @@ junlock="$(sbatch --parsable \
 
 cat <<EOF
 Submitted ${TASK_COUNT} isolated Step-2 variants (${MODE}).
-Step 2_0 array : ${j20}
-Step 2_1 array : ${j21}
-Step 2_2 array : ${j22}
-Step 2_3 array : ${j23}
-Step 2_4 array : ${j24}
+Step 2 all array: ${j2all}
+Resources       : ${VARIANT_CPUS} CPUs, ${VARIANT_MEMORY}, ${VARIANT_TIME}, max ${MAX_CONCURRENT} parallel
 Variant master : ${j71}
 Main master    : ${j70}
 Unlock         : ${junlock}
