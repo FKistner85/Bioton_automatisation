@@ -73,6 +73,9 @@ def test_normalized_variant_table() -> None:
                 {
                     "id": [1, 2],
                     "grid_id": ["g1", "g2"],
+                    "inside_lrt_polygon": [True, False],
+                    "lrt_polygon_count": [1, 0],
+                    "lrt_codes": ["9110", ""],
                     "majority_formation": ["Forests", "Grassland"],
                     "majority_formation_status": ["A", "B"],
                     "majority_value": [7000, 6000],
@@ -94,6 +97,9 @@ def test_normalized_variant_table() -> None:
         assert set(table["lrt_variant"]) == {"primary", "alternative"}
         assert table.groupby("dawn_chorus_id").size().eq(2).all()
         assert table["grid_100m_has_majority_formation"].all()
+        assert int(table["inside_lrt_polygon"].sum()) == 2
+        summary = pd.read_csv(outputs / "Bio_O_Ton_Variant_Summary.csv")
+        assert summary["recordings_directly_in_lrt_polygon"].eq(1).all()
         assert not table["variant_10m_product_exists"].any()
 
 

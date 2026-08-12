@@ -74,6 +74,16 @@ MASTER_COLUMNS = [
     "grid_100m_id",
     "grid_100m_assignment_exists",
     "grid_100m_has_majority_formation",
+    "inside_lrt_polygon",
+    "lrt_polygon_count",
+    "lrt_code_count",
+    "lrt_formation_count",
+    "lrt_status_count",
+    "lrt_mapping_year_count",
+    "lrt_codes",
+    "lrt_formations",
+    "lrt_conservation_statuses",
+    "lrt_mapping_years",
     "majority_formation_100m",
     "majority_formation_status_100m",
     "majority_value_100m",
@@ -113,6 +123,8 @@ MASTER_COLUMNS = [
     "top_species_model_support",
     "ready_for_general_analysis",
     "ready_for_formation_analysis_100m",
+    "ready_for_direct_lrt_analysis",
+    "ready_for_formation_weather_raster_analysis_100m",
     "ready_for_formation_analysis_10m",
     "ready_for_multimodal_analysis",
     "ready_for_bioacoustic_analysis",
@@ -829,6 +841,16 @@ def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFr
             "grid_100m_id",
             "grid_100m_assignment_exists",
             "grid_100m_has_majority_formation",
+            "inside_lrt_polygon",
+            "lrt_polygon_count",
+            "lrt_code_count",
+            "lrt_formation_count",
+            "lrt_status_count",
+            "lrt_mapping_year_count",
+            "lrt_codes",
+            "lrt_formations",
+            "lrt_conservation_statuses",
+            "lrt_mapping_years",
             "majority_formation_100m",
             "majority_formation_status_100m",
             "majority_value_100m",
@@ -839,6 +861,8 @@ def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFr
             table[column] = pd.NA
         table["grid_100m_assignment_exists"] = False
         table["grid_100m_has_majority_formation"] = False
+        table["inside_lrt_polygon"] = False
+        table["lrt_polygon_count"] = 0
         return table
 
     grid_col = config.get("point_lrt_assignment", {}).get("grid_id_column", "grid_id")
@@ -846,6 +870,16 @@ def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFr
         "dawn_chorus_id",
         grid_col,
         "inside_majority_grid",
+        "inside_lrt_polygon",
+        "lrt_polygon_count",
+        "lrt_code_count",
+        "lrt_formation_count",
+        "lrt_status_count",
+        "lrt_mapping_year_count",
+        "lrt_codes",
+        "lrt_formations",
+        "lrt_conservation_statuses",
+        "lrt_mapping_years",
         "majority_formation",
         "Majority_formation",
         "majority_formation_status",
@@ -862,6 +896,12 @@ def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFr
     result["grid_100m_assignment_exists"] = result["grid_100m_id"].notna()
     result["majority_formation_100m"] = result.get("majority_formation", result.get("Majority_formation", pd.NA))
     result["grid_100m_has_majority_formation"] = result["majority_formation_100m"].notna()
+    result["inside_lrt_polygon"] = bool_series(
+        result.get("inside_lrt_polygon", pd.Series(False, index=result.index))
+    )
+    result["lrt_polygon_count"] = pd.to_numeric(
+        result.get("lrt_polygon_count", pd.Series(0, index=result.index)), errors="coerce"
+    ).fillna(0).astype("Int64")
     result["majority_formation_status_100m"] = result.get("majority_formation_status", pd.NA)
 
     if "majority_value" in result.columns:
@@ -1137,6 +1177,13 @@ def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
         table["ready_for_general_analysis"]
         & table["grid_100m_assignment_exists"].fillna(False).astype(bool)
         & table["grid_100m_has_majority_formation"].fillna(False).astype(bool)
+    )
+    table["ready_for_direct_lrt_analysis"] = (
+        table["ready_for_general_analysis"]
+        & table["inside_lrt_polygon"].fillna(False).astype(bool)
+    )
+    table["ready_for_formation_weather_raster_analysis_100m"] = (
+        table["ready_for_formation_analysis_100m"]
         & table["weather_raster_hostrada_100m_exists"].fillna(False).astype(bool)
         & ~table["weather_raster_hostrada_100m_has_issues"].fillna(True).astype(bool)
     )
@@ -1173,10 +1220,6 @@ def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
                 codes.append(f"{prefix}_issue")
         if not bool(row.get("grid_100m_has_majority_formation", False)):
             codes.append("grid_100m_missing_majority_formation")
-        if not bool(row.get("weather_raster_hostrada_100m_exists", False)):
-            codes.append("weather_raster_hostrada_100m_missing")
-        elif bool(row.get("weather_raster_hostrada_100m_has_issues", True)):
-            codes.append("weather_raster_hostrada_100m_issue")
         if not bool(row.get("grid_10m_has_majority_formation", False)):
             codes.append("grid_10m_missing_majority_formation")
         blocking.append(join_codes(codes))

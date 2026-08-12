@@ -698,6 +698,15 @@ def main() -> int:
         if hostrada_local
         else ["execution_policy:horeka_only"]
     )
+    hostrada_raster_enabled = bool(
+        config.get("hostrada_raster_products", {}).get("enabled", False)
+    )
+    hostrada_raster_run = hostrada_local and hostrada_raster_enabled
+    hostrada_raster_reasons = (
+        ["annual_hostrada_raster_branch_enabled"]
+        if hostrada_raster_run
+        else ["optional_hostrada_raster_branch_disabled"]
+    )
 
     steps = {
         "step_1_metadata": {
@@ -747,28 +756,16 @@ def main() -> int:
             "ids_file": id_files["weather"],
         },
         "step_5_3_hostrada_monthly": {
-            "run": hostrada_local,
-            "reasons": (
-                ["remote_monthly_reconciliation"]
-                if hostrada_local
-                else ["execution_policy:horeka_only"]
-            ),
+            "run": hostrada_raster_run,
+            "reasons": hostrada_raster_reasons,
         },
         "step_5_4_hostrada_rasters": {
-            "run": hostrada_local,
-            "reasons": (
-                ["checkpointed_raster_reconciliation"]
-                if hostrada_local
-                else ["execution_policy:horeka_only"]
-            ),
+            "run": hostrada_raster_run,
+            "reasons": hostrada_raster_reasons,
         },
         "step_5_5_hostrada_raster_qc": {
-            "run": hostrada_local,
-            "reasons": (
-                ["incremental_raster_quality_reconciliation"]
-                if hostrada_local
-                else ["execution_policy:horeka_only"]
-            ),
+            "run": hostrada_raster_run,
+            "reasons": hostrada_raster_reasons,
         },
         "step_6_0_bioacoustic_model_preflight": {
             "run": bio_enabled and (

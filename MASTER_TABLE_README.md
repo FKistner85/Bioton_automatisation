@@ -110,6 +110,10 @@ Readmes/validation_and_comparison/
 | `grid_100m_id` | 100m-Gridzelle, der der Recording-Punkt in Step 2_2 zugeordnet wurde. |
 | `grid_100m_assignment_exists` | `True`, wenn eine 100m-Grid-ID fuer den Punkt vorhanden ist. |
 | `grid_100m_has_majority_formation` | `True`, wenn fuer die 100m-Zelle eine Majority Formation vorhanden ist. |
+| `inside_lrt_polygon` | `True`, wenn der Recording-Punkt direkt innerhalb mindestens eines bereinigten LRT-Polygons liegt; dies ist strenger als die Grid-Zuordnung. |
+| `lrt_polygon_count` | Anzahl direkter LRT-Polygon-Treffer des Recording-Punkts. |
+| `lrt_code_count`, `lrt_formation_count`, `lrt_status_count`, `lrt_mapping_year_count` | Anzahl unterschiedlicher Attribute der direkt getroffenen LRT-Polygone. |
+| `lrt_codes`, `lrt_formations`, `lrt_conservation_statuses`, `lrt_mapping_years` | Zusammengefasste Attribute der direkt getroffenen LRT-Polygone. |
 | `majority_formation_100m` | Formation mit groesstem Flaechenanteil in der 100m-Zelle. |
 | `majority_formation_status_100m` | Haeufigster Conservation Status innerhalb der 100m-Majority-Formation. |
 | `majority_value_100m` | Anteil der 100m-Majority-Formation in Centi-Prozent. `10000` bedeutet 100.00 Prozent. |
@@ -148,7 +152,9 @@ Readmes/validation_and_comparison/
 | `top_species_scientific` | Wissenschaftlicher Name des hoechst gerankten aggregierten Taxons. |
 | `top_species_model_support` | Anzahl Modelle, die das Top-Taxon oberhalb des konfigurierten Schwellenwerts gemeldet haben. |
 | `ready_for_general_analysis` | `True`, wenn ID, Zeit, Koordinaten, Audio, Punktwetter und Sentinel technisch vorhanden und ohne Issue sind. Fotos und Formation sind hier nicht blockierend. |
-| `ready_for_formation_analysis_100m` | `True`, wenn `ready_for_general_analysis` gilt, eine 100m-Majority-Formation vorhanden ist und die globalen HOSTRADA-100m-Raster vorhanden sowie ohne QC-Issue sind. |
+| `ready_for_formation_analysis_100m` | `True`, wenn `ready_for_general_analysis` gilt und eine 100m-Majority-Formation vorhanden ist. HOSTRADA-Flaechenraster blockieren diese fachliche Formation-Readiness nicht. |
+| `ready_for_direct_lrt_analysis` | `True`, wenn `ready_for_general_analysis` gilt und der Recording-Punkt direkt in einem LRT-Polygon liegt. |
+| `ready_for_formation_weather_raster_analysis_100m` | Optionale kombinierte Readiness aus 100m-Formation und technisch sauberen HOSTRADA-100m-Rastern. |
 | `ready_for_formation_analysis_10m` | `True`, wenn `ready_for_general_analysis` gilt und eine 10m-Majority-Formation vorhanden ist. |
 | `ready_for_multimodal_analysis` | `True`, wenn `ready_for_general_analysis` gilt und ein technisch unproblematisches Foto vorhanden ist. |
 | `ready_for_bioacoustic_analysis` | `True`, wenn ein technisch valides Audio vorliegt, Step 6 ohne Issue abgeschlossen wurde und alle erforderlichen Modelle vollstaendig sind. Diese Flag ist bewusst unabhaengig von Wetter, Sentinel und Formation. |
@@ -194,7 +200,8 @@ Sentinel-2 existiert und hat keine technischen Issues
 ```
 
 `ready_for_formation_analysis_100m` setzt zusaetzlich eine vorhandene
-100m-Majority-Formation und technisch saubere HOSTRADA-100m-Raster voraus.
+100m-Majority-Formation voraus. Die optionale Rasterwetter-Kombination wird
+separat als `ready_for_formation_weather_raster_analysis_100m` ausgewiesen.
 `ready_for_formation_analysis_10m` setzt eine vorhandene 10m-Majority-Formation
 voraus; ein 10m-Wetterraster existiert in dieser Pipeline bewusst nicht.
 

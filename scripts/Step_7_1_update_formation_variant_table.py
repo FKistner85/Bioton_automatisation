@@ -33,6 +33,10 @@ from step2_variants import prepare
 
 VARIANT_COLUMNS = [
     "dawn_chorus_id",
+    "datetime_local",
+    "datetime_utc",
+    "recording_year",
+    "recording_month",
     "lrt_variant",
     "lrt_variant_is_primary",
     "source_gpkg",
@@ -40,9 +44,22 @@ VARIANT_COLUMNS = [
     "variant_10m_product_exists",
     "variant_row_count",
     "variant_complete_recording_count",
+    "variant_majority_grid_100m_count",
+    "variant_majority_grid_10m_count",
+    "variant_lrt_polygon_count",
     "grid_100m_id",
     "grid_100m_assignment_exists",
     "grid_100m_has_majority_formation",
+    "inside_lrt_polygon",
+    "lrt_polygon_count",
+    "lrt_code_count",
+    "lrt_formation_count",
+    "lrt_status_count",
+    "lrt_mapping_year_count",
+    "lrt_codes",
+    "lrt_formations",
+    "lrt_conservation_statuses",
+    "lrt_mapping_years",
     "majority_formation_100m",
     "majority_formation_status_100m",
     "majority_value_100m",
@@ -60,8 +77,48 @@ VARIANT_COLUMNS = [
     "majority_disputed_10m",
     "formation_100m_10m_agree",
     "formation_status_100m_10m_agree",
+    "metadata_status",
+    "sound_exists",
+    "sound_status",
+    "sound_has_issues",
+    "photo_exists",
+    "photo_status",
+    "photo_has_issues",
+    "sentinel_exists",
+    "sentinel_status",
+    "sentinel_has_issues",
+    "weather_point_exists",
+    "weather_point_status",
+    "weather_point_has_issues",
+    "bioacoustic_status",
+    "bioacoustic_has_issues",
+    "bioacoustic_required_models_complete",
+    "ready_for_general_analysis",
+    "ready_for_multimodal_analysis",
+    "ready_for_bioacoustic_analysis",
+    "record_blocking_issue_codes",
+    "record_status",
+    "release_status",
     "variant_record_status",
     "updated_utc",
+]
+
+SCHEMA_VERSION = 2
+
+
+RECORDING_CONTEXT_COLUMNS = [
+    column for column in VARIANT_COLUMNS
+    if column in {
+        "dawn_chorus_id", "datetime_local", "datetime_utc", "recording_year",
+        "recording_month", "metadata_status", "sound_exists", "sound_status",
+        "sound_has_issues", "photo_exists", "photo_status", "photo_has_issues",
+        "sentinel_exists", "sentinel_status", "sentinel_has_issues",
+        "weather_point_exists", "weather_point_status", "weather_point_has_issues",
+        "bioacoustic_status", "bioacoustic_has_issues",
+        "bioacoustic_required_models_complete", "ready_for_general_analysis",
+        "ready_for_multimodal_analysis", "ready_for_bioacoustic_analysis",
+        "record_blocking_issue_codes", "record_status", "release_status",
+    }
 ]
 
 
@@ -108,13 +165,71 @@ def load_metadata(config: dict[str, Any]) -> pd.DataFrame:
     missing = required - set(metadata.columns)
     if missing:
         raise KeyError(f"Metadata missing columns: {sorted(missing)}")
-    return metadata[["dawn_chorus_id", "lat", "lon"]].drop_duplicates(
-        "dawn_chorus_id"
-    )
+    keep = [column for column in ["dawn_chorus_id", "lat", "lon", "datetime_local", "datetime_utc"] if column in metadata.columns]
+    return metadata[keep].drop_duplicates("dawn_chorus_id")
+
+
+def load_recording_context(config: dict[str, Any], metadata: pd.DataFrame) -> pd.DataFrame:
+    """Load non-formation dataset status once and repeat it across LRT variants."""
+    master_cfg = config.get("master_table", {})
+    candidates = [master_cfg.get("output_parquet"), master_cfg.get("output_csv")]
+    context = pd.DataFrame()
+    for candidate in candidates:
+        if not candidate or not Path(candidate).is_file():
+            continue
+        path = Path(candidate)
+        try:
+            context = pd.read_parquet(path) if path.suffix.lower() == ".parquet" else pd.read_csv(path, low_memory=False)
+            break
+        except Exception:
+            continue
+    if context.empty:
+        context = metadata.copy()
+    context = normalise_id_column(context, ["dawn_chorus_id", "id"])
+    for time_column in ["datetime_local", "datetime_utc"]:
+        if time_column not in context.columns and time_column in metadata.columns:
+            context = context.merge(metadata[["dawn_chorus_id", time_column]], on="dawn_chorus_id", how="left")
+    local_values = context["datetime_local"] if "datetime_local" in context.columns else pd.Series(pd.NaT, index=context.index)
+    utc_values = context["datetime_utc"] if "datetime_utc" in context.columns else pd.Series(pd.NaT, index=context.index)
+    local_time = pd.to_datetime(local_values, errors="coerce")
+    if local_time.isna().all():
+        local_time = pd.to_datetime(utc_values, errors="coerce", utc=True)
+    context["recording_year"] = local_time.dt.year.astype("Int64")
+    context["recording_month"] = local_time.dt.month.astype("Int64")
+    keep = [column for column in RECORDING_CONTEXT_COLUMNS if column in context.columns]
+    return context[keep].drop_duplicates("dawn_chorus_id")
+
+
+def parquet_row_count(path: Path) -> int:
+    if not path.is_file():
+        return 0
+    try:
+        import pyarrow.parquet as pq
+        return int(pq.ParquetFile(path).metadata.num_rows)
+    except Exception:
+        return int(len(pd.read_parquet(path, columns=[])))
+
+
+def csv_data_row_count(path: Path) -> int:
+    if not path.is_file():
+        return 0
+    with path.open("rb") as handle:
+        return max(0, sum(1 for _line in handle) - 1)
+
+
+def gpkg_feature_count(path: Path, layer: str | None = None) -> int:
+    if not path.is_file():
+        return 0
+    try:
+        import pyogrio
+        return int(pyogrio.read_info(path, layer=layer).get("features", 0))
+    except Exception:
+        return 0
 
 
 def build_variant_rows(
     metadata: pd.DataFrame,
+    context: pd.DataFrame,
     config: dict[str, Any],
     suffix: str,
     primary: str,
@@ -124,6 +239,12 @@ def build_variant_rows(
     ten_m = Path(config["susi_10m_products"]["final_parquet"])
     table = add_100m_formation(metadata.copy(), config)
     table = add_10m_formation(table, config)
+    table = table.merge(context, on="dawn_chorus_id", how="left", suffixes=("", "_context"))
+    for column in RECORDING_CONTEXT_COLUMNS:
+        context_column = f"{column}_context"
+        if context_column in table.columns:
+            table[column] = table[context_column].combine_first(table.get(column, pd.Series(pd.NA, index=table.index)))
+            table = table.drop(columns=context_column)
     table["lrt_variant"] = suffix
     table["lrt_variant_is_primary"] = suffix == primary
     table["source_gpkg"] = str(source_gpkg)
@@ -134,6 +255,11 @@ def build_variant_rows(
     complete = assignment.is_file() and ten_m.is_file()
     complete_ids = int(table["dawn_chorus_id"].nunique()) if complete else 0
     table["variant_complete_recording_count"] = complete_ids if complete else 0
+    table["variant_majority_grid_100m_count"] = csv_data_row_count(Path(config["lrt_grid_merge"]["output_csv"]))
+    table["variant_majority_grid_10m_count"] = parquet_row_count(ten_m)
+    table["variant_lrt_polygon_count"] = gpkg_feature_count(
+        Path(config["lrt_cleaning"]["output_gpkg"]), config["lrt_cleaning"].get("output_layer")
+    )
     table["formation_100m_10m_agree"] = (
         table["majority_formation_100m"].notna()
         & table["majority_formation_10m"].notna()
@@ -181,8 +307,15 @@ def main() -> int:
                 output_csv.parent / "Bio_O_Ton_Variant_Summary.csv",
             )
         )
+        temporal_summary_csv = Path(
+            settings.get(
+                "temporal_summary_csv",
+                output_csv.parent / "Bio_O_Ton_Variant_Temporal_Summary.csv",
+            )
+        )
         part_dir = Path(settings["output_root"]) / "_master_parts"
         metadata = load_metadata(base)
+        context = load_recording_context(base, metadata)
         parts: list[Path] = []
         rebuilt: list[str] = []
 
@@ -193,10 +326,12 @@ def main() -> int:
             part = part_dir / f"{variant.suffix}.parquet"
             state_path = part_dir / f"{variant.suffix}.state.json"
             expected_state = {
+                "schema_version": SCHEMA_VERSION,
                 "source_gpkg": fingerprint(variant.source_gpkg),
                 "assignment_100m": fingerprint(assignment),
                 "formation_10m": fingerprint(ten_m),
                 "metadata": fingerprint(Path(base["point_lrt_assignment"]["metadata_csv"])),
+                "master_context": fingerprint(Path(base.get("master_table", {}).get("output_parquet", ""))),
             }
             previous = {}
             if state_path.is_file():
@@ -204,6 +339,7 @@ def main() -> int:
             if args.force or not part.is_file() or previous != expected_state:
                 rows = build_variant_rows(
                     metadata,
+                    context,
                     config,
                     variant.suffix,
                     primary,
@@ -249,12 +385,40 @@ def main() -> int:
                 product_100m_exists=("variant_100m_product_exists", "first"),
                 product_10m_exists=("variant_10m_product_exists", "first"),
                 record_status=("variant_record_status", "first"),
+                majority_grid_100m_count=("variant_majority_grid_100m_count", "first"),
+                majority_grid_10m_count=("variant_majority_grid_10m_count", "first"),
+                lrt_polygon_count=("variant_lrt_polygon_count", "first"),
+                recordings_in_majority_grid_100m=("grid_100m_has_majority_formation", "sum"),
+                recordings_in_majority_grid_10m=("grid_10m_has_majority_formation", "sum"),
+                recordings_directly_in_lrt_polygon=("inside_lrt_polygon", "sum"),
+                recordings_100m_10m_agree=("formation_100m_10m_agree", "sum"),
+                recordings_general_ready=("ready_for_general_analysis", "sum"),
+                recordings_multimodal_ready=("ready_for_multimodal_analysis", "sum"),
+                recordings_bioacoustic_ready=("ready_for_bioacoustic_analysis", "sum"),
             )
             .reset_index()
             .rename(columns={"lrt_variant": "suffix"})
         )
         variant_stats["computed_at"] = utc_now()
         write_csv_atomic(variant_stats, variant_summary_csv)
+
+        temporal_source = combined.dropna(subset=["recording_year"]).copy()
+        temporal_source["recording_year"] = pd.to_numeric(
+            temporal_source["recording_year"], errors="coerce"
+        ).astype("Int64")
+        temporal_stats = (
+            temporal_source.groupby(["recording_year", "lrt_variant"], dropna=False, sort=True)
+            .agg(
+                recording_count=("dawn_chorus_id", "nunique"),
+                recordings_in_majority_grid_100m=("grid_100m_has_majority_formation", "sum"),
+                recordings_in_majority_grid_10m=("grid_10m_has_majority_formation", "sum"),
+                recordings_directly_in_lrt_polygon=("inside_lrt_polygon", "sum"),
+                recordings_general_ready=("ready_for_general_analysis", "sum"),
+            )
+            .reset_index()
+        )
+        temporal_stats["computed_at"] = utc_now()
+        write_csv_atomic(temporal_stats, temporal_summary_csv)
         summary = {
             "created_utc": utc_now(),
             "primary_suffix": primary,
@@ -271,6 +435,7 @@ def main() -> int:
             "output_csv": str(output_csv),
             "output_parquet": str(output_parquet),
             "variant_summary_csv": str(variant_summary_csv),
+            "temporal_summary_csv": str(temporal_summary_csv),
         }
         summary_json.parent.mkdir(parents=True, exist_ok=True)
         summary_json.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
@@ -279,6 +444,7 @@ def main() -> int:
         print(f"CSV                : {output_csv}")
         print(f"Parquet            : {output_parquet}")
         print(f"Variant summary    : {variant_summary_csv}")
+        print(f"Temporal summary   : {temporal_summary_csv}")
         return 0
     except Exception as exc:
         print(f"ERROR in Step 7_1 formation variant table: {exc}", file=sys.stderr)

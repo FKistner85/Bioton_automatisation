@@ -41,6 +41,10 @@ bash submit_step2_variants_horeka.sh add_new_ids
 
 Ausgaben liegen unter `outputs/step_2_variants/<suffix>/`; die normalisierte
 Vergleichstabelle liegt unter `outputs/Bio_O_Ton_Formation_Variants.*`.
+Sie enthaelt je Recording und Variante auch direkte LRT-Polygon-Treffer sowie
+die Statusspalten der uebrigen Datensaetze. Fuer schnelle Analysen werden
+zusaetzlich `Bio_O_Ton_Variant_Summary.csv` (je Variante) und
+`Bio_O_Ton_Variant_Temporal_Summary.csv` (je Variante und Jahr) geschrieben.
 Details: [`Readmes/step_2_variants/README_DE.md`](Readmes/step_2_variants/README_DE.md).
 
 Optional kann fuer einen Checkpoint-Test jede Slurm-Laufzeit auf 30 Minuten
@@ -224,13 +228,22 @@ LSDF-Bestand. Drive-Dateien werden mit `id`, `md5Checksum`, `modifiedTime` und
 
 ## HOSTRADA Raster
 
-Step 5.3 bis 5.5 sind Teil des Haupt-DAG:
+Der regulaere Workflow benoetigt fuer neue Recordings nur Step 5.1
+(Inventar) und Step 5.2 (Punktwetter). Die flaechige Rasterstrecke 5.3 bis 5.5
+ist ein optionaler, typischerweise jaehrlicher Horeka-Lauf und ist in
+`config.horeka.json` standardmaessig deaktiviert:
 
 ```text
 Step 5.3: DWD-Monats-NetCDFs spiegeln
 Step 5.4: vollstaendige Variable/Jahr-Kombinationen als Slurm-Array in 100m-Tiles umrechnen
 Step 5.5: alle Variablen rekursiv inventarisieren und qualitaetspruefen
 ```
+
+Zum bewussten Jahresupdate wird `hostrada_raster_products.enabled` temporaer
+auf `true` gesetzt. Diese Rasterprodukte blockieren weder die allgemeine noch
+die 100m-Formation-Readiness. Falls sie vorhanden sind, wird ihre kombinierte
+Readiness separat als `ready_for_formation_weather_raster_analysis_100m`
+ausgewiesen. Die Punktwetterdateien bleiben davon unberuehrt.
 
 Manuelle Einzelstarts bleiben moeglich:
 
@@ -297,10 +310,12 @@ Nach der finalen Validierung erzeugt der Workflow statische HTML-Reports unter:
 outputs/step_9_visual_reports/index.html
 ```
 
-Die Uebersicht verlinkt auf eigene Seiten fuer Step 1 bis 7. Sie zeigt nur
+Die Uebersicht verlinkt auf eigene Seiten fuer Step 1 bis 7, einschliesslich
+einer eigenen Variantenanalyse. Sie zeigt nur
 kompakte, fachlich relevante Kennzahlen: Metadatenstatus, Formation- und
 Dispute-Verteilungen, Medien-/Sentinel-/Wetterprobleme, Raster-QC,
-Bioakustik-Abdeckung und Mastertable-Readiness. Bei noch laufenden oder
+Bioakustik-Abdeckung, direkte Polygon-/100m-/10m-Zuordnungen, zeitliche
+Variantenverlaeufe und Mastertable-Readiness. Bei noch laufenden oder
 fehlenden Schritten wird dies sichtbar markiert; der Report selbst bricht nicht
 ab.
 

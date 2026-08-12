@@ -138,9 +138,12 @@ def test_master_table_minimal_build() -> None:
         assert result.loc[0, "weather_point_exists"] in {True, "True", "true", 1}
         assert result.loc[0, "weather_raster_hostrada_100m_issue_codes"] == "missing_raster"
         assert result.loc[0, "weather_point_status"] == "validated"
-        assert "weather_raster_hostrada_100m_missing" in str(
+        assert "weather_raster_hostrada_100m_missing" not in str(
             result.loc[0, "record_blocking_issue_codes"]
         )
+        assert result.loc[0, "ready_for_formation_weather_raster_analysis_100m"] in {
+            False, "False", "false", 0
+        }
         assert result.loc[0, "record_status"] in {"partial", "has_issues"}
         events = pd.read_csv(status_events)
         assert set(events["field"]) == {"record_lifecycle"}

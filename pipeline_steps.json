@@ -250,7 +250,6 @@
         "step_3_1_photo_download",
         "step_4_0_sentinel2_inventory",
         "step_5_1_weather_inventory",
-        "step_5_5_hostrada_raster_qc",
         "step_6_6_bioacoustic_qc"
       ],
       "input_sections": ["master_table"],
@@ -268,7 +267,9 @@
       "outputs": [
         "lrt_variants.master_csv",
         "lrt_variants.master_parquet",
-        "lrt_variants.master_summary_json"
+        "lrt_variants.master_summary_json",
+        "lrt_variants.variant_summary_csv",
+        "lrt_variants.temporal_summary_csv"
       ]
     }
   }

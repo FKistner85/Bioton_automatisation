@@ -87,10 +87,11 @@ j23="$(submit_array bio_v23 2_3 3 01:00:00 "afterany:${j21}")"
 j24="$(submit_array bio_v24 2_4 16 08:00:00 "afterany:${j21}")"
 j71="$(submit_job bio_vmaster 4 02:00:00 "afterany:${j22}:${j23}:${j24}" "${PIPELINE_DIR}/scripts/Step_7_1_update_formation_variant_table.py")"
 j70="$(submit_job bio_master 2 01:00:00 "afterany:${j71}" "${PIPELINE_DIR}/scripts/Step_7_0_update_master_table.py" 0)"
+jvisual="$(submit_job bio_vvisual 1 00:15:00 "afterany:${j70}" "${PIPELINE_DIR}/tools/generate_pipeline_visual_reports.py" 0)"
 junlock="$(sbatch --parsable \
   --job-name=bio_vunlock --partition="${PARTITION}" --constraint=LSDF \
   --nodes=1 --ntasks=1 --cpus-per-task=1 --time=00:05:00 \
-  --dependency="afterany:${j70}" \
+  --dependency="afterany:${jvisual}" \
   --output="${LOGDIR}/${STAMP}_bio_vunlock_%j.out" \
   --error="${LOGDIR}/${STAMP}_bio_vunlock_%j.err" \
   "${account_args[@]}" \
@@ -105,6 +106,7 @@ Step 2_3 array : ${j23}
 Step 2_4 array : ${j24}
 Variant master : ${j71}
 Main master    : ${j70}
+Visual report  : ${jvisual}
 Unlock         : ${junlock}
 
 Monitor: squeue -u "${USER}"
