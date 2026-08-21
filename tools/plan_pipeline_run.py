@@ -224,6 +224,59 @@ def inventory_problem_ids(path: Path) -> set[str]:
     }
 
 
+def inventory_baseline_ready(
+    config: dict[str, Any],
+    section_name: str,
+    output_keys: Iterable[str],
+) -> bool:
+    """Return whether an existing inventory can be reused without a new scan.
+
+    This check is intentionally cheap enough for the controller on a login
+    node. Source changes represented by Dawn Chorus fingerprints and existing
+    master-table problems are handled separately by the planner. A
+    ``from_scratch`` run still forces a complete filesystem reconciliation.
+    """
+    section = config.get(section_name, {})
+    if not isinstance(section, dict):
+        return False
+    state_value = str(section.get("state_file", "")).strip()
+    if not state_value:
+        return False
+    state_path = Path(state_value)
+    if not state_path.is_file() or state_path.stat().st_size == 0:
+        return False
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(state, dict) or not any(
+        key in state
+        for key in (
+            "source_files",
+            "source_tif_files",
+            "weather_files_found",
+        )
+    ):
+        return False
+    for key in output_keys:
+        value = str(section.get(key, "")).strip()
+        if not value:
+            return False
+        path = Path(value)
+        if not path.is_file() or path.stat().st_size == 0:
+            return False
+    return True
+
+
+def inventory_reconcile_needed(
+    mode: str,
+    affected_ids: dict[str, set[str]] | set[str],
+    baseline_ready: bool,
+) -> bool:
+    """Decide whether the expensive inventory Slurm step must run."""
+    return mode == "from_scratch" or bool(affected_ids) or not baseline_ready
+
+
 def read_json(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
@@ -708,6 +761,47 @@ def main() -> int:
         else ["optional_hostrada_raster_branch_disabled"]
     )
 
+    audio_baseline = inventory_baseline_ready(
+        config,
+        "audio_inventory",
+        ["detailed_log", "compact_log"],
+    )
+    photo_baseline = inventory_baseline_ready(
+        config,
+        "photo_inventory",
+        ["detailed_log", "compact_log"],
+    )
+    sentinel_baseline = inventory_baseline_ready(
+        config,
+        "sentinel2_inventory",
+        ["detailed_log", "compact_log"],
+    )
+    weather_baseline = inventory_baseline_ready(
+        config,
+        "weather_inventory",
+        ["detailed_log", "compact_log"],
+    )
+    audio_reconcile = inventory_reconcile_needed(
+        args.mode,
+        id_reasons["audio"],
+        audio_baseline,
+    )
+    photo_reconcile = inventory_reconcile_needed(
+        args.mode,
+        id_reasons["photo"],
+        photo_baseline,
+    )
+    sentinel_reconcile = inventory_reconcile_needed(
+        args.mode,
+        id_reasons["sentinel"],
+        sentinel_baseline,
+    )
+    weather_reconcile = hostrada_local and inventory_reconcile_needed(
+        args.mode,
+        id_reasons["weather"],
+        weather_baseline,
+    )
+
     steps = {
         "step_1_metadata": {
             "run": bool(id_reasons["metadata"]),
@@ -723,35 +817,47 @@ def main() -> int:
         },
         "step_2_3_grid_aggregation": {"run": run23, "reasons": reasons23},
         "step_2_4_10m_formation": {"run": run24, "reasons": reasons24},
-        "step_3_0_audio_inventory": {"run": True, "reasons": ["filesystem_reconciliation"]},
-        "step_3_0_photo_inventory": {"run": True, "reasons": ["filesystem_reconciliation"]},
+        "step_3_0_audio_inventory": {
+            "run": audio_reconcile,
+            "reasons": ["affected_ids_or_missing_inventory"] if audio_reconcile else [],
+        },
+        "step_3_0_photo_inventory": {
+            "run": photo_reconcile,
+            "reasons": ["affected_ids_or_missing_inventory"] if photo_reconcile else [],
+        },
         "step_3_1_audio_download": {
-            "run": True,
-            "reasons": ["fresh_inventory_selection"],
+            "run": audio_reconcile,
+            "reasons": ["fresh_inventory_selection"] if audio_reconcile else [],
             "ids_file": id_files["audio"],
         },
         "step_3_0_audio_inventory_post": {
-            "run": True,
-            "reasons": ["post_download_filesystem_reconciliation"],
+            "run": audio_reconcile,
+            "reasons": ["post_download_filesystem_reconciliation"] if audio_reconcile else [],
         },
         "step_3_1_photo_download": {
-            "run": True,
-            "reasons": ["fresh_inventory_selection"],
+            "run": photo_reconcile,
+            "reasons": ["fresh_inventory_selection"] if photo_reconcile else [],
             "ids_file": id_files["photo"],
         },
         "step_4_1_sentinel2_mirror": {
-            "run": True,
-            "reasons": ["remote_drive_reconciliation"],
+            "run": sentinel_reconcile,
+            "reasons": ["affected_ids_or_missing_inventory"] if sentinel_reconcile else [],
             "ids_file": id_files["sentinel"],
         },
-        "step_4_0_sentinel2_inventory": {"run": True, "reasons": ["filesystem_reconciliation"]},
-        "step_5_1_weather_inventory": {"run": hostrada_local, "reasons": hostrada_reasons},
+        "step_4_0_sentinel2_inventory": {
+            "run": sentinel_reconcile,
+            "reasons": ["filesystem_reconciliation"] if sentinel_reconcile else [],
+        },
+        "step_5_1_weather_inventory": {
+            "run": weather_reconcile,
+            "reasons": hostrada_reasons if weather_reconcile else [],
+        },
         "step_5_2_weather_download": {
-            "run": hostrada_local,
+            "run": weather_reconcile,
             "reasons": (
                 ["fresh_inventory_selection"]
-                if hostrada_local
-                else ["execution_policy:horeka_only"]
+                if weather_reconcile
+                else []
             ),
             "ids_file": id_files["weather"],
         },

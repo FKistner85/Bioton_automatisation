@@ -14,6 +14,9 @@ BIOACOUSTICS_GRES="${BIOOTON_BIOACOUSTICS_GRES:-}"
 BIOACOUSTICS_MEMORY="${BIOOTON_BIOACOUSTICS_MEMORY:-48G}"
 ACCOUNT="${BIOOTON_ACCOUNT:-}"
 TIME_OVERRIDE="${BIOOTON_PIPELINE_TIME_OVERRIDE:-}"
+HYBRID_CONTROLLER="${BIOOTON_HYBRID_CONTROLLER:-0}"
+SUBMISSION_FILE="${BIOOTON_SUBMISSION_FILE:-}"
+SLURM_DRY_RUN="${BIOOTON_SLURM_DRY_RUN:-0}"
 
 STEP2_CPUS="${BIOOTON_STEP2_CPUS:-16}"
 STEP24_CPUS="${BIOOTON_STEP24_CPUS:-16}"
@@ -89,10 +92,10 @@ fi
 [[ "${WEATHER_MAX_CONCURRENT}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid weather max concurrency: ${WEATHER_MAX_CONCURRENT}" >&2; exit 1; }
 mkdir -p "${LOGDIR}"
 BIOACOUSTICS_ENABLED="$("${PYTHON}" -c "import json; print('1' if json.load(open('${CONFIG}', encoding='utf-8')).get('bioacoustics', {}).get('enabled', True) else '0')")"
-if [[ "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ && ! -x "${BACPIPE_PYTHON}" ]]; then
+if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ && ! -x "${BACPIPE_PYTHON}" ]]; then
   BACPIPE_PYTHON="$(bash "${PIPELINE_DIR}/bootstrap_bacpipe_env.sh" | tail -n 1)"
 fi
-if [[ "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ ]]; then
+if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ ]]; then
   [[ -x "${BACPIPE_PYTHON}" ]] || { echo "Missing Bacpipe Python executable." >&2; exit 1; }
 fi
 
@@ -100,6 +103,13 @@ RUN_ID="${BIOOTON_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)_${USER:-user}_$$}"
 LOG_STAMP="${BIOOTON_LOG_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
 export BIOOTON_RUN_ID="${RUN_ID}"
 export PYTHONUNBUFFERED=1
+if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
+  export BIOOTON_DISABLE_BATCH_MASTER_UPDATES=1
+  [[ -n "${SUBMISSION_FILE}" ]] || {
+    echo "BIOOTON_SUBMISSION_FILE is required in hybrid-controller mode." >&2
+    exit 1
+  }
+fi
 
 account_args=()
 [[ -n "${ACCOUNT}" ]] && account_args=(--account="${ACCOUNT}")
@@ -123,6 +133,11 @@ submit_python() {
   local target="$6"
   shift 6
   local extra_args=("$@")
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "${job_name}" "${step_name}" "${PARTITION}" "${cpus}" "${walltime}" default "${dependency}" \
+      "${PYTHON}" "${PIPELINE_DIR}/${target}" --config "${CONFIG}" "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
@@ -151,6 +166,11 @@ submit_bash() {
   local target="$6"
   shift 6
   local extra_args=("$@")
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "${job_name}" "${step_name}" "${PARTITION}" "${cpus}" "${walltime}" default "${dependency}" \
+      bash "${PIPELINE_DIR}/${target}" "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
@@ -180,6 +200,11 @@ submit_external_python() {
   local target="$7"
   shift 7
   local extra_args=("$@")
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "${job_name}" "${step_name}" "${PARTITION}" "${cpus}" "${walltime}" default "${dependency}" \
+      "${external_python}" "${PIPELINE_DIR}/${target}" --config "${CONFIG}" "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
@@ -209,10 +234,16 @@ submit_bacpipe_array() {
   local max_concurrent="$7"
   shift 7
   local extra_args=("$@")
+  local last_task=$((task_count - 1))
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "${job_name}[0-${last_task}%${max_concurrent}]" "${step_name}" "${BIOACOUSTICS_PARTITION}" \
+      "${BIOACOUSTICS_CPUS}" "${walltime}" "${BIOACOUSTICS_MEMORY}" "${dependency}" \
+      "${BACPIPE_PYTHON}" "${PIPELINE_DIR}/${target}" --config "${CONFIG}" --task-index '<array-task-id>' "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
-  local last_task=$((task_count - 1))
 
   sbatch --parsable \
     --job-name="${job_name}" \
@@ -240,6 +271,12 @@ submit_bacpipe_job() {
   local target="$5"
   shift 5
   local extra_args=("$@")
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "${job_name}" "${step_name}" "${BIOACOUSTICS_PARTITION}" "${BIOACOUSTICS_CPUS}" \
+      "${walltime}" "${BIOACOUSTICS_MEMORY}" "${dependency}" \
+      "${BACPIPE_PYTHON}" "${PIPELINE_DIR}/${target}" --config "${CONFIG}" "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
@@ -268,10 +305,17 @@ submit_weather_array() {
   local ids_file="$4"
   shift 4
   local extra_args=("$@")
+  local last_task=$((task_count - 1))
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "bio_step52[0-${last_task}%${WEATHER_MAX_CONCURRENT}]" \
+      step_5_2_weather_download_array_task "${PARTITION}" "${STEP52_CPUS}" "${walltime}" default "${dependency}" \
+      "${PYTHON}" "${PIPELINE_DIR}/scripts/Step_5_2_download_weather_data.py" --config "${CONFIG}" \
+      --ids-file "${ids_file}" --task-index '<array-task-id>' --task-count "${task_count}" "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
-  local last_task=$((task_count - 1))
 
   sbatch --parsable \
     --job-name="bio_step52" \
@@ -295,10 +339,18 @@ submit_hostrada_raster_array() {
   local task_count="$3"
   shift 3
   local extra_args=("$@")
+  local last_task=$((task_count - 1))
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    dry_run_submit "bio_step54[0-${last_task}%${HOSTRADA_RASTER_MAX_CONCURRENT}]" \
+      step_5_4_hostrada_raster_array_task "${PARTITION}" "${HOSTRADA_RASTER_CPUS}" "${walltime}" \
+      "${HOSTRADA_RASTER_MEMORY}" "${dependency}" \
+      "${PYTHON}" "${PIPELINE_DIR}/tools/run_hostrada_raster_all.py" --config "${CONFIG}" \
+      --task-index '<array-task-id>' "${extra_args[@]}"
+    return
+  fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
   walltime="$(apply_override "${walltime}")"
-  local last_task=$((task_count - 1))
 
   sbatch --parsable \
     --job-name="bio_step54" \
@@ -321,7 +373,9 @@ afterany_jobs() {
   local ids=()
   local candidate
   for candidate in "$@"; do
-    [[ "${candidate}" =~ ^[0-9]+$ ]] && ids+=("${candidate}")
+    if [[ "${candidate}" =~ ^[0-9]+$ || ( "${SLURM_DRY_RUN}" == "1" && "${candidate}" == dryrun_* ) ]]; then
+      ids+=("${candidate}")
+    fi
   done
   if [[ "${#ids[@]}" -eq 0 ]]; then
     echo ""
@@ -338,6 +392,53 @@ afterok_jobs() {
   echo "${dependency/afterany:/afterok:}"
 }
 
+dry_run_submit() {
+  local job_name="$1"
+  local step_name="$2"
+  local partition="$3"
+  local cpus="$4"
+  local walltime="$5"
+  local memory="$6"
+  local dependency="$7"
+  shift 7
+  walltime="$(apply_override "${walltime}")"
+
+  printf 'HIER WUERDE SLURM STARTEN: job=%s step=%s partition=%s cpus=%s mem=%s time=%s dependency=%s\n' \
+    "${job_name}" "${step_name}" "${partition}" "${cpus}" "${memory}" "${walltime}" "${dependency:-none}" >&2
+  printf '  command:' >&2
+  printf ' %q' "$@" >&2
+  printf '\n' >&2
+  printf 'dryrun_%s\n' "${job_name}"
+}
+
+write_submission_file() {
+  local terminal_job="$1"
+  local lock_active="$2"
+  shift 2
+  "${PYTHON}" -c '
+import json, os, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+jobs = []
+for value in sys.argv[7:]:
+    if value.isdigit() and value not in jobs:
+        jobs.append(value)
+payload = {
+    "schema_version": "2026-08-21-horeka-submission-v1",
+    "mode": sys.argv[2],
+    "run_id": sys.argv[3],
+    "run_plan": sys.argv[4],
+    "terminal_job": sys.argv[5],
+    "lock_active": sys.argv[6] == "1",
+    "job_ids": jobs,
+    "git_commit": os.popen("git rev-parse HEAD 2>/dev/null").read().strip(),
+}
+path.parent.mkdir(parents=True, exist_ok=True)
+temporary = path.with_suffix(path.suffix + ".tmp")
+temporary.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+temporary.replace(path)
+' "${SUBMISSION_FILE}" "${MODE}" "${RUN_ID}" "${RUN_PLAN:-}" "${terminal_job}" "${lock_active}" "$@"
+}
+
 if [[ "${MODE}" == "susi_compare" ]]; then
   MODE="formation_compare"
 fi
@@ -347,15 +448,18 @@ if [[ "${MODE}" == "functionality_test" ]]; then
   job="$(submit_python bio_func functionality_test 2 "00:10:00" "" tools/functionality_test.py)"
   echo "Functionality test job: ${job}"
   echo "Workflow run ID: ${RUN_ID}"
-  echo "Monitor with: squeue -u ${USER}"
+  [[ "${SLURM_DRY_RUN}" == "1" ]] || echo "Monitor with: squeue -u ${USER:-unknown}"
   exit 0
 fi
 
 if [[ "${MODE}" == "formation_compare" ]]; then
   job="$(submit_bash bio_form_cmp formation_compare "${FORMATION_COMPARE_CPUS}" "02:00:00" "" run_formation_status_comparison.sh)"
+  if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
+    write_submission_file "${job}" 0 "${job}"
+  fi
   echo "Formation comparison job: ${job}"
   echo "Workflow run ID: ${RUN_ID}"
-  echo "Monitor with: squeue -u ${USER}"
+  [[ "${SLURM_DRY_RUN}" == "1" ]] || echo "Monitor with: squeue -u ${USER:-unknown}"
   exit 0
 fi
 
@@ -453,7 +557,6 @@ else
   t_master="00:30:00"
 fi
 
-SUBMISSION_STARTED=1
 metadata_ids="$(plan_ids metadata)"
 point_ids="$(plan_ids point_assignment)"
 audio_ids="$(plan_ids audio)"
@@ -462,16 +565,43 @@ weather_ids="$(plan_ids weather)"
 bioacoustic_ids="$(plan_ids bioacoustic)"
 sentinel_ids="$(plan_ids sentinel)"
 
+# Step 3 only reads configured media paths and the raw Dawn-Chorus table.
+# In hybrid mode this bounded path check runs on the tmux controller before any
+# Slurm work is queued.
+j3pre="skipped_plan"
+if [[ "$(plan_run step_3_0_audio_inventory)" == "1" || "$(plan_run step_3_0_photo_inventory)" == "1" || "$(plan_run step_3_1_audio_download)" == "1" || "$(plan_run step_3_1_photo_download)" == "1" ]]; then
+  if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
+    "${PYTHON}" "${PIPELINE_DIR}/tools/run_with_manifest.py" \
+      --config "${CONFIG}" --step-name step_3_path_preflight -- \
+      "${PYTHON}" "${PIPELINE_DIR}/tools/step3_path_preflight.py" --config "${CONFIG}"
+    j3pre="local_controller"
+  else
+    j3pre="$(submit_python bio_step3pre step_3_path_preflight 1 "00:10:00" "" tools/step3_path_preflight.py)"
+  fi
+fi
+
+if [[ "${SLURM_DRY_RUN}" != "1" ]]; then
+  SUBMISSION_STARTED=1
+fi
+
 # Master-table updates are serialized so concurrent Slurm jobs cannot overwrite
 # each other's partial results. Each update writes only the IDs relevant to its
 # completed upstream step; global grid/raster changes intentionally refresh all.
 jmaster_chain=""
+hybrid_master_deps=()
 submit_master_update() {
   local stage="$1"
   local upstream_job="$2"
   local ids_file="${3:-}"
   local master_args=()
   [[ -n "${ids_file}" ]] && master_args=(--ids-file "${ids_file}")
+  if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
+    if [[ "${upstream_job}" =~ ^[0-9]+$ || ( "${SLURM_DRY_RUN}" == "1" && "${upstream_job}" == dryrun_* ) ]]; then
+      hybrid_master_deps+=("${upstream_job}")
+    fi
+    jmaster_chain="hybrid_pending"
+    return
+  fi
   jmaster_chain="$(submit_python "bio_master_${stage}" "step_7_0_master_${stage}" "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${upstream_job}" "${jmaster_chain}")" scripts/Step_7_0_update_master_table.py "${master_args[@]}")"
 }
 
@@ -508,9 +638,6 @@ if [[ "$(plan_run step_2_4_10m_formation)" == "1" ]]; then
   submit_master_update formation_products "${j24}"
 fi
 
-# Step 3 only reads configured media paths and the raw Dawn-Chorus table;
-# it does not require Step 1's derived metadata outputs.
-j3pre="$(submit_python bio_step3pre step_3_path_preflight 1 "00:10:00" "" tools/step3_path_preflight.py)"
 j30a="skipped_plan"
 if [[ "$(plan_run step_3_0_audio_inventory)" == "1" ]]; then
   j30a="$(submit_python bio_step30a step_3_0_audio_inventory "${STEP3_INVENTORY_CPUS}" "${t_inv}" "$(afterany_jobs "${j3pre}")" scripts/Step_3_0_a_audio_inventory.py "${force_args[@]}")"
@@ -599,7 +726,7 @@ fi
 
 j61="skipped_plan"
 if [[ "$(plan_run step_6_1_bioacoustic_worklist)" == "1" ]]; then
-  j61="$(submit_python bio_step61 step_6_1_bioacoustic_worklist 2 "${t_step61}" "$(afterok_jobs "${j30apost}" "${j1}" "${j60}")" scripts/Step_6_1_prepare_bioacoustic_worklist.py "${force_args[@]}" --ids-file "${bioacoustic_ids}")"
+  j61="$(submit_python bio_step61 step_6_1_bioacoustic_worklist 1 "${t_step61}" "$(afterok_jobs "${j30apost}" "${j1}" "${j60}")" scripts/Step_6_1_prepare_bioacoustic_worklist.py "${force_args[@]}" --ids-file "${bioacoustic_ids}")"
 fi
 
 bio_model_count="$("${PYTHON}" -c "import json; c=json.load(open('${CONFIG}', encoding='utf-8')); print(len(c['bioacoustics']['models']))")"
@@ -617,29 +744,57 @@ fi
 
 j63="skipped_plan"
 if [[ "$(plan_run step_6_3_species_predictions)" == "1" ]]; then
-  j63="$(submit_python bio_step63 step_6_3_species_predictions 8 "${t_step63}" "$(afterany_jobs "${j62verify}")" scripts/Step_6_3_normalise_species_predictions.py)"
+  j63="$(submit_python bio_step63 step_6_3_species_predictions 1 "${t_step63}" "$(afterany_jobs "${j62verify}")" scripts/Step_6_3_normalise_species_predictions.py)"
 fi
 j64="skipped_plan"
 if [[ "$(plan_run step_6_4_germany_taxonomy_filter)" == "1" ]]; then
   # j63 is downstream of j62 -> j61 -> j1, therefore j1 is transitive.
-  j64="$(submit_python bio_step64 step_6_4_germany_taxonomy_filter 8 "${t_step64}" "$(afterok_jobs "${j63}")" scripts/Step_6_4_filter_germany_taxonomy.py)"
+  j64="$(submit_python bio_step64 step_6_4_germany_taxonomy_filter 1 "${t_step64}" "$(afterok_jobs "${j63}")" scripts/Step_6_4_filter_germany_taxonomy.py)"
 fi
 j65="skipped_plan"
 if [[ "$(plan_run step_6_5_bioacoustic_aggregation)" == "1" ]]; then
-  j65="$(submit_python bio_step65 step_6_5_bioacoustic_aggregation 8 "${t_step65}" "$(afterok_jobs "${j64}")" scripts/Step_6_5_aggregate_bioacoustic_results.py)"
+  j65="$(submit_python bio_step65 step_6_5_bioacoustic_aggregation 1 "${t_step65}" "$(afterok_jobs "${j64}")" scripts/Step_6_5_aggregate_bioacoustic_results.py)"
 fi
 j66="skipped_plan"
 if [[ "$(plan_run step_6_6_bioacoustic_qc)" == "1" ]]; then
   # j65 already transitively waits for j62. Keeping only j65 avoids a
   # redundant dependency without allowing QC before aggregation.
-  j66="$(submit_python bio_step66 step_6_6_bioacoustic_qc 4 "${t_step66}" "$(afterany_jobs "${j65}")" scripts/Step_6_6_bioacoustic_quality_control.py)"
+  j66="$(submit_python bio_step66 step_6_6_bioacoustic_qc 1 "${t_step66}" "$(afterany_jobs "${j65}")" scripts/Step_6_6_bioacoustic_quality_control.py)"
   submit_master_update bioacoustics "${j66}" "${bioacoustic_ids}"
 fi
 
-if [[ -z "${jmaster_chain}" ]]; then
-  submit_master_update initial ""
+if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
+  jmaster="$(submit_python bio_master_final step_7_0_master_table "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${hybrid_master_deps[@]}")" scripts/Step_7_0_update_master_table.py)"
+else
+  if [[ -z "${jmaster_chain}" ]]; then
+    submit_master_update initial ""
+  fi
+  jmaster="${jmaster_chain}"
 fi
-jmaster="${jmaster_chain}"
+
+if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
+  jvalid="local_controller"
+  jvisual="local_controller"
+  junlock="local_controller"
+  write_submission_file "${jmaster}" 1 \
+    "${j1}" "${j20}" "${j21}" "${j22}" "${j23}" "${j24}" \
+    "${j30a}" "${j30b}" "${j31a}" "${j30apost}" "${j31b}" \
+    "${j41}" "${j40}" "${j51pre}" "${j52}" "${j52verify}" \
+    "${j51post}" "${j53}" "${j54}" "${j54verify}" "${j55}" \
+    "${j60}" "${j61}" "${j62}" "${j62verify}" "${j63}" "${j64}" \
+    "${j65}" "${j66}" "${jmaster}"
+  trap - ERR INT TERM
+  if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+    echo "Local HoreKa test planned the hybrid workload; no Slurm job was submitted."
+    echo "Controller will release the pipeline lock without running dependent post-processing."
+  else
+    echo "Submitted Bio-O-Ton hybrid Slurm workload."
+    echo "Controller will wait for Slurm and run validation, reports and unlock locally."
+  fi
+  echo "Submission state: ${SUBMISSION_FILE}"
+  exit 0
+fi
+
 jvalid="$(submit_python bio_validate final_validation 1 "00:15:00" "$(afterany_jobs "${jmaster}")" tools/final_validation_report.py)"
 jvisual="$(submit_python bio_visual step_9_visual_reports 1 "00:10:00" "$(afterany_jobs "${jvalid}")" tools/generate_pipeline_visual_reports.py)"
 
@@ -665,4 +820,4 @@ printf 'Mode:          %s\nWorkflow run:  %s\nRun plan:      %s\nStep 1:        
   "${MODE}" "${RUN_ID}" "${RUN_PLAN}" "${j1}" "${j20}" "${j21}" "${j22}" "${j23}" "${j24}" "${j3pre}" "${j30a}" "${j30b}" "${j31a}" "${j30apost}" "${j31b}" "${j41}" "${j40}" "${j51pre}" "${j52}" "${j52verify}" "${j51post}" "${j53}" "${j54}" "${j54verify}" "${j55}" "${j60}" "${j61}" "${j62}" "${j62verify}" "${j63}" "${j64}" "${j65}" "${j66}" "${jmaster}" "${jvalid}" "${jvisual}" "${junlock}"
 
 echo "Submitted Bio-O-Ton Slurm workflow."
-echo "Monitor with: squeue -u ${USER}"
+echo "Monitor with: squeue -u ${USER:-unknown}"

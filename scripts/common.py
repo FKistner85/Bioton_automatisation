@@ -502,6 +502,12 @@ def run_mastertable_batch_update(
     The mastertable script owns the cross-process write lock. This helper only
     creates a traceable ID request and invokes it after step outputs are durable.
     """
+    if os.environ.get("BIOOTON_DISABLE_BATCH_MASTER_UPDATES", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        return False
     unique_ids = sorted({str(value) for value in ids if str(value).strip()})
     if not unique_ids:
         return False

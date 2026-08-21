@@ -56,6 +56,16 @@ cd /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeli
 bash update_horeka_from_git.sh main
 ```
 
+Alternativ aktualisiert und startet der hybride Controller in einem Befehl:
+
+```bash
+bash run_horeka.sh add_new_ids --update --branch main
+```
+
+Ein normales `sbatch` oder `bash run_horeka.sh add_new_ids` fuehrt keinen
+automatischen Git-Pull aus. Das ist absichtlich explizit, damit ein Lauf nicht
+unbemerkt mit einem anderen Commit startet.
+
 Das Skript nutzt ausschliesslich `git fetch` und `git pull --ff-only`. Bei
 lokalen, nicht commiteten Codeaenderungen stoppt es absichtlich, damit keine
 unbeabsichtigten Ueberschreibungen passieren. Vor einem Pipeline-Run zuerst

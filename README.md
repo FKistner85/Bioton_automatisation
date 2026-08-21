@@ -12,7 +12,49 @@ Die gepruefte Reihenfolge fuer einen Recovery-Lauf auf HoreKa steht in
 
 ## Standardstart
 
-Es gibt genau vier regulaere Slurm-Einstiege:
+Der empfohlene Einstieg ist der hybride tmux-Controller:
+
+```bash
+bash run_horeka.sh add_new_ids
+bash run_horeka.sh from_scratch
+```
+
+Er laeuft leichtgewichtig auf dem aktuellen HoreKa-Login-Knoten, prueft den
+Run-Plan und vorhandene Inventar-Baselines und reicht nur die geplante
+Rechenarbeit bei Slurm ein. Nach Ende der Slurm-Jobs erzeugt er Validierung und
+Reports lokal mit einem CPU-Thread und gibt den Pipeline-Lock frei. Status:
+
+```bash
+tmux ls
+tmux attach -t <session-name>
+```
+
+Der Controller aktualisiert Git nicht stillschweigend. Fuer Pull und Start in
+einem Befehl:
+
+```bash
+bash run_horeka.sh add_new_ids --update --branch main
+```
+
+`--update` verwendet `git pull --ff-only` und stoppt bei nicht kompatiblen
+lokalen Aenderungen. Ohne `--update` wird exakt der aktuell ausgecheckte Commit
+verwendet.
+
+Ein sicherer HoreKa-Test prueft Planung, Locking und die lokalen Preflights,
+reicht aber keinen Slurm-Job ein:
+
+```bash
+bash run_horeka.sh add_new_ids --local-test
+```
+
+Fuer jeden geplanten Batch-Schritt erscheint stattdessen
+`HIER WUERDE SLURM STARTEN` samt Partition, CPUs, Speicher, Laufzeit,
+Abhaengigkeit und Kommando. Weil die Slurm-Vorprodukte dabei absichtlich nicht
+entstehen, werden Abschlussvalidierung und visuelle Reports nur als
+uebersprungen gemeldet. Der Pipeline-Lock wird am Ende wieder freigegeben.
+
+Die bisherigen direkten Slurm-Einstiege bleiben fuer Recovery und
+Rueckwaertskompatibilitaet vorhanden:
 
 ```bash
 bash slurm_functionality_test.sh
@@ -21,7 +63,7 @@ bash slurm_from_scratch.sh
 bash slurm_compare_formation_status.sh
 ```
 
-Alle vier rufen `submit_bio_o_ton_horeka.sh` auf.
+Alle vier rufen `submit_bio_o_ton_horeka.sh` ohne tmux-Controller auf.
 
 | Einstieg | Zweck |
 |---|---|
@@ -111,6 +153,14 @@ $PYTHON tools/pipeline_lock.py --config config.horeka.json release --force
 ```
 
 ## Inkrementelle Regeln
+
+Vor dem Submit prueft der Run-Plan fuer Audio-, Foto-, Sentinel- und
+Wetterinventare, ob `state.json`, Detailinventar und Kompaktinventar vorhanden
+und lesbar sind. Wenn gleichzeitig keine neuen, geaenderten oder problematischen
+IDs vorliegen, wird kein Inventar- oder Downloadjob eingereiht. `from_scratch`,
+fehlende Inventarartefakte und Problem-IDs erzwingen weiterhin die jeweilige
+Slurm-Verarbeitung. Die Pruefung selbst ist nur Metadaten-I/O und laeuft im
+tmux-Controller; rekursive Scans und Medien-/Rasterdekodierung bleiben Slurm.
 
 Step 1 speichert fuer jede ID getrennte Fingerprints fuer Metadaten, Audio-URL,
 Foto-URL, Wetterparameter und Sentinel-relevante Koordinaten. Dadurch werden

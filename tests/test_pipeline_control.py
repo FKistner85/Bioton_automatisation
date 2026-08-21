@@ -84,6 +84,47 @@ def test_add_reason_accumulates_per_id() -> None:
     }
 
 
+def test_inventory_baseline_requires_state_and_outputs() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        state = root / "state.json"
+        detailed = root / "detailed.csv"
+        compact = root / "compact.csv"
+        config = {
+            "audio_inventory": {
+                "state_file": str(state),
+                "detailed_log": str(detailed),
+                "compact_log": str(compact),
+            }
+        }
+        assert not planner.inventory_baseline_ready(
+            config,
+            "audio_inventory",
+            ["detailed_log", "compact_log"],
+        )
+        state.write_text('{"source_files": 1}', encoding="utf-8")
+        detailed.write_text("id\n1\n", encoding="utf-8")
+        compact.write_text("id\n1\n", encoding="utf-8")
+        assert planner.inventory_baseline_ready(
+            config,
+            "audio_inventory",
+            ["detailed_log", "compact_log"],
+        )
+        state.write_text("not-json", encoding="utf-8")
+        assert not planner.inventory_baseline_ready(
+            config,
+            "audio_inventory",
+            ["detailed_log", "compact_log"],
+        )
+
+
+def test_inventory_reconcile_decision() -> None:
+    assert not planner.inventory_reconcile_needed("add_new_ids", set(), True)
+    assert planner.inventory_reconcile_needed("add_new_ids", {"42"}, True)
+    assert planner.inventory_reconcile_needed("add_new_ids", set(), False)
+    assert planner.inventory_reconcile_needed("from_scratch", set(), True)
+
+
 def test_add_new_ids_planner_main_path() -> None:
     with tempfile.TemporaryDirectory() as raw:
         root = Path(raw)
@@ -343,6 +384,8 @@ if __name__ == "__main__":
     test_lock_ownership()
     test_domain_fingerprint_change_detection()
     test_add_reason_accumulates_per_id()
+    test_inventory_baseline_requires_state_and_outputs()
+    test_inventory_reconcile_decision()
     test_add_new_ids_planner_main_path()
     test_run_plan_schema_contract()
     test_result_config_invalidates_global_steps()
