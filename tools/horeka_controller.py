@@ -57,6 +57,16 @@ def utc_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+def running_python() -> Path:
+    """Return the invoked interpreter without resolving a venv symlink.
+
+    On HoreKa, ``.venv/bin/python`` may be a symlink to the system Python.
+    Resolving it would discard the virtual environment's site-packages before
+    forwarding the interpreter to submitted jobs.
+    """
+    return Path(sys.executable)
+
+
 def normalise_state(value: str) -> str:
     return value.strip().split("+", 1)[0].split(" ", 1)[0].upper()
 
@@ -158,7 +168,7 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     config_path = args.config.resolve()
     config = load_config(config_path)
-    python = Path(sys.executable).resolve()
+    python = running_python()
     control_root = processed_root_from_config(config) / "step_0_control" / "controllers"
     controller_id = f"{utc_stamp()}_{os.environ.get('USER', 'user')}_{os.getpid()}"
     state_path = control_root / f"{controller_id}.json"

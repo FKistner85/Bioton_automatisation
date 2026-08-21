@@ -22,6 +22,13 @@ for path in [SCRIPT_ROOT, TOOLS_ROOT]:
 import pipeline_lock
 import plan_pipeline_run as planner
 import run_with_manifest
+import horeka_controller
+
+
+def test_horeka_controller_preserves_venv_python_symlink() -> None:
+    venv_python = Path("/tmp/test-venv/bin/python")
+    with patch.object(horeka_controller.sys, "executable", str(venv_python)):
+        assert horeka_controller.running_python() == venv_python
 
 
 def test_lock_ownership() -> None:
