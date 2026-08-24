@@ -28,9 +28,10 @@ git remote add origin <GITHUB-REPOSITORY-URL>
 git push -u origin main
 ```
 
-Vor `git add` pruefen, dass `credentials.json`, `token.json`, `.venv` und
+Vor `git add` pruefen, dass `.secrets/`, `.venv` und
 `bacpipe/model_checkpoints` nicht erfasst werden. Die bereitgestellte
-`.gitignore` deckt diese Faelle ab.
+`.gitignore` deckt diese Faelle ab. `.secrets/` liegt bewusst innerhalb der
+lokalen Arbeitskopie, bleibt aber vollstaendig ausserhalb der Versionierung.
 
 ## Einmalig auf Horeka
 
@@ -44,10 +45,10 @@ mv scripts_horeka scripts_horeka_backup_$(date +%Y%m%d)
 git clone <GITHUB-REPOSITORY-URL> scripts_horeka
 ```
 
-Danach muessen `credentials.json` und `token.json` bei Bedarf einmalig wieder
-in `scripts_horeka/` bereitgestellt werden. Die virtuellen
-Umgebungen werden mit `bash bootstrap_env.sh` bzw.
-`bash bootstrap_bacpipe_env.sh` erstellt.
+Danach muss der nicht versionierte Ordner `.secrets/` mit seinen vier JSON-
+Dateien aus dem Backup oder von der lokalen Arbeitskopie direkt nach
+`scripts_horeka/.secrets/` kopiert werden. Die virtuellen Umgebungen werden mit
+`bash bootstrap_env.sh` bzw. `bash bootstrap_bacpipe_env.sh` erstellt.
 
 ## Regelmaessiges Update auf Horeka
 

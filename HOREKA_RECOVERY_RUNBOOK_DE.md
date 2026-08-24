@@ -32,10 +32,12 @@ veraendert oder loescht keine LSDF-Quelldaten.
 ## Empfohlene Ausfuehrungsreihenfolge
 
 Beim ersten Git-basierten Deployment den bisherigen Ordner als Backup
-umbenennen, das Repository neu nach `scripts_horeka` klonen und nur die nicht
-versionierten OAuth-Dateien `credentials.json` und `token.json` aus dem Backup
-uebernehmen. Alte virtuelle Umgebungen und alte Modell-Checkpoints werden nicht
-kopiert. Bei spaeteren Deployments reicht das Update-Skript.
+umbenennen, das Repository neu nach `scripts_horeka` klonen und den nicht
+versionierten Ordner `.secrets/` mit allen vier JSON-Dateien aus dem Backup
+wieder nach `scripts_horeka/.secrets/` uebernehmen. Alte virtuelle Umgebungen
+und alte Modell-Checkpoints werden nicht kopiert. Bei spaeteren Deployments
+reicht das Update-Skript; Git laesst den ignorierten `.secrets/`-Ordner dabei
+unveraendert.
 
 ```bash
 cd /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka
