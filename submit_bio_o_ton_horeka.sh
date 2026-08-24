@@ -24,6 +24,7 @@ STEP3_INVENTORY_CPUS="${BIOOTON_STEP3_INVENTORY_CPUS:-16}"
 STEP3_DOWNLOAD_CPUS="${BIOOTON_STEP3_DOWNLOAD_CPUS:-16}"
 STEP40_CPUS="${BIOOTON_STEP40_CPUS:-16}"
 STEP41_CPUS="${BIOOTON_STEP41_CPUS:-1}"
+STEP41_TIME="${BIOOTON_STEP41_TIME:-}"
 STEP51_CPUS="${BIOOTON_STEP51_CPUS:-16}"
 STEP52_CPUS="${BIOOTON_STEP52_CPUS:-16}"
 WEATHER_SHARD_LIMIT="${BIOOTON_WEATHER_SHARD_COUNT:-}"
@@ -51,6 +52,7 @@ Useful environment variables:
   BIOOTON_PIPELINE_TIME_OVERRIDE=00:30:00
   BIOOTON_STEP2_CPUS=16
   BIOOTON_STEP3_DOWNLOAD_CPUS=16
+  BIOOTON_STEP41_TIME=12:00:00
   BIOOTON_STEP52_CPUS=16
   BIOOTON_WEATHER_SHARD_COUNT=8
   BIOOTON_WEATHER_MAX_CONCURRENT_TASKS=4
@@ -463,7 +465,7 @@ if [[ "${MODE}" == "formation_compare" ]]; then
   exit 0
 fi
 
-"${PYTHON}" -c "import pandas, geopandas, pyogrio, shapely, pyarrow, av; from PIL import Image; import rasterio, requests, xarray" || {
+"${PYTHON}" -c "import pandas, geopandas, pyogrio, shapely, pyarrow, av, ee; from PIL import Image; from googleapiclient.discovery import build; from google_auth_oauthlib.flow import InstalledAppFlow; import rasterio, requests, xarray" || {
   echo "Missing Python dependencies in selected environment." >&2
   exit 1
 }
@@ -505,6 +507,11 @@ plan_ids() {
     "${RUN_PLAN}" "$1"
 }
 
+if [[ "$(plan_run step_4_1_sentinel2_mirror)" == "1" ]]; then
+  "${PYTHON}" "${PIPELINE_DIR}/tools/sentinel_credentials_preflight.py" \
+    --config "${CONFIG}"
+fi
+
 force_args=()
 if [[ "${MODE}" == "from_scratch" ]]; then
   force_args=(--force)
@@ -516,7 +523,7 @@ if [[ "${MODE}" == "from_scratch" ]]; then
   t_step24="08:00:00"
   t_inv="02:00:00"
   t_media_download="08:00:00"
-  t_step41="04:00:00"
+  t_step41="${STEP41_TIME:-12:00:00}"
   t_step40="02:00:00"
   t_step51="01:00:00"
   t_step52="12:00:00"
@@ -540,7 +547,7 @@ else
   t_step24="04:00:00"
   t_inv="00:30:00"
   t_media_download="04:00:00"
-  t_step41="02:00:00"
+  t_step41="${STEP41_TIME:-12:00:00}"
   t_step40="01:00:00"
   t_step51="00:30:00"
   t_step52="08:00:00"
@@ -663,7 +670,7 @@ fi
 
 j41="skipped_plan"
 if [[ "$(plan_run step_4_1_sentinel2_mirror)" == "1" ]]; then
-  j41="$(submit_python bio_step41 step_4_1_sentinel2_mirror "${STEP41_CPUS}" "${t_step41}" "$(afterany_jobs "${j1}")" scripts/Step_4_1_Sentinel2_download.py "${force_args[@]}")"
+  j41="$(submit_python bio_step41 step_4_1_sentinel2_mirror "${STEP41_CPUS}" "${t_step41}" "$(afterany_jobs "${j1}")" scripts/Step_4_1_Sentinel2_download.py "${force_args[@]}" --ids-file "${sentinel_ids}")"
 fi
 j40="skipped_plan"
 if [[ "$(plan_run step_4_0_sentinel2_inventory)" == "1" ]]; then

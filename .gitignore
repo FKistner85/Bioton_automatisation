@@ -4,6 +4,10 @@
 scripts_local_run/.venv_local/
 scripts_local_run/.venv_local_bacpipe/
 scripts_local_run/.venv_*/
+.venv_gee_test/
+.sentinel_live_test/
+# Accidental nested checkout/copy in the local Git project root.
+/Bioton_automatisation/
 scripts_local_run/local.settings.json
 scripts_local_run/config.local.generated.json
 scripts_local_run/workspace/
@@ -16,6 +20,11 @@ token.json
 *.pem
 *.key
 .env
+# Earth Engine / Google Cloud service-account private keys
+.secrets/
+*service-account*.json
+*service_account*.json
+bio-o-ton-gee-*.json
 
 # Runtime artefacts are stored outside this source directory on Horeka.
 slurm_logs/

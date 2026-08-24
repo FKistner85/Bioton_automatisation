@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Step 4_1: Mirror Sentinel-2 GeoTIFFs from Google Drive."""
+"""Step 4_1: legacy Earth Engine-to-Drive export and immutable LSDF mirror.
+
+Production mode deliberately reproduces ``UpdateSentinel.ipynb``: scores are
+computed in Earth Engine, exact ``Export.image.toDrive`` tasks write new TIFFs,
+and Google Drive is then mirrored to LSDF.  Existing Drive and LSDF tiles are
+never replaced.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +75,19 @@ def get_drive_service(
     return build("drive", "v3", credentials=creds)
 
 
+def configured_path(
+    settings: dict[str, Any],
+    config_path: Path,
+    setting_name: str,
+    default_name: str,
+    environment_name: str,
+) -> Path:
+    value = os.environ.get(environment_name, "").strip()
+    value = value or str(settings.get(setting_name, default_name)).strip()
+    path = Path(value).expanduser()
+    return path if path.is_absolute() else config_path.resolve().parent / path
+
+
 def extract_dawn_chorus_id(name: str) -> str:
     match = TIF_ID_PATTERN.search(name)
     return match.group(1) if match else ""
@@ -116,6 +136,8 @@ def iter_folder(service, folder_id: str, page_size: int = 200):
                     "files(id,name,mimeType,md5Checksum,modifiedTime,size)"
                 ),
                 pageToken=page_token,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
             )
             .execute()
         )
@@ -123,6 +145,41 @@ def iter_folder(service, folder_id: str, page_size: int = 200):
         page_token = result.get("nextPageToken")
         if not page_token:
             break
+
+
+def list_sentinel_files(service, folder_id: str) -> list[dict[str, Any]]:
+    return [
+        file_obj
+        for file_obj in iter_folder(service, folder_id)
+        if str(file_obj.get("name", "")).lower().endswith((".tif", ".tiff"))
+    ]
+
+
+def wait_for_drive_ids(
+    service,
+    folder_id: str,
+    expected_ids: set[str],
+    *,
+    timeout_seconds: int,
+    poll_seconds: int,
+) -> list[dict[str, Any]]:
+    """Wait for completed Earth Engine exports to become visible in Drive."""
+    deadline = time.monotonic() + max(1, timeout_seconds)
+    while True:
+        files = list_sentinel_files(service, folder_id)
+        visible = {
+            extract_dawn_chorus_id(str(file_obj.get("name", "")))
+            for file_obj in files
+        }
+        missing = expected_ids - visible
+        if not missing:
+            return files
+        if time.monotonic() >= deadline:
+            sample = ", ".join(sorted(missing)[:10])
+            raise TimeoutError(
+                f"Completed GEE exports not visible in Drive folder {folder_id}: {sample}"
+            )
+        time.sleep(max(1, poll_seconds))
 
 
 def validate_tif(
@@ -240,9 +297,25 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
+        "--ids-file",
+        type=Path,
+        default=None,
+        help="Optional run-plan ID file; limits acquisition to these IDs.",
+    )
+    parser.add_argument(
         "--allow-interactive-auth",
         action="store_true",
         help="Allow browser-based OAuth setup. Do not use this in unattended Slurm jobs.",
+    )
+    parser.add_argument(
+        "--score-only",
+        action="store_true",
+        help="GEE test mode: refresh scores without requesting or downloading TIFFs.",
+    )
+    parser.add_argument(
+        "--skip-gee-export",
+        action="store_true",
+        help="Mirror existing Drive files only; do not score or submit GEE exports.",
     )
     return parser.parse_args()
 
@@ -256,24 +329,79 @@ def main() -> int:
         settings = config["sentinel2_download"]
         output_dir = Path(settings["output_dir"])
         log_csv = Path(settings["log_csv"])
-        credentials_path = Path(settings.get("credentials_path", "credentials.json"))
-        token_path = Path(settings.get("token_path", "token.json"))
-        if not credentials_path.is_absolute():
-            credentials_path = args.config.resolve().parent / credentials_path
-        if not token_path.is_absolute():
-            token_path = args.config.resolve().parent / token_path
+        credentials_path = configured_path(
+            settings,
+            args.config,
+            "credentials_path",
+            "credentials.json",
+            "BIOOTON_DRIVE_CREDENTIALS",
+        )
+        token_path = configured_path(
+            settings,
+            args.config,
+            "token_path",
+            "token.json",
+            "BIOOTON_DRIVE_TOKEN",
+        )
+        acquisition_mode = str(settings.get("acquisition_mode", "drive")).strip().lower()
+        if acquisition_mode in {"auto", "gee_direct"}:
+            try:
+                from sentinel2_gee import GeeUnavailable, run_gee
+
+                result = run_gee(config, args)
+                print(
+                    "GEE Sentinel-2 acquisition: "
+                    f"scored={result.scored}, score_rows={result.score_rows_written}, "
+                    f"downloaded={result.downloaded}, skipped={result.skipped_existing}"
+                )
+                return 0
+            except GeeUnavailable as exc:
+                if acquisition_mode == "gee_direct":
+                    raise
+                print(f"GEE unavailable; using Drive fallback: {exc}")
         log_csv.parent.mkdir(parents=True, exist_ok=True)
         batch_write_size = int(settings.get("batch_write_size", 10))
         batch_status_dir = log_csv.parent / "_file_status"
         mirror_only_metadata_ids = bool(settings.get("mirror_only_metadata_ids", True))
+        preserve_existing_tiles = bool(settings.get("preserve_existing_tiles", True))
         previous = read_log(log_csv)
         rows = list(previous.values())
         wanted_ids = load_wanted_ids(config, settings)
+        if args.ids_file is not None:
+            wanted_ids = set()
+            if args.ids_file.is_file() and args.ids_file.stat().st_size > 0:
+                ids_frame = pd.read_csv(args.ids_file, low_memory=False, dtype=str)
+                id_column = next(
+                    (column for column in ("dawn_chorus_id", "DC_id", "id") if column in ids_frame),
+                    None,
+                )
+                if id_column is not None:
+                    wanted_ids = {
+                        str(value)
+                        for value in pd.to_numeric(ids_frame[id_column], errors="coerce").dropna().astype("int64")
+                    }
+        service_key_value = os.environ.get("BIOOTON_GEE_SERVICE_ACCOUNT_KEY", "").strip()
+        service_key_value = service_key_value or str(
+            settings.get("gee_service_account_key_path", "")
+        ).strip()
+        service_key_path = Path(service_key_value).expanduser() if service_key_value else None
+        export_token_value = os.environ.get("BIOOTON_GEE_EXPORT_TOKEN", "").strip()
+        export_token_value = export_token_value or str(
+            settings.get("gee_export_oauth_token_path", "")
+        ).strip()
+        export_token_path = (
+            Path(export_token_value).expanduser() if export_token_value else None
+        )
+        manifest_inputs = [credentials_path, token_path]
+        if service_key_path is not None:
+            manifest_inputs.append(service_key_path)
+        if export_token_path is not None and not args.score_only:
+            manifest_inputs.append(export_token_path)
         manifest_path, manifest = start_step_manifest(
             config,
             "step_4_1_sentinel2_download",
             config_path=args.config,
-            inputs=[credentials_path, token_path],
+            inputs=manifest_inputs,
             outputs=[output_dir, log_csv],
             parameters={
                 "folder_id": settings["google_drive_folder_id"],
@@ -281,28 +409,83 @@ def main() -> int:
                 "mirror_only_metadata_ids": mirror_only_metadata_ids,
                 "force": args.force,
                 "allow_interactive_auth": args.allow_interactive_auth,
+                "score_only": args.score_only,
+                "gee_drive_export_enabled": bool(
+                    settings.get("gee_drive_export_enabled", False)
+                ) and not args.skip_gee_export,
             },
             force=args.force,
         )
-        service = get_drive_service(
-            credentials_path,
-            token_path,
-            allow_interactive_auth=args.allow_interactive_auth,
-        )
-        if service is None:
-            message = (
-                "Google Drive credentials/token missing or interactive auth disabled; "
-                "Sentinel-2 download skipped."
+        service = None
+        drive_files: list[dict[str, Any]] = []
+        if not args.score_only:
+            service = get_drive_service(
+                credentials_path,
+                token_path,
+                allow_interactive_auth=args.allow_interactive_auth,
             )
-            print(message)
-            finish_step_manifest(
-                manifest_path,
-                manifest,
-                "skipped",
-                result={"reason": message},
-                warnings=[message],
+            if service is None:
+                raise RuntimeError(
+                    "Google Drive credentials/token missing or interactive auth disabled"
+                )
+            drive_files = list_sentinel_files(
+                service, str(settings["google_drive_folder_id"])
             )
-            return 0
+
+        export_enabled = bool(settings.get("gee_drive_export_enabled", False))
+        export_enabled = export_enabled and not args.skip_gee_export
+        export_result = None
+        if export_enabled:
+            from sentinel2_gee import run_gee_drive_exports
+
+            remote_ids = {
+                extract_dawn_chorus_id(str(file_obj.get("name", "")))
+                for file_obj in drive_files
+            }
+            local_ids = {
+                extract_dawn_chorus_id(path.name)
+                for pattern in ("*.tif", "*.tiff")
+                for path in output_dir.glob(pattern)
+                if path.is_file() and path.stat().st_size > 0
+            }
+            export_result = run_gee_drive_exports(
+                config,
+                args,
+                existing_ids=remote_ids | local_ids,
+            )
+            print(
+                "Legacy GEE-to-Drive: "
+                f"scored={export_result.scored}, "
+                f"score_rows={export_result.score_rows_written}, "
+                f"started={export_result.exports_started}, "
+                f"completed={export_result.exports_completed}, "
+                f"skipped_existing={export_result.skipped_existing}"
+            )
+            if args.score_only:
+                finish_step_manifest(
+                    manifest_path,
+                    manifest,
+                    "complete",
+                    result={
+                        "mode": "score_only",
+                        "scored": export_result.scored,
+                        "score_rows_written": export_result.score_rows_written,
+                    },
+                )
+                return 0
+
+            required_remote_ids = set(export_result.expected_drive_ids) - local_ids
+            drive_files = wait_for_drive_ids(
+                service,
+                str(settings["google_drive_folder_id"]),
+                required_remote_ids,
+                timeout_seconds=int(settings.get("drive_visibility_timeout_seconds", 300)),
+                poll_seconds=int(settings.get("drive_visibility_poll_seconds", 10)),
+            )
+        elif args.score_only:
+            raise RuntimeError(
+                "--score-only requires sentinel2_download.gee_drive_export_enabled=true"
+            )
 
         processed_since_write = 0
         seen_drive_files = 0
@@ -311,13 +494,13 @@ def main() -> int:
         skipped_existing_ok = 0
         downloaded_or_validated = 0
         failed = 0
-        for file_obj in iter_folder(service, settings["google_drive_folder_id"]):
+        for file_obj in drive_files:
             name = file_obj.get("name", "")
             if not name.lower().endswith((".tif", ".tiff")):
                 continue
             seen_drive_files += 1
             dawn_id = extract_dawn_chorus_id(name)
-            if mirror_only_metadata_ids and wanted_ids and dawn_id not in wanted_ids:
+            if mirror_only_metadata_ids and dawn_id not in wanted_ids:
                 skipped_not_wanted += 1
                 continue
             candidate_files += 1
@@ -345,6 +528,37 @@ def main() -> int:
                     "skipped",
                     outputs=[path],
                     result={"name": name, "reason": "existing_log_ok"},
+                    started_utc=batch_started_utc,
+                )
+                continue
+
+            # Production safety invariant: an existing tile is immutable.
+            # New acquisition may only fill a missing filename.  Repair or
+            # replacement requires an explicit, separately reviewed mode.
+            if preserve_existing_tiles and path.exists() and path.stat().st_size > 0:
+                ok, stats = validate_tif(
+                    path,
+                    int(settings.get("expected_bands", 12)),
+                    int(settings.get("expected_height", 101)),
+                    int(settings.get("expected_width", 101)),
+                )
+                print(f"{name}: preserved_existing_tile ({'OK' if ok else 'invalid; not replaced'})")
+                skipped_existing_ok += 1
+                previous[name] = {
+                    "dawn_chorus_id": dawn_id,
+                    "name": name,
+                    "path": str(path),
+                    "ok": ok,
+                    "preserved_existing": True,
+                    **stats,
+                }
+                rows = list(previous.values())
+                write_batch_status(
+                    batch_status_dir,
+                    batch_id,
+                    "skipped",
+                    outputs=[path],
+                    result={"name": name, "reason": "preserve_existing_tiles", "ok": bool(ok), **stats},
                     started_utc=batch_started_utc,
                 )
                 continue
