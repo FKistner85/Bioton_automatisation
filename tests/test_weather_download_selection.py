@@ -6,6 +6,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import types
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -30,6 +31,7 @@ from Step_5_2_download_weather_data import (
     load_input_recordings,
     recording_shard,
     select_recordings,
+    upstream_unavailable_ids,
     verify_requested_outputs,
 )
 
@@ -80,7 +82,29 @@ def test_weather_output_verification() -> None:
         assert missing == ["2"]
 
 
+def test_upstream_unavailable_status_is_detected() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        status_dir = Path(raw)
+        (status_dir / "1.json").write_text(
+            json.dumps(
+                {
+                    "status": "partial",
+                    "result": {"recording_status": "upstream_unavailable"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (status_dir / "2.json").write_text(
+            json.dumps(
+                {"status": "complete", "result": {"recording_status": "ok"}}
+            ),
+            encoding="utf-8",
+        )
+        assert upstream_unavailable_ids(status_dir, {"1", "2", "3"}) == ["1"]
+
+
 if __name__ == "__main__":
     test_incremental_scope_and_shards()
     test_weather_output_verification()
+    test_upstream_unavailable_status_is_detected()
     print("test_weather_download_selection.py: OK")

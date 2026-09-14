@@ -34,10 +34,12 @@ ueberschrieben.
 Torch/CUDA, Modelle und Taxonomiereferenz. Vor der Modellinitialisierung ruft
 er explizit Bacpipes `ensure_models_exist` auf. Damit werden fehlende
 Checkpoint-Dateien einmalig aus `vskode/bacpipe_models` nach
-`scripts_horeka/bacpipe/model_checkpoints/` geladen und bei Folgejobs
+`bacpipe/model_checkpoints/` relativ zum aktiven Checkout geladen und bei Folgejobs
 wiederverwendet. Pflichtmodelle muessen danach initialisierbar sein; optionale
-Modelle werden ebenfalls bereitgestellt, blockieren die Pipeline bei einem
-externen Downloadfehler jedoch nicht.
+Modelle werden ebenfalls bereitgestellt. In der HoreKa-Konfiguration muessen
+alle sechs Modelle initialisierbar sein, bevor Step 6_1 oder Step 6_2 startet.
+Der Preflight wird fuer jeden Lauf mit geplanter Bioakustik-Inferenz erneut
+ausgefuehrt; ein veraltetes Registry-JSON kann ihn nicht mehr ueberspringen.
 
 Ein vorhandener Ordner gilt nicht automatisch als gueltiger Checkpoint. Bei
 typischen Fehlern wie fehlenden Keras-Dateien, abgeschnittenen PyTorch-Archiven
@@ -78,6 +80,15 @@ markiert Step 6_2 als vollstaendig abgeschlossen. Einzelne Array-Tasks koennen
 daher einen unvollstaendigen Full-Rebuild nicht versehentlich als fertig
 kennzeichnen. Bei einem Timeout bleiben deren Checkpoints erhalten; ein
 Folgelauf berechnet nur fehlende oder fehlgeschlagene Worklist-Eintraege neu.
+Die Verifikation schreibt zusaetzlich eine kompakte Aufschluesselung je Modell
+nach `step_6_2_bioacoustic_state/verification.json`. Step 6_3 bis Step 6_6
+verwenden harte `afterok`-Abhaengigkeiten und starten nicht, wenn die
+Verifikation fehlschlaegt.
+
+Die HoreKa-Standardwerte sind 64 Shards pro Modell, vier CPUs und 24 GB RAM pro
+Array-Task sowie 12 Stunden Walltime. Drei Minuten vor dem Walltime sendet Slurm
+`SIGUSR1`; der Task speichert seinen letzten Batch und markiert den Shard als
+`interrupted`.
 
 ```text
 outputs/step_6_2_bioacoustic_embeddings/model=<modell>/*.parquet

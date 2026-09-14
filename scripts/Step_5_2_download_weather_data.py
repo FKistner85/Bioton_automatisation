@@ -741,6 +741,28 @@ def verify_requested_outputs(
     return complete, missing
 
 
+def upstream_unavailable_ids(
+    status_dir: Path,
+    requested_ids: set[str],
+) -> list[str]:
+    """Return requested IDs whose latest batch status used unavailable source data."""
+    unavailable: list[str] = []
+    for recording_id in requested_ids:
+        status_path = status_dir / f"{recording_id}.json"
+        if not status_path.is_file():
+            continue
+        try:
+            payload = json.loads(status_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if payload.get("result", {}).get("recording_status") == "upstream_unavailable":
+            unavailable.append(recording_id)
+    return sorted(
+        unavailable,
+        key=lambda value: int(value) if value.isdigit() else value,
+    )
+
+
 def close_datasets() -> None:
     for dataset in _global_datasets.values():
         if dataset is not None:
@@ -813,15 +835,31 @@ def main() -> int:
                 output_dir,
                 verification_ids,
             )
+            unavailable = (
+                upstream_unavailable_ids(
+                    output_dir / "_recording_status",
+                    verification_ids,
+                )
+                if bool(section.get("fail_on_upstream_unavailable", False))
+                else []
+            )
             print(f"Requested weather outputs : {len(verification_ids):,}")
             print(f"Complete weather outputs  : {len(complete):,}")
             print(f"Missing weather outputs   : {len(missing):,}")
+            print(f"Upstream-unavailable outputs: {len(unavailable):,}")
             if missing:
                 print(
                     "Missing IDs (first 20)      : " + ", ".join(missing[:20]),
                     file=sys.stderr,
                 )
                 return 1
+            if unavailable:
+                print(
+                    "Upstream-unavailable IDs (first 20): "
+                    + ", ".join(unavailable[:20]),
+                    file=sys.stderr,
+                )
+                return 2
             return 0
         if args.task_count > 1:
             log_file = log_file.with_name(
@@ -1029,8 +1067,10 @@ def main() -> int:
 
         def remember_with_status_file(recording_id: str, status: str, output_path: Path, started_utc: str | None = None) -> None:
             remember(recording_id, status)
-            if status in {"ok", "out_of_bounds", "upstream_unavailable"}:
+            if status in {"ok", "out_of_bounds"}:
                 batch_status = "complete"
+            elif status == "upstream_unavailable":
+                batch_status = "partial"
             else:
                 batch_status = "failed"
             write_batch_status(
@@ -1039,7 +1079,11 @@ def main() -> int:
                 batch_status,
                 outputs=[output_path],
                 result={"recording_status": status},
-                error="" if batch_status == "complete" else f"recording_status={status}",
+                error=(
+                    ""
+                    if batch_status == "complete"
+                    else f"recording_status={status}"
+                ),
                 started_utc=started_utc,
             )
 
@@ -1210,7 +1254,15 @@ def main() -> int:
             finish_step_manifest(
                 manifest_path,
                 manifest,
-                "partial" if processed_failed else "complete",
+                (
+                    "partial"
+                    if processed_failed
+                    or (
+                        bool(section.get("fail_on_upstream_unavailable", False))
+                        and processed_upstream_unavailable
+                    )
+                    else "complete"
+                ),
                 result={
                     "input_recordings": len(recordings),
                     "skipped_existing": len(indices_done),
@@ -1222,7 +1274,13 @@ def main() -> int:
                     "task_count": args.task_count,
                 },
             )
-        return 1 if processed_failed else 0
+        return 1 if (
+            processed_failed
+            or (
+                bool(section.get("fail_on_upstream_unavailable", False))
+                and processed_upstream_unavailable
+            )
+        ) else 0
     except Exception as exc:
         if logger.handlers:
             logger.exception("Step 5_2 failed: %s", exc)

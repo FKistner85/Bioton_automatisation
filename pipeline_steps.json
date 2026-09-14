@@ -112,7 +112,7 @@
       "script": "scripts/Step_4_1_Sentinel2_download.py",
       "depends_on": ["step_1_metadata"],
       "input_sections": ["sentinel2_download", "sentinel_fingerprint"],
-      "outputs": ["sentinel2_download.output_dir", "sentinel2_download.log_csv"]
+      "outputs": ["sentinel2_download.output_dir", "sentinel2_download.log_csv", "sentinel2_download.gee_log_csv"]
     },
     "step_4_0_sentinel2_inventory": {
       "scope": "per_file",
@@ -160,7 +160,12 @@
       "scope": "global_model_registry",
       "script": "scripts/Step_6_0_bioacoustic_model_preflight.py",
       "depends_on": [],
-      "input_sections": ["bioacoustics.models", "bioacoustics.bacpipe_version"],
+      "input_sections": [
+        "bioacoustics.models",
+        "bioacoustics.bacpipe_version",
+        "bioacoustics.model_checkpoint_dir",
+        "bioacoustics.require_all_models_in_preflight"
+      ],
       "outputs": ["bioacoustics.model_registry_json"]
     },
     "step_6_1_bioacoustic_worklist": {
@@ -181,7 +186,14 @@
         "step_6_0_bioacoustic_model_preflight",
         "step_6_1_bioacoustic_worklist"
       ],
-      "input_sections": ["bioacoustics.worklist_parquet", "bioacoustics.models"],
+      "input_sections": [
+        "bioacoustics.worklist_parquet",
+        "bioacoustics.models",
+        "bioacoustics.model_checkpoint_dir",
+        "bioacoustics.shard_count",
+        "bioacoustics.checkpoint_batch_size",
+        "bioacoustics.require_all_models_complete"
+      ],
       "outputs": [
         "bioacoustics.embedding_dir",
         "bioacoustics.native_prediction_dir",

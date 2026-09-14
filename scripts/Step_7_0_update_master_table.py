@@ -451,8 +451,11 @@ def add_media_status(
     )
 
     media = table[["dawn_chorus_id"]].merge(media, on="dawn_chorus_id", how="left")
-    media[f"{prefix}_exists"] = media[f"{prefix}_exists"].fillna(False).astype(bool)
-    media[f"{prefix}_has_issues"] = media[f"{prefix}_has_issues"].fillna(True).astype(bool)
+    media[f"{prefix}_exists"] = bool_series(media[f"{prefix}_exists"])
+    media_issue_missing = media[f"{prefix}_has_issues"].isna()
+    media[f"{prefix}_has_issues"] = (
+        bool_series(media[f"{prefix}_has_issues"]) | media_issue_missing
+    )
     media[f"{prefix}_issue_codes"] = media[f"{prefix}_issue_codes"].fillna("")
     media = media.merge(detail_issues, on="dawn_chorus_id", how="left")
     media = media.merge(retry_issues, on="dawn_chorus_id", how="left")
@@ -551,13 +554,14 @@ def add_bioacoustic_status(
     )
     merged["bioacoustic_status"] = merged["bioacoustic_status"].fillna("not_started")
     merged["bioacoustic_has_issues"] = (
-        merged["bioacoustic_has_issues"].fillna(True).astype(bool)
+        bool_series(merged["bioacoustic_has_issues"])
+        | merged["bioacoustic_has_issues"].isna()
     )
     merged["bioacoustic_issue_codes"] = merged["bioacoustic_issue_codes"].fillna(
         "bioacoustic_result_missing"
     )
     merged["bioacoustic_required_models_complete"] = (
-        merged["bioacoustic_required_models_complete"].fillna(False).astype(bool)
+        bool_series(merged["bioacoustic_required_models_complete"])
     )
     return merged
 
@@ -606,8 +610,11 @@ def add_sentinel_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataF
         ["dawn_chorus_id", "id"],
     ).rename(columns={"issue_codes": "sentinel_detail_issue_codes"})
     sentinel = table[["dawn_chorus_id"]].merge(sentinel, on="dawn_chorus_id", how="left")
-    sentinel["sentinel_exists"] = sentinel["sentinel_exists"].fillna(False).astype(bool)
-    sentinel["sentinel_has_issues"] = sentinel["sentinel_has_issues"].fillna(True).astype(bool)
+    sentinel["sentinel_exists"] = bool_series(sentinel["sentinel_exists"])
+    sentinel_issue_missing = sentinel["sentinel_has_issues"].isna()
+    sentinel["sentinel_has_issues"] = (
+        bool_series(sentinel["sentinel_has_issues"]) | sentinel_issue_missing
+    )
     sentinel = sentinel.merge(detail_issues, on="dawn_chorus_id", how="left")
     issue_values = []
     for row in sentinel.to_dict("records"):

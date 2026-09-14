@@ -448,6 +448,7 @@ def build_outputs(
 
     point_output["inside_lrt_polygon"] = (
         point_output["inside_lrt_polygon"]
+        .astype("boolean")
         .fillna(False)
         .astype(bool)
     )

@@ -449,7 +449,8 @@ class Pipeline:
 
         if self.plan_run("step_4_1_sentinel2_mirror"):
             self.add("j41", "step_4_1", self.command_runner(
-                "step_4_1", "step_4_1_sentinel2_mirror", "scripts/Step_4_1_Sentinel2_download.py", force, cpus=2,
+                "step_4_1", "step_4_1_sentinel2_mirror", "scripts/Step_4_1_Sentinel2_download.py",
+                [*force, "--ids-file", str(sentinel_ids)], cpus=2,
             ), ["j1"])
         if self.plan_run("step_4_0_sentinel2_inventory"):
             self.add("j40", "step_4_0", self.command_runner(

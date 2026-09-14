@@ -614,6 +614,9 @@ def run_gee_drive_exports(
     total_scored = total_written = started = completed = skipped = failed = 0
     expected_drive_ids: set[str] = set()
     score_only = bool(getattr(args, "score_only", False))
+    # Apply one deadline to the complete export run. Resetting it for every
+    # outer batch allowed a nominal 10-hour limit to grow into multi-day jobs.
+    export_deadline = time.monotonic() + timeout_seconds
 
     for metadata_batch, scored, written in _score_and_persist(
         ee,
@@ -686,7 +689,6 @@ def run_gee_drive_exports(
             queue.append((metadata_by_id[dc_id], score_row))
 
         write_acquisition_log(log_path, list(log_by_id.values()))
-        deadline = time.monotonic() + timeout_seconds
         while queue or running:
             for dc_id, (task, score_row) in list(running.items()):
                 status = _task_status(task)
@@ -727,7 +729,7 @@ def run_gee_drive_exports(
                 }
             write_acquisition_log(log_path, list(log_by_id.values()))
             if queue or running:
-                if time.monotonic() >= deadline:
+                if time.monotonic() >= export_deadline:
                     raise TimeoutError(
                         "Timed out waiting for legacy Sentinel-2 Drive exports "
                         f"(queued={len(queue)}, active={len(running)})"

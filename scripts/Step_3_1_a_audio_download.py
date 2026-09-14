@@ -795,6 +795,7 @@ def main() -> int:
         started = time.monotonic()
         completed_since_write = 0
         completed_since_master: list[str] = []
+        current_issue_count = 0
         progress_path = detail_csv.parent / "progress.json"
         with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
             futures = [executor.submit(process_download_task, task) for task in tasks]
@@ -817,6 +818,8 @@ def main() -> int:
                     if detail is not None and not bool(detail["has_issues"])
                     else "ISSUE"
                 )
+                if status_label == "ISSUE":
+                    current_issue_count += 1
                 print(
                     f"[{completed}/{len(tasks)}] {status_label} {dawn_id} "
                     f"ETA {eta / 60:.1f} min"
@@ -880,12 +883,14 @@ def main() -> int:
         )
 
         print("Step 3_1_a completed.")
+        print(f"Current run successful        : {len(tasks) - current_issue_count:,}")
+        print(f"Current run issues            : {current_issue_count:,}")
         print(
             f"Inventory files with issues : "
             f"{issue_count:,}"
         )
         print(
-            f"Terminal failures            : "
+            f"Cumulative terminal failures : "
             f"{terminal_count:,}"
         )
         print(

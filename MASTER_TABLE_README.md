@@ -1,230 +1,278 @@
-# Bio-O-Ton Mastertabelle
+# Bio-O-Ton Master Table Reference
 
-Diese Datei beschreibt die finale ID-Level-Mastertabelle:
+This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-08-04-mastertable-v4` and contains 99 columns.
+
+## Products and row model
 
 ```text
 Bio_O_Ton_Mastertable.csv
 Bio_O_Ton_Mastertable.parquet
 Bio_O_Ton_Mastertable_summary.json
+outputs/step_0_control/status_events.csv
 ```
 
-Die LRT-Sensitivitaetsanalyse schreibt zusaetzlich:
+The master table has exactly one row per unique `dawn_chorus_id`. The CSV and Parquet contain the same ordered columns. The summary JSON records creation/update metadata and aggregate readiness/status counts. The append-only event CSV records additions, deletions, and changes to tracked status/readiness fields.
+
+[`schemas/master_table.schema.json`](schemas/master_table.schema.json) is the machine-readable validation schema for required/core fields and permits the writer's additional derived fields. For the complete output surface and column order, use the writer's `MASTER_COLUMNS` list and this reference.
+
+The LRT sensitivity analysis additionally writes:
 
 ```text
 Bio_O_Ton_Formation_Variants.csv
 Bio_O_Ton_Formation_Variants.parquet
 Bio_O_Ton_Formation_Variants_summary.json
+Bio_O_Ton_Variant_Summary.csv
+Bio_O_Ton_Variant_Temporal_Summary.csv
 ```
 
-Diese normalisierte Tabelle hat eine Zeile pro `dawn_chorus_id` und
-`lrt_variant`. Die Haupt-Mastertabelle bleibt bei einer Zeile pro ID und nutzt
-fuer ihre detaillierten Formation-Felder die konfigurierte Primaervariante
-`no_K_post2017_threshold_50`.
+That normalized table contains one row per `dawn_chorus_id` and `lrt_variant`. The main master table remains one row per ID and uses the configured primary variant, currently `no_K_post2017_threshold_50`, for its detailed 100 m/10 m fields.
 
-Die Tabelle wird durch `scripts/Step_7_0_update_master_table.py` fortlaufend
-aktualisiert. Der Slurm-Orchestrator reiht nach jedem relevanten Datenbereich
-einen serialisierten Teilupdate ein. Mit `--ids-file` werden nur die betroffenen
-IDs ersetzt; nicht betroffene bestehende Zeilen bleiben erhalten. Nach globalen
-Grid- oder Rasteraenderungen wird bewusst der gesamte Bestand aktualisiert.
-Sie liegt direkt im Pipeline-Ordner `bio_o_ton_pipeline`, nicht unter
-`processed`. Die detaillierten Pruef- und Prozessdaten bleiben in den jeweiligen
-Step-Ordnern unter `Data_automatisation_skripts/outputs`.
+## Source products
 
-## Grundidee
-
-Die Mastertabelle ist eine kompakte Uebersicht pro `dawn_chorus_id`.
-Sie soll schnell zeigen, ob ein Recording fuer allgemeine Analysen,
-Formation-Analysen und perspektivisch multimodale Analysen verwendbar ist.
-
-Ausfuehrliche Detailinformationen stehen weiterhin in den Step-Produkten:
-
-```text
-Readmes/step_1_metadata/
-Readmes/step_2_1_100m_formation_status/
-Readmes/step_2_2_point_assignment/
-Readmes/step_2_4_10m_formation_status/
-Readmes/step_2_variants/
-Readmes/step_3_media/
-Readmes/step_4_sentinel2/
-Readmes/step_5_2_weather/
-Readmes/step_6_bioacoustics/
-Readmes/step_7_0_master_table/
-Readmes/validation_and_comparison/
-```
-
-## Quellen pro Bereich
-
-| Bereich | Wichtigste Quelle |
+| Domain | Main source consumed by Step 7.0 |
 |---|---|
-| Metadaten/Zeit/GPS | `outputs/step_1_metadata/dawnchorus_metadata_clean.csv` und `dawnchorus_metadata_log.csv` |
-| 100m-Formation | `outputs/step_2_variants/<primary_suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<primary_suffix>.csv` |
-| 10m-Formation | `outputs/step_2_variants/<primary_suffix>/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode_<primary_suffix>.parquet` |
-| Formation-Varianten | `outputs/Bio_O_Ton_Formation_Variants.parquet` und CSV |
-| Audio | `outputs/step_3_0_a_audio_inventory/*` und `outputs/step_3_1_a_audio_download/audio_download_retry_log.csv` |
-| Fotos | `outputs/step_3_0_b_photo_inventory/*` und `outputs/step_3_1_b_photo_download/photo_download_retry_log.csv` |
-| Sentinel-2 | `outputs/step_4_0_Sentinel2_inventory/*` |
-| HOSTRADA Punktwetter | `outputs/step_5_1_weather_inventory/weather_inventory_compact.csv`; die Detailpruefung liegt im zugehoerigen Detailed-Log |
-| HOSTRADA Raster 100m | `outputs/step_5_4_hostrada_raster_products/` und `outputs/step_5_5_hostrada_raster_quality_check/` |
-| Bioakustik | `outputs/step_6_5_bioacoustic_recording_summary/*` und `outputs/step_6_6_bioacoustic_quality_control/*` |
+| Metadata/time/GPS | `outputs/step_1_metadata/dawnchorus_metadata_clean.csv`, `dawnchorus_metadata_log.csv`, and `metadata_source_fingerprints.csv` |
+| Primary 100 m formation and direct LRT hits | `outputs/step_2_variants/<primary_suffix>/step_2_2/DawnChorus_LRT_Grid_Assignment_<primary_suffix>.csv` |
+| Primary 10 m formation | `outputs/step_2_variants/<primary_suffix>/step_2_4_susi_10m/Formation_Status_10m_Grid_withLRTCode_<primary_suffix>.parquet` |
+| Formation-variant coverage | `outputs/Bio_O_Ton_Formation_Variants.parquet` and `variant_index.json` |
+| Audio | Step-3 audio compact/detailed inventories and audio retry log |
+| Photos | Step-3 photo compact/detailed inventories and photo retry log |
+| Sentinel-2 | Step-4 compact/detailed inventory plus configured score CSV |
+| HOSTRADA point weather | `outputs/step_5_1_weather_inventory/weather_inventory_compact.csv` |
+| HOSTRADA 100 m rasters | Step-5.4 raster tree and Step-5.5 quality outputs |
+| Bioacoustics | Step-6.5 recording summary and Step-6.6 compact QC |
 
-## Spalten
+The master table deliberately condenses these sources. File-level, segment-level, model-level, raster-level, and detailed failure information remains in the corresponding step outputs.
 
-| Spalte | Definition |
+## Column definitions
+
+### Identity and provenance
+
+| Column | Definition |
 |---|---|
-| `mastertable_schema_version` | Version des Mastertable-Schemas. |
-| `workflow_run_id` | Gemeinsame ID des Slurm-Gesamtworkflows, der diese Tabellenzeile zuletzt aktualisiert hat. |
-| `dawn_chorus_id` | Eindeutige Dawn-Chorus-ID. |
-| `source_fingerprint` | SHA-256-Fingerprint der relevanten Dawn-Chorus-Quellfelder dieser ID. |
-| `datetime_local` | Bereinigter lokaler Zeitstempel aus Step 1. |
-| `datetime_utc` | Derselbe Zeitstempel nach UTC konvertiert. |
-| `date_local` | Lokales Datum aus `datetime_local`. |
-| `time_local` | Lokale Uhrzeit aus `datetime_local`. |
-| `timestamp_source` | Quelle des bereinigten Zeitstempels, z.B. `localtimes` oder `datetime`. |
-| `timestamp_changed` | `True`, wenn Step 1 den Zeitstempel normalisiert/uminterpretiert hat. |
-| `timestamp_change_reason` | Kurzbeschreibung der Zeitstempel-Konvertierung aus Step 1. |
-| `lat` | Breitengrad aus den bereinigten Metadaten. |
-| `lon` | Laengengrad aus den bereinigten Metadaten. |
-| `record_added_to_mastertable_utc` | UTC-Zeitpunkt, zu dem diese ID erstmals in der Mastertabelle geschrieben wurde. Wird bei Updates erhalten. |
-| `record_updated_in_mastertable_utc` | UTC-Zeitpunkt des letzten Mastertable-Updates fuer diese Zeile. |
-| `metadata_status` | Kanonischer Status fuer Zeit/GPS: `validated` oder `has_issues`. |
-| `sound_exists` | Mindestens eine Audio-Datei fuer die ID wurde im Audio-Inventar gefunden. |
-| `sound_has_issues` | Das Audio-Inventar oder der Download-Log meldet Probleme fuer diese ID. |
-| `sound_issue_codes` | Kompakte Audio-Fehlercodes, z.B. `missing_file`, `duration_unavailable`, `sound_missing_audio_url`. |
-| `sound_status` | Kanonischer Audiostatus: `validated`, `missing` oder `has_issues`. |
-| `photo_exists` | Mindestens eine Foto-Datei fuer die ID wurde im Foto-Inventar gefunden. |
-| `photo_has_issues` | Das Foto-Inventar oder der Download-Log meldet Probleme fuer diese ID. |
-| `photo_issue_codes` | Kompakte Foto-Fehlercodes, z.B. `missing_file`, `image_verify_failed`, `photo_missing_photo_url`. |
-| `photo_status` | Kanonischer Fotostatus: `validated`, `missing` oder `has_issues`. |
-| `sentinel_exists` | Mindestens ein Sentinel-2 GeoTIFF fuer die ID wurde inventarisiert. |
-| `sentinel_has_issues` | Sentinel-2 Inventar oder Score-Join meldet technische Probleme. Ein niedriger Score allein ist kein technisches Problem. |
-| `sentinel_quality_score` | Sentinel-2 Qualitaetsscore aus `PointData/S2_Scores.csv`, sofern vorhanden. |
-| `sentinel_issue_codes` | Kompakte Sentinel-Fehlercodes, z.B. `missing_file`, `quality_score_missing`, `all_pixels_nodata`. |
-| `sentinel_status` | Kanonischer Sentinel-Status: `validated`, `missing` oder `has_issues`. |
-| `weather_point_exists` | `weather_<id>.csv` existiert im HOSTRADA-Punktwetterordner und ist nicht leer. |
-| `weather_point_has_issues` | Punktwetterdatei hat fehlende Spalten, fehlende Werte, unplausible Werte, falsche Zeilenzahl, falsches Zeitintervall oder Lesefehler. |
-| `weather_point_issue_codes` | Kompakte HOSTRADA-Punktwetter-Fehlercodes, z.B. `missing_file`, `missing_value`, `unexpected_row_count`. |
-| `weather_point_status` | Kanonischer Punktwetterstatus aus Step 5.1. Der Master liest die Wetterdateien nicht erneut vollstaendig ein. |
-| `weather_raster_hostrada_100m_exists` | HOSTRADA-Rasterprodukte existieren im 100m-Rasteroutput. Es gibt keine 10m-Wetterrasterspalte. |
-| `weather_raster_hostrada_100m_has_issues` | Globaler 100m-Rasterstatus meldet fehlende Raster, NoData-Probleme, QC-Luecken oder Strukturwarnungen. |
-| `weather_raster_hostrada_100m_issue_codes` | Kompakte 100m-Raster-Fehlercodes, z.B. `missing_raster`, `qc_not_run`, `all_nodata`. |
-| `grid_100m_id` | 100m-Gridzelle, der der Recording-Punkt in Step 2_2 zugeordnet wurde. |
-| `grid_100m_assignment_exists` | `True`, wenn eine 100m-Grid-ID fuer den Punkt vorhanden ist. |
-| `grid_100m_has_majority_formation` | `True`, wenn fuer die 100m-Zelle eine Majority Formation vorhanden ist. |
-| `inside_lrt_polygon` | `True`, wenn der Recording-Punkt direkt innerhalb mindestens eines bereinigten LRT-Polygons liegt; dies ist strenger als die Grid-Zuordnung. |
-| `lrt_polygon_count` | Anzahl direkter LRT-Polygon-Treffer des Recording-Punkts. |
-| `lrt_code_count`, `lrt_formation_count`, `lrt_status_count`, `lrt_mapping_year_count` | Anzahl unterschiedlicher Attribute der direkt getroffenen LRT-Polygone. |
-| `lrt_codes`, `lrt_formations`, `lrt_conservation_statuses`, `lrt_mapping_years` | Zusammengefasste Attribute der direkt getroffenen LRT-Polygone. |
-| `majority_formation_100m` | Formation mit groesstem Flaechenanteil in der 100m-Zelle. |
-| `majority_formation_status_100m` | Haeufigster Conservation Status innerhalb der 100m-Majority-Formation. |
-| `majority_value_100m` | Anteil der 100m-Majority-Formation in Centi-Prozent. `10000` bedeutet 100.00 Prozent. |
-| `second_value_100m` | Anteil der zweitgroessten 100m-Formation in Centi-Prozent. |
-| `majority_delta_100m` | Differenz zwischen `majority_value_100m` und `second_value_100m` in Centi-Prozent. |
-| `majority_disputed_100m` | `True`, wenn `majority_delta_100m <= 200`, also maximal 2 Prozentpunkte Abstand. |
-| `formation_100m_status` | Kanonischer Status der 100m-Zuordnung und Majority Formation. |
-| `grid_10m_id` | Aus den Koordinaten abgeleitete 10m-Grid-ID in EPSG:3035-Logik. |
-| `grid_10m_assignment_exists` | `True`, wenn eine 10m-Grid-ID berechnet werden konnte. |
-| `grid_10m_has_majority_formation` | `True`, wenn fuer diese 10m-Zelle eine Majority Formation im 10m-Produkt gefunden wurde. |
-| `majority_formation_10m` | Formation mit groesstem Flaechenanteil in der 10m-Zelle. |
-| `majority_formation_status_10m` | Haeufigster Conservation Status innerhalb der 10m-Majority-Formation. |
-| `majority_value_10m` | Anteil der 10m-Majority-Formation in Centi-Prozent. |
-| `second_value_10m` | Anteil der zweitgroessten 10m-Formation in Centi-Prozent. |
-| `majority_delta_10m` | Differenz zwischen `majority_value_10m` und `second_value_10m` in Centi-Prozent. |
-| `majority_disputed_10m` | `True`, wenn `majority_delta_10m <= 200`, also maximal 2 Prozentpunkte Abstand. |
-| `formation_10m_status` | Kanonischer Status der 10m-Zuordnung und Majority Formation. |
-| `formation_100m_10m_agree` | `True`, wenn die 100m- und 10m-Majority-Formation identisch sind. |
-| `formation_status_100m_10m_agree` | `True`, wenn der Majority-Formation-Status in 100m und 10m identisch ist. |
-| `formation_primary_variant` | Suffix des LRT-Datensatzes, dessen detaillierte Formation-Felder in dieser Hauptzeile stehen. |
-| `formation_variant_count_expected` | Anzahl der im Eingangsordner erkannten LRT-Varianten. |
-| `formation_variants_with_100m_majority` | Anzahl Varianten, die fuer diese ID eine 100m-Majority-Formation liefern. |
-| `formation_variants_with_10m_majority` | Anzahl Varianten, die fuer diese ID eine 10m-Majority-Formation liefern. |
-| `formation_variant_products_complete` | Globales Flag: 100m- und 10m-Endprodukte aller erwarteten Varianten liegen vor. |
-| `bioacoustic_status` | Kanonischer Step-6-Status: `validated`, `partial`, `failed` oder `missing`. |
-| `bioacoustic_has_issues` | `True`, wenn mindestens ein erforderliches Modell fehlt oder eine Modellinferenz fehlgeschlagen ist. |
-| `bioacoustic_issue_codes` | Kompakte Step-6-Fehlercodes, z.B. `required_models_incomplete` oder `model_inference_failed`. |
-| `bioacoustic_models_expected` | Pipe-separierte Liste der fuer die ID geplanten Bacpipe-Modelle. |
-| `bioacoustic_models_complete` | Pipe-separierte Liste der fuer die ID erfolgreich abgeschlossenen Modelle. |
-| `bioacoustic_required_models_complete` | `True`, wenn alle als erforderlich konfigurierten Modelle abgeschlossen sind. |
-| `bioacoustic_inference_version` | Version des Step-6-Ausgabe- und Transformationsschemas. |
-| `bioacoustic_species_count` | Anzahl unterschiedlicher, nicht als unplausibel markierter Taxa ueber alle Modelle. Kein bestaetigter Artnachweis. |
-| `bird_species_count` | Anzahl der als Voegel gruppierten Taxa in der Aufnahmeaggregation. |
-| `nonbird_species_count` | Anzahl der nicht als Voegel gruppierten Taxa in der Aufnahmeaggregation. |
-| `bioacoustic_max_confidence` | Hoechster normalisierter Modellscore der Aufnahme; Scores verschiedener Modelle sind nicht zwingend direkt kalibriert. |
-| `top_species_scientific` | Wissenschaftlicher Name des hoechst gerankten aggregierten Taxons. |
-| `top_species_model_support` | Anzahl Modelle, die das Top-Taxon oberhalb des konfigurierten Schwellenwerts gemeldet haben. |
-| `ready_for_general_analysis` | `True`, wenn ID, Zeit, Koordinaten, Audio, Punktwetter und Sentinel technisch vorhanden und ohne Issue sind. Fotos und Formation sind hier nicht blockierend. |
-| `ready_for_formation_analysis_100m` | `True`, wenn `ready_for_general_analysis` gilt und eine 100m-Majority-Formation vorhanden ist. HOSTRADA-Flaechenraster blockieren diese fachliche Formation-Readiness nicht. |
-| `ready_for_direct_lrt_analysis` | `True`, wenn `ready_for_general_analysis` gilt und der Recording-Punkt direkt in einem LRT-Polygon liegt. |
-| `ready_for_formation_weather_raster_analysis_100m` | Optionale kombinierte Readiness aus 100m-Formation und technisch sauberen HOSTRADA-100m-Rastern. |
-| `ready_for_formation_analysis_10m` | `True`, wenn `ready_for_general_analysis` gilt und eine 10m-Majority-Formation vorhanden ist. |
-| `ready_for_multimodal_analysis` | `True`, wenn `ready_for_general_analysis` gilt und ein technisch unproblematisches Foto vorhanden ist. |
-| `ready_for_bioacoustic_analysis` | `True`, wenn ein technisch valides Audio vorliegt, Step 6 ohne Issue abgeschlossen wurde und alle erforderlichen Modelle vollstaendig sind. Diese Flag ist bewusst unabhaengig von Wetter, Sentinel und Formation. |
-| `record_blocking_issue_codes` | Zusammenfassung der wichtigsten Gruende, warum mindestens eine Ready-Flag nicht erfuellt ist. Detailursachen stehen in den Step-Logs. |
-| `record_status` | Gesamtstatus der Zeile: `validated`, `partial` oder `has_issues`. |
-| `release_status` | Freigabestatus. Automatisch wird hoechstens `manual_review_required` gesetzt; `approved` bleibt eine manuelle Entscheidung. |
-| `manual_review_comment` | Manuell gepflegter Kommentar; wird bei automatischen Updates erhalten. |
-| `manual_reviewed_by` | Manuell gepflegte Person/Kennung; wird bei automatischen Updates erhalten. |
-| `manual_reviewed_utc` | Zeitpunkt der manuellen Pruefung; wird bei automatischen Updates erhalten. |
+| `mastertable_schema_version` | Master-table row version. Current constant: `2026-08-04-mastertable-v4`. |
+| `workflow_run_id` | Shared workflow ID that most recently updated the row. Outside an orchestrated run, the writer's fallback run ID is used. |
+| `dawn_chorus_id` | Unique numeric Dawn Chorus recording ID. It is normalized to a digit string and is the table's primary key. |
+| `source_fingerprint` | SHA-256 fingerprint from Step 1 over the source fields relevant to the ID. It supports changed-record detection. |
+| `record_added_to_mastertable_utc` | UTC time when the ID was first inserted. Preserved during later automatic updates. |
+| `record_updated_in_mastertable_utc` | UTC time of the latest automatic update of this row. |
 
-## Issue-Code-Konvention
+### Time and coordinates
 
-Issue-Code-Spalten sind pipe-separierte Kurzlisten, z.B.:
+| Column | Definition |
+|---|---|
+| `datetime_local` | Cleaned local recording timestamp from Step 1, including its UTC offset when available. |
+| `datetime_utc` | `datetime_local` converted to UTC and formatted as `YYYY-MM-DDTHH:MM:SSZ`. |
+| `date_local` | Local calendar date derived from `datetime_local`. |
+| `time_local` | Local wall-clock time derived from `datetime_local`; the local offset is not applied twice. |
+| `timestamp_source` | Source selected by Step 1, such as `localtimes` or `datetime`. |
+| `timestamp_changed` | `True` when Step 1 normalized, converted, or reinterpreted the source timestamp. |
+| `timestamp_change_reason` | Step-1 explanation of the timestamp conversion/normalization. |
+| `lat` | Cleaned WGS84 latitude; valid range is -90 to 90. |
+| `lon` | Cleaned WGS84 longitude; valid range is -180 to 180. |
+
+### Status fields
+
+Canonical domain and row statuses use values from the project status model, including `not_started`, `validated`, `missing`, `has_issues`, `partial`, `failed`, `not_applicable`, `manual_review_required`, and `approved` where applicable. The master writer derives the following status columns rather than copying arbitrary free text:
+
+| Column | Definition |
+|---|---|
+| `metadata_status` | `validated` when both local/UTC timestamps and coordinates are valid; otherwise `has_issues`. |
+| `sound_status` | `validated` when audio exists without issues, `missing` when absent, otherwise `has_issues`. |
+| `photo_status` | `validated` when a photo exists without issues, `missing` when absent, otherwise `has_issues`. |
+| `sentinel_status` | `validated` when Sentinel-2 data exists without technical issues, `missing` when absent, otherwise `has_issues`. |
+| `weather_point_status` | `validated` when point weather exists without issues, `missing` when absent, otherwise `has_issues`. |
+| `formation_100m_status` | `missing` without a grid assignment, `has_issues` when assigned but lacking a majority formation, otherwise `validated`. |
+| `formation_10m_status` | `missing` without a derived 10 m assignment, `has_issues` when assigned but lacking a majority formation, otherwise `validated`. |
+| `bioacoustic_status` | Step-6 compact QC result, normally `validated`, `partial`, `failed`, or `missing`. |
+
+### Audio and photos
+
+| Column | Definition |
+|---|---|
+| `sound_exists` | At least one audio file for the ID was found by the audio inventory. |
+| `sound_has_issues` | The audio inventory or download retry log reports a problem for the ID. |
+| `sound_issue_codes` | Pipe-separated compact audio causes such as `missing_file`, `duration_unavailable`, or `sound_missing_audio_url`. |
+| `sound_status` | Canonical audio status; derivation is listed under [Status fields](#status-fields). |
+| `photo_exists` | At least one photo file for the ID was found by the photo inventory. |
+| `photo_has_issues` | The photo inventory or download retry log reports a problem for the ID. |
+| `photo_issue_codes` | Pipe-separated compact photo causes such as `missing_file`, `image_verify_failed`, or `photo_missing_photo_url`. |
+| `photo_status` | Canonical photo status; derivation is listed under [Status fields](#status-fields). |
+
+### Sentinel-2
+
+| Column | Definition |
+|---|---|
+| `sentinel_exists` | At least one Sentinel-2 GeoTIFF for the ID was inventoried. |
+| `sentinel_has_issues` | The inventory or score join reports a technical problem. A low score alone is not a technical issue. |
+| `sentinel_quality_score` | Optional quality score joined from the configured `S2_Scores.csv`. Scores are not treated as calibrated technical pass/fail thresholds by the master writer. |
+| `sentinel_issue_codes` | Pipe-separated causes such as `missing_file`, `quality_score_missing`, or `all_pixels_nodata`. |
+| `sentinel_status` | Canonical Sentinel-2 status; derivation is listed under [Status fields](#status-fields). |
+
+### Weather
+
+| Column | Definition |
+|---|---|
+| `weather_point_exists` | The Step-5.1 compact inventory reports a non-empty `weather_<id>.csv`. |
+| `weather_point_has_issues` | Point weather has missing columns/values, implausible values, wrong row count/interval, or a read error. |
+| `weather_point_issue_codes` | Pipe-separated HOSTRADA point-weather causes such as `missing_file`, `missing_value`, or `unexpected_row_count`. |
+| `weather_point_status` | Canonical point-weather status; the master writer reuses Step-5.1 QC rather than rereading all weather files. |
+| `weather_raster_hostrada_100m_exists` | Required products are present in the configured 100 m raster output tree. This is a global state copied to each row. |
+| `weather_raster_hostrada_100m_has_issues` | Global raster state reports missing products, NoData problems, QC gaps, or structural warnings. |
+| `weather_raster_hostrada_100m_issue_codes` | Pipe-separated global causes such as `missing_raster`, `qc_not_run`, or `all_nodata`. |
+
+There is intentionally no 10 m weather-raster column. Optional 100 m weather rasters do not block `ready_for_general_analysis` or ordinary formation readiness.
+
+### 100 m formation
+
+| Column | Definition |
+|---|---|
+| `grid_100m_id` | 100 m grid cell assigned to the recording point by Step 2.2. |
+| `grid_100m_assignment_exists` | `True` when a 100 m grid ID is available. |
+| `grid_100m_has_majority_formation` | `True` when the assigned cell has a majority formation. |
+| `majority_formation_100m` | Formation with the largest area share in the assigned 100 m cell. |
+| `majority_formation_status_100m` | Most frequent A/B/C conservation status inside the majority formation. K contributes to formation totals but is not selected as the majority formation status. |
+| `majority_value_100m` | Majority-formation share in integer centi-percent; `10000` means 100.00%. |
+| `second_value_100m` | Second-largest formation share in integer centi-percent. |
+| `majority_delta_100m` | Difference between majority and second place in integer centi-percent. |
+| `majority_disputed_100m` | `True` when `majority_delta_100m <= 200`, i.e. at most two percentage points. Null when a comparison cannot be computed. |
+| `formation_100m_status` | Canonical 100 m status; derivation is listed under [Status fields](#status-fields). |
+
+### Direct LRT intersections
+
+These fields describe direct point-in-polygon hits against the cleaned primary LRT source. They are stricter than assignment to a grid cell whose area overlaps an LRT.
+
+| Column | Definition |
+|---|---|
+| `inside_lrt_polygon` | `True` when the recording point lies in at least one cleaned LRT polygon. |
+| `lrt_polygon_count` | Number of directly intersected LRT polygons. |
+| `lrt_code_count` | Number of distinct LRT codes among direct hits. |
+| `lrt_formation_count` | Number of distinct formation values among direct hits. |
+| `lrt_status_count` | Number of distinct conservation-status values among direct hits. |
+| `lrt_mapping_year_count` | Number of distinct mapping years among direct hits. |
+| `lrt_codes` | Pipe-separated distinct LRT codes from direct hits. |
+| `lrt_formations` | Pipe-separated distinct formations from direct hits. |
+| `lrt_conservation_statuses` | Pipe-separated distinct conservation statuses from direct hits. |
+| `lrt_mapping_years` | Pipe-separated distinct mapping years from direct hits. |
+
+### 10 m formation
+
+| Column | Definition |
+|---|---|
+| `grid_10m_id` | 10 m grid identifier derived from the point in the EPSG:3035 grid logic. |
+| `grid_10m_assignment_exists` | `True` when a 10 m grid ID could be derived. |
+| `grid_10m_has_majority_formation` | `True` when the 10 m product contains a majority formation for the derived cell. |
+| `majority_formation_10m` | Formation with the largest share in the 10 m cell. |
+| `majority_formation_status_10m` | Most frequent A/B/C conservation status inside the 10 m majority formation. |
+| `majority_value_10m` | Majority share in integer centi-percent. |
+| `second_value_10m` | Second-largest share in integer centi-percent. |
+| `majority_delta_10m` | Difference between first and second place in integer centi-percent. |
+| `majority_disputed_10m` | `True` when `majority_delta_10m <= 200`; null when unavailable. |
+| `formation_10m_status` | Canonical 10 m status; derivation is listed under [Status fields](#status-fields). |
+
+### Cross-resolution and variant coverage
+
+| Column | Definition |
+|---|---|
+| `formation_100m_10m_agree` | `True` only when both majority formations are present and equal. |
+| `formation_status_100m_10m_agree` | `True` only when both majority-formation statuses are present and equal. |
+| `formation_primary_variant` | Configured LRT suffix whose detailed values populate the main master row. |
+| `formation_variant_count_expected` | Variant count from `variant_index.json`; zero when the index is absent/unreadable. |
+| `formation_variants_with_100m_majority` | Number of variant rows for the ID with a 100 m majority formation. |
+| `formation_variants_with_10m_majority` | Number of variant rows for the ID with a 10 m majority formation. |
+| `formation_variant_products_complete` | Global flag copied to every row: all expected variants have both 100 m and 10 m products, and the actual variant count equals the expected non-zero count. |
+
+### Bioacoustics
+
+| Column | Definition |
+|---|---|
+| `bioacoustic_status` | Canonical outcome from Step-6 QC. |
+| `bioacoustic_has_issues` | `True` when required model coverage is incomplete or inference/QC reports failure. |
+| `bioacoustic_issue_codes` | Pipe-separated causes such as `required_models_incomplete` or `model_inference_failed`. |
+| `bioacoustic_models_expected` | Pipe-separated models planned for the ID. |
+| `bioacoustic_models_complete` | Pipe-separated models successfully completed for the ID. |
+| `bioacoustic_required_models_complete` | `True` when every model configured with `required: true` completed. |
+| `bioacoustic_inference_version` | Version of the Step-6 output/inference transformation. |
+| `bioacoustic_species_count` | Number of distinct, non-implausible aggregated taxa across models. This is not a confirmed species count. |
+| `bird_species_count` | Number of aggregated taxa grouped as birds. |
+| `nonbird_species_count` | Number of aggregated taxa not grouped as birds. |
+| `bioacoustic_max_confidence` | Highest normalized score in the recording aggregation. Scores from different models are not necessarily calibrated against one another. |
+| `top_species_scientific` | Scientific name of the highest-ranked aggregated taxon. |
+| `top_species_model_support` | Number of models that reported the top taxon above the configured threshold. |
+
+### Readiness flags
+
+| Column | Exact intent |
+|---|---|
+| `ready_for_general_analysis` | Valid local/UTC time and coordinates; audio exists without issues; point weather exists without issues; Sentinel-2 exists without technical issues. Photos, formation, raster weather, and bioacoustics do not block it. |
+| `ready_for_formation_analysis_100m` | General readiness plus a 100 m assignment and majority formation. |
+| `ready_for_direct_lrt_analysis` | General readiness plus `inside_lrt_polygon = True`. |
+| `ready_for_formation_weather_raster_analysis_100m` | 100 m formation readiness plus present, issue-free HOSTRADA 100 m rasters. |
+| `ready_for_formation_analysis_10m` | General readiness plus a 10 m assignment and majority formation. |
+| `ready_for_multimodal_analysis` | General readiness plus a present, issue-free photo. |
+| `ready_for_bioacoustic_analysis` | Audio exists without issues, `bioacoustic_status = validated`, and all required bioacoustic models are complete. This flag is intentionally independent of weather, Sentinel-2, photos, and formation. |
+
+### Issue-code and status conventions
+
+| Column | Definition |
+|---|---|
+| `record_blocking_issue_codes` | Pipe-separated summary of missing/invalid time, coordinates, sound, point weather, Sentinel-2, photo, and missing 100 m/10 m majority formations. The field is a navigation aid; domain logs contain the full evidence. |
+
+Issue-code fields use stable, lowercase, pipe-separated tokens:
 
 ```text
 missing_file|missing_value|unexpected_row_count
 ```
 
-Die Codes sind bewusst knapp. Detailzahlen, betroffene Dateien, HTTP-Status,
-Rastermetadaten oder Decode-Fehler stehen in den jeweiligen Detail-Logs.
+When errors originate in free-text detail/retry logs, Step 7.0 normalizes them to compact tokens. File names, HTTP codes, raster statistics, decode traces, and other evidence remain in the detailed domain products.
 
-Statusaenderungen werden append-only protokolliert:
+### Record and release status
 
-```text
-outputs/step_0_control/status_events.csv
-```
+| Column | Definition |
+|---|---|
+| `record_status` | Starts as `partial`; becomes `validated` when general, 100 m formation, and 10 m formation readiness are all true; becomes `has_issues` when metadata is problematic and sound, point weather, and Sentinel-2 are all missing/problematic. |
+| `release_status` | Automatically `not_started`, or `manual_review_required` for technically validated rows. A previously manual `approved` value is preserved. Automatic processing never creates a new approval. |
+| `manual_review_comment` | Free-text manual review note preserved across automatic updates. |
+| `manual_reviewed_by` | Reviewer name/identifier preserved across automatic updates. |
+| `manual_reviewed_utc` | Manual review time preserved across automatic updates. |
 
-Das Log enthaelt neue und geloeschte IDs sowie Aenderungen der kanonischen
-Status-, Ready- und Blocking-Issue-Felder. Ein erneuter Masterlauf mit derselben
-`workflow_run_id` ersetzt die Ereignisse dieses Runs, damit Retries idempotent
-bleiben.
+## Incremental update behavior
 
-## Ready-Flags
+The orchestrator serializes master updates. With `--ids-file`, Step 7.0 rebuilds only listed IDs, replaces those rows, and preserves every unaffected row. A run without `--ids-file` rebuilds the complete current ID set. Global grid, variant, or raster changes intentionally use a full update.
 
-`ready_for_general_analysis` ist streng und setzt voraus:
+Writes are protected by a file lock on Linux and use temporary-file replacement for the CSV and JSON. The Parquet file is compressed with Zstandard and also replaced atomically when the writer succeeds. If optional Parquet writing fails, the CSV remains the canonical successful table output and the summary records no Parquet path.
 
-```text
-valider Zeitstempel
-valide Koordinaten
-Audio existiert und hat keine Issues
-HOSTRADA Punktwetter existiert und hat keine Issues
-Sentinel-2 existiert und hat keine technischen Issues
-```
+The first-insertion time and manual review fields are carried forward from the previous CSV. `release_status = approved` is preserved; other technical/release fields are recalculated.
 
-`ready_for_formation_analysis_100m` setzt zusaetzlich eine vorhandene
-100m-Majority-Formation voraus. Die optionale Rasterwetter-Kombination wird
-separat als `ready_for_formation_weather_raster_analysis_100m` ausgewiesen.
-`ready_for_formation_analysis_10m` setzt eine vorhandene 10m-Majority-Formation
-voraus; ein 10m-Wetterraster existiert in dieser Pipeline bewusst nicht.
+## Status event history
 
-`ready_for_multimodal_analysis` setzt zusaetzlich voraus, dass ein Foto
-existiert und keine Foto-Issues gemeldet wurden.
+`outputs/step_0_control/status_events.csv` contains:
 
-`ready_for_bioacoustic_analysis` bewertet nur Audio und Bioakustik. Die
-segmentweisen Embeddings, modellweisen Scores, Deutschland-/Saisonflags und
-Fehlerdetails bleiben in den Step-6-Produkten. Artenvorhersagen sind
-Modellergebnisse und muessen fuer fachliche Nachweise separat validiert werden.
+| Field | Meaning |
+|---|---|
+| `event_utc` | Event creation time. |
+| `workflow_run_id` | Workflow that observed the change. |
+| `dawn_chorus_id` | Affected ID. |
+| `field` | `record_lifecycle` or a tracked status/readiness field. |
+| `previous_value` | Value before the update. |
+| `current_value` | Value after the update. |
 
-## Ausfuehren
+Full updates record added and deleted IDs; incremental updates record additions and tracked changes but do not infer deletions outside their selected ID set. Tracked changes include canonical domain statuses, `record_status`, `release_status`, the main readiness flags, and `record_blocking_issue_codes`.
 
-Direkt auf HoreKa aus dem Pipeline-Ordner:
+## Execution
+
+The normal pipeline schedules Step 7.0 automatically after relevant domains and always writes a final snapshot. To rebuild it manually on HoreKa:
 
 ```bash
 bash run_master_table_update.sh
 ```
 
-Im normalen Slurm-Lauf wird der Step automatisch nach den relevanten
-Step-2-, Step-3-, Step-4-, Step-5- und Step-6-Jobs eingereiht:
+To update only selected IDs directly:
 
 ```bash
-bash slurm_add_new_ids.sh
-bash slurm_from_scratch.sh
+.venv/bin/python scripts/Step_7_0_update_master_table.py \
+  --config config.horeka.json \
+  --ids-file /path/to/ids.csv
 ```
+
+The ID file is read through the common ID-list helper and must exist. For end-to-end execution, locking, manifests, validation, and release behavior, return to the [root README](README.md#end-to-end-workflow).

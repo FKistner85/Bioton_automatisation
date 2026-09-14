@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -98,27 +99,40 @@ def main() -> int:
         force=force,
     )
     started = time.monotonic()
-    completed = subprocess.run(command, text=True)
+    child: subprocess.Popen[str] | None = None
+
+    def forward_signal(signum: int, _frame: Any) -> None:
+        if child is not None and child.poll() is None:
+            child.send_signal(signum)
+
+    forwarded_signals = [signal.SIGTERM]
+    if hasattr(signal, "SIGUSR1"):
+        forwarded_signals.append(signal.SIGUSR1)
+    for forwarded_signal in forwarded_signals:
+        signal.signal(forwarded_signal, forward_signal)
+
+    child = subprocess.Popen(command, text=True)
+    returncode = child.wait()
     elapsed_seconds = time.monotonic() - started
-    status = "complete" if completed.returncode == 0 else "failed"
+    status = "complete" if returncode == 0 else "failed"
     finish_step_manifest(
         manifest_path,
         manifest,
         status,
         result={
-            "returncode": completed.returncode,
+            "returncode": returncode,
             "elapsed_seconds": round(elapsed_seconds, 3),
             "wrapped_command": command,
         },
-        error="" if completed.returncode == 0 else f"returncode={completed.returncode}",
+        error="" if returncode == 0 else f"returncode={returncode}",
     )
-    if completed.returncode == 0:
+    if returncode == 0:
         write_full_rebuild_marker(
             run_plan,
             args.step_name,
             str(manifest.get("step_run_id", manifest.get("run_id", ""))),
         )
-    return completed.returncode
+    return returncode
 
 
 if __name__ == "__main__":

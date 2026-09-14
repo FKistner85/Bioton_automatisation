@@ -27,7 +27,7 @@ Result-relevant settings are centralised in `config.horeka.json`: `dawn_chorus_c
 `SLURM_CPUS_PER_TASK` limits effective parallelism. The step uses no more processes/workers than configured. IDs or chunks have unique status/checkpoint keys, while the global pipeline lock prevents concurrent writing workflows.
 
 ## Checkpoint/Resume
-Neue IDs werden inkrementell ergaenzt; from_scratch nutzt --force.
+New IDs are added incrementally; `from_scratch` uses `--force`.
 
 ## Quality Control
 Output existence alone is not treated as validity. Compact and detailed logs, batch status files and the run manifest record validation and failures. `bash run_final_validation_report.sh` creates the final gate; formation products can additionally be compared with `bash slurm_compare_formation_status.sh`.

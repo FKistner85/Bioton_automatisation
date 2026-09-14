@@ -27,6 +27,10 @@ from Step_6_0_bioacoustic_model_preflight import (
     checkpoint_error_is_repairable,
     quarantine_checkpoint_trees,
 )
+from bioacoustics_common import (
+    bacpipe_working_directory,
+    model_checkpoint_dir,
+)
 
 
 def test_bioacoustic_data_flow() -> None:
@@ -225,6 +229,23 @@ def test_checkpoint_repair_helpers() -> None:
         assert all(Path(path).exists() for path in moved)
 
 
+def test_checkpoint_directory_is_config_relative_and_bacpipe_compatible() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        config_path = root / "config.json"
+        section = {"model_checkpoint_dir": "bacpipe/model_checkpoints"}
+        resolved = model_checkpoint_dir(section, config_path)
+        assert resolved == (root / "bacpipe" / "model_checkpoints").resolve()
+        assert bacpipe_working_directory(resolved) == root.resolve()
+
+        try:
+            bacpipe_working_directory(root / "checkpoints")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("An incompatible Bacpipe checkpoint path was accepted")
+
+
 def test_embedding_shard_verification_gate() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -290,5 +311,6 @@ if __name__ == "__main__":
     test_prediction_threshold_and_top_k()
     test_bacpipe_direct_api_suffix_compatibility()
     test_checkpoint_repair_helpers()
+    test_checkpoint_directory_is_config_relative_and_bacpipe_compatible()
     test_embedding_shard_verification_gate()
     print("test_bioacoustics_pipeline.py: OK")

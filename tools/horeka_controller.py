@@ -57,16 +57,6 @@ def utc_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def running_python() -> Path:
-    """Return the invoked interpreter without resolving a venv symlink.
-
-    On HoreKa, ``.venv/bin/python`` may be a symlink to the system Python.
-    Resolving it would discard the virtual environment's site-packages before
-    forwarding the interpreter to submitted jobs.
-    """
-    return Path(sys.executable)
-
-
 def normalise_state(value: str) -> str:
     return value.strip().split("+", 1)[0].split(" ", 1)[0].upper()
 
@@ -83,9 +73,15 @@ def command_output(command: list[str]) -> str:
 
 
 def slurm_job_state(job_id: str) -> str:
-    queued = command_output(["squeue", "-h", "-j", job_id, "-o", "%T"])
+    queued = command_output(["squeue", "-h", "-j", job_id, "-o", "%T|%r"])
     if queued:
-        return normalise_state(queued.splitlines()[0])
+        state, _, reason = queued.splitlines()[0].partition("|")
+        if (
+            normalise_state(state) == "PENDING"
+            and "DEPENDENCYNEVERSATISFIED" in normalise_state(reason)
+        ):
+            return "DEPENDENCY_FAILED"
+        return normalise_state(state)
     accounting = command_output(
         ["sacct", "-n", "-X", "-j", job_id, "--format=State", "--parsable2"]
     )
@@ -106,6 +102,13 @@ def wait_for_jobs(
         for job_id in sorted(remaining, key=int):
             state = slurm_job_state(job_id)
             snapshot[job_id] = state
+            if state == "DEPENDENCY_FAILED":
+                subprocess.run(
+                    ["scancel", job_id],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
             if state == "UNKNOWN":
                 unknown_counts[job_id] += 1
                 if unknown_counts[job_id] < 5:
@@ -168,7 +171,7 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     config_path = args.config.resolve()
     config = load_config(config_path)
-    python = running_python()
+    python = Path(sys.executable).resolve()
     control_root = processed_root_from_config(config) / "step_0_control" / "controllers"
     controller_id = f"{utc_stamp()}_{os.environ.get('USER', 'user')}_{os.getpid()}"
     state_path = control_root / f"{controller_id}.json"

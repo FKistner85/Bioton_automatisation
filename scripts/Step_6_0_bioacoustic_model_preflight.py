@@ -16,9 +16,11 @@ from typing import Any
 from common import atomic_write_json, load_config, utc_now_iso
 from bioacoustics_common import (
     BIOACOUSTIC_SCHEMA_VERSION,
+    bacpipe_working_directory,
     bio_config,
     configured_models,
     configure_bacpipe_runtime,
+    model_checkpoint_dir as resolve_model_checkpoint_dir,
     model_fingerprint,
     output_path,
 )
@@ -85,12 +87,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    config_path = args.config.resolve()
     # Bacpipe 1.3.1 resolves several checkpoints relative to the working
     # directory. Make direct execution behave like the Slurm wrapper.
-    os.chdir(args.config.resolve().parent)
-    config = load_config(args.config)
+    os.chdir(config_path.parent)
+    config = load_config(config_path)
     section = bio_config(config)
     models = configured_models(config)
+    checkpoint_dir = resolve_model_checkpoint_dir(section, config_path)
+    checkpoint_cwd = bacpipe_working_directory(checkpoint_dir)
     registry_path = output_path(config, "model_registry_json")
     issues: list[str] = []
     warnings: list[str] = []
@@ -134,15 +139,12 @@ def main() -> int:
     instantiated: dict[str, str] = {}
     if args.instantiate_models and bacpipe is not None:
         configure_bacpipe_runtime(bacpipe, section)
-        checkpoint_dir = Path(
-            str(
-                section.get(
-                    "model_checkpoint_dir",
-                    Path.cwd() / "bacpipe" / "model_checkpoints",
-                )
-            )
-        ).expanduser()
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        if not os.access(checkpoint_dir, os.R_OK | os.W_OK | os.X_OK):
+            issues.append(f"model_checkpoint_dir_not_accessible:{checkpoint_dir}")
+        # Bacpipe 1.3.1 hard-codes `bacpipe/model_checkpoints` relative to cwd.
+        # Run both provisioning and model construction from the matching root.
+        os.chdir(checkpoint_cwd)
         checkpoint_staging.update(
             {
                 "repository": str(
@@ -152,6 +154,9 @@ def main() -> int:
             }
         )
         stage_optional = bool(section.get("stage_optional_models", True))
+        require_all_models = bool(
+            section.get("require_all_models_in_preflight", False)
+        )
         repository = str(
             section.get("model_checkpoint_repository", "vskode/bacpipe_models")
         )
@@ -223,7 +228,7 @@ def main() -> int:
                     continue
                 message = f"failed:{type(exc).__name__}:{exc}"
                 instantiated[name] = message
-                if model["required"]:
+                if model["required"] or require_all_models:
                     issues.append(f"required_model_initialisation_failed:{name}")
                 else:
                     warnings.append(f"optional_model_initialisation_failed:{name}")
@@ -245,6 +250,8 @@ def main() -> int:
         "expected_bacpipe_version": expected_version,
         "torch": torch_info,
         "device": section.get("device", "cuda"),
+        "checkpoint_dir": str(checkpoint_dir),
+        "bacpipe_working_directory": str(checkpoint_cwd),
         "checkpoint_staging": checkpoint_staging,
         "models": [
             {

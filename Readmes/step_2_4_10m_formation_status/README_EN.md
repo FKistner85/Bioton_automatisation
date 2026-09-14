@@ -32,7 +32,7 @@ Result-relevant settings are centralised in `config.horeka.json`: `susi_10m_prod
 `SLURM_CPUS_PER_TASK` limits effective parallelism. The step uses no more processes/workers than configured. IDs or chunks have unique status/checkpoint keys, while the global pipeline lock prevents concurrent writing workflows.
 
 ## Checkpoint/Resume
-Parquet-Parts und _batch_status erlauben Wiederaufnahme nach Timeout.
+Parquet parts and `_batch_status` allow processing to resume after a timeout.
 
 ## Quality Control
 Output existence alone is not treated as validity. Compact and detailed logs, batch status files and the run manifest record validation and failures. `bash run_final_validation_report.sh` creates the final gate; formation products can additionally be compared with `bash slurm_compare_formation_status.sh`.

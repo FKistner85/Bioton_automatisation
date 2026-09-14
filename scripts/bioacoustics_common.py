@@ -94,6 +94,34 @@ def output_path(config: dict[str, Any], key: str) -> Path:
     return resolve_output_path(value)
 
 
+def model_checkpoint_dir(
+    section: dict[str, Any],
+    config_path: str | Path,
+) -> Path:
+    """Resolve the shared Bacpipe checkpoint directory from the config file."""
+    raw = str(section.get("model_checkpoint_dir", "bacpipe/model_checkpoints")).strip()
+    if not raw:
+        raise ValueError("bioacoustics.model_checkpoint_dir must not be empty.")
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = Path(config_path).resolve().parent / path
+    return path.resolve()
+
+
+def bacpipe_working_directory(checkpoint_dir: str | Path) -> Path:
+    """Return the cwd required by Bacpipe 1.3.1's relative checkpoint lookup."""
+    checkpoint_dir = Path(checkpoint_dir).resolve()
+    if (
+        checkpoint_dir.name.lower() != "model_checkpoints"
+        or checkpoint_dir.parent.name.lower() != "bacpipe"
+    ):
+        raise ValueError(
+            "Bacpipe 1.3.1 requires model_checkpoint_dir to end in "
+            f"'bacpipe/model_checkpoints'; got: {checkpoint_dir}"
+        )
+    return checkpoint_dir.parent.parent
+
+
 def stable_json_hash(value: Any) -> str:
     payload = json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -109,6 +137,12 @@ def model_fingerprint(config: dict[str, Any], model: dict[str, Any]) -> str:
             "model": model,
             "classifier_threshold": section.get("classifier_threshold", 0.1),
             "classifier_top_k": section.get("classifier_top_k", 5),
+            "execution_layout": {
+                "shard_count": int(section.get("shard_count", 16)),
+                "checkpoint_batch_size": int(
+                    section.get("checkpoint_batch_size", 16)
+                ),
+            },
             "run_pretrained_classifier": section.get(
                 "run_pretrained_classifier",
                 True,
@@ -226,6 +260,8 @@ def write_task_state(
     failed_by_id: dict[str, str],
     status: str,
     batch_count: int,
+    task_error: str = "",
+    interrupted_signal: str = "",
 ) -> None:
     atomic_write_json(
         path,
@@ -244,6 +280,8 @@ def write_task_state(
             "completed_work_keys": dict(sorted(completed_work_keys.items())),
             "failed_by_id": dict(sorted(failed_by_id.items())),
             "batch_count": int(batch_count),
+            "task_error": str(task_error),
+            "interrupted_signal": str(interrupted_signal),
         },
     )
 

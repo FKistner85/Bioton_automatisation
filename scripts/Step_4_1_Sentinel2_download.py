@@ -53,13 +53,20 @@ def get_drive_service(
     credentials_path: Path,
     token_path: Path,
     allow_interactive_auth: bool = False,
+    timeout_seconds: int = 60,
 ):
     creds = None
     if token_path.exists():
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            request = Request()
+
+            def bounded_request(*args, **kwargs):
+                kwargs.setdefault("timeout", timeout_seconds)
+                return request(*args, **kwargs)
+
+            creds.refresh(bounded_request)
         else:
             if not allow_interactive_auth:
                 return None
@@ -72,7 +79,13 @@ def get_drive_service(
             creds = flow.run_local_server(port=0)
         token_path.parent.mkdir(parents=True, exist_ok=True)
         token_path.write_text(creds.to_json(), encoding="utf-8")
-    return build("drive", "v3", credentials=creds)
+    # google-api-python-client otherwise uses an unbounded httplib2 transport,
+    # which can leave an unattended Slurm job hanging until its walltime.
+    import httplib2
+    from google_auth_httplib2 import AuthorizedHttp
+
+    http = AuthorizedHttp(creds, http=httplib2.Http(timeout=timeout_seconds))
+    return build("drive", "v3", http=http, cache_discovery=False)
 
 
 def configured_path(
@@ -423,6 +436,7 @@ def main() -> int:
                 credentials_path,
                 token_path,
                 allow_interactive_auth=args.allow_interactive_auth,
+                timeout_seconds=max(1, int(settings.get("auth_timeout_seconds", 60))),
             )
             if service is None:
                 raise RuntimeError(

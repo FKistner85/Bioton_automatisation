@@ -8,6 +8,7 @@ PYTHON="${ENV_PREFIX}/bin/python"
 check_imports() {
   "${PYTHON}" - <<'PY'
 import pandas, geopandas, pyogrio, shapely, pyarrow, av, rasterio, requests, xarray, netCDF4, pyproj, tqdm
+import sys
 import ee
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -15,6 +16,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from PIL import Image
+assert sys.version_info >= (3, 11), f"Python 3.11+ required, found {sys.version}"
 print("Bio-O-Ton Python dependencies OK")
 PY
 }

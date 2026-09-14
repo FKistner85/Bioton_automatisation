@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import sys
 import time
 import traceback
@@ -15,15 +16,17 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from common import load_config, write_progress_snapshot
+from common import atomic_write_json, load_config, write_progress_snapshot
 from bioacoustics_common import (
     BIOACOUSTIC_SCHEMA_VERSION,
+    bacpipe_working_directory,
     atomic_write_parquet,
     bio_config,
     configured_models,
     configure_bacpipe_runtime,
     finite_float,
     load_task_state,
+    model_checkpoint_dir as resolve_model_checkpoint_dir,
     output_path,
     sanitise_species_name,
     slurm_task_index,
@@ -80,70 +83,125 @@ def verify_shards(config: dict[str, Any]) -> int:
         return 2
 
     worklist = pd.read_parquet(worklist_path)
-    issues: list[str] = []
-    warnings: list[str] = []
+    blocking_models: list[str] = []
+    optional_models_with_issues: list[str] = []
+    model_summaries: list[dict[str, Any]] = []
     verified_rows = 0
     for model_cfg in models:
         model_name = str(model_cfg["name"])
-        model_required = bool(model_cfg.get("required", False))
-
-        def record(problem: str) -> None:
-            (issues if model_required else warnings).append(problem)
+        model_required = bool(
+            model_cfg.get("required", False)
+            or section.get("require_all_models_complete", False)
+        )
 
         model_rows = worklist[worklist["model"].astype(str) == model_name]
+        completed_rows = 0
+        failed_ids: set[str] = set()
+        missing_rows = 0
+        shard_issues: dict[int, list[str]] = {}
         for shard_index in range(shard_count):
             expected = model_rows[
                 pd.to_numeric(model_rows["shard_index"], errors="coerce")
                 == shard_index
             ]
+            verified_rows += len(expected)
             state_path = (
                 state_root
                 / f"model={model_name}"
                 / f"shard={shard_index:04d}.json"
             )
             state = load_task_state(state_path)
+            problems: list[str] = []
             if not state:
-                record(f"missing_state:{model_name}:{shard_index}")
+                problems.append("missing_state")
+                missing_rows += len(expected)
+                shard_issues[shard_index] = problems
                 continue
             if state.get("status") != "complete":
-                record(
-                    f"non_complete_state:{model_name}:{shard_index}:"
-                    f"{state.get('status', '')}"
-                )
-            if state.get("failed_by_id"):
-                record(f"failed_ids:{model_name}:{shard_index}")
+                problems.append(f"state={state.get('status', 'unknown')}")
+            state_failed = {str(value) for value in state.get("failed_by_id", {})}
+            failed_ids.update(state_failed)
+            if state_failed:
+                problems.append(f"failed_ids={len(state_failed)}")
+            if state.get("task_error"):
+                problems.append("task_error")
             if int(state.get("shard_count", -1)) != shard_count:
-                record(f"shard_count_mismatch:{model_name}:{shard_index}")
+                problems.append("shard_count_mismatch")
             completed = {
                 str(key): str(value)
                 for key, value in state.get("completed_work_keys", {}).items()
             }
-            for row in expected.to_dict("records"):
-                dawn_id = str(row["dawn_chorus_id"])
-                if completed.get(dawn_id) != str(row["work_key"]):
-                    record(
-                        f"missing_work_key:{model_name}:{shard_index}:{dawn_id}"
-                    )
-            verified_rows += len(expected)
+            expected_keys = {
+                str(row["dawn_chorus_id"]): str(row["work_key"])
+                for row in expected.to_dict("records")
+            }
+            matched = sum(
+                completed.get(dawn_id) == work_key
+                for dawn_id, work_key in expected_keys.items()
+            )
+            completed_rows += matched
+            shard_missing = len(expected_keys) - matched
+            missing_rows += shard_missing
+            if shard_missing:
+                problems.append(f"missing_rows={shard_missing}")
+            if problems:
+                shard_issues[shard_index] = problems
+
+        summary = {
+            "model": model_name,
+            "required": model_required,
+            "expected_rows": int(len(model_rows)),
+            "completed_rows": int(completed_rows),
+            "missing_rows": int(missing_rows),
+            "failed_ids": int(len(failed_ids)),
+            "problem_shards": int(len(shard_issues)),
+            "shard_issues": {
+                str(index): problems for index, problems in shard_issues.items()
+            },
+            "status": "complete" if not shard_issues else "incomplete",
+        }
+        model_summaries.append(summary)
+        if shard_issues:
+            (blocking_models if model_required else optional_models_with_issues).append(
+                model_name
+            )
 
     print(f"Verified models : {len(models)}")
     print(f"Verified shards : {len(models) * shard_count}")
     print(f"Verified rows   : {verified_rows:,}")
-    if warnings:
+    print("Model completion:")
+    for summary in model_summaries:
         print(
-            f"WARNING: {len(warnings)} optional-model shard issue(s) do not "
-            "block completion.",
+            "- {model}: status={status}, required={required}, "
+            "completed={completed_rows:,}/{expected_rows:,}, missing={missing_rows:,}, "
+            "failed_ids={failed_ids:,}, problem_shards={problem_shards}".format(
+                **summary
+            )
+        )
+    report_path = state_root / "verification.json"
+    atomic_write_json(
+        report_path,
+        {
+            "schema_version": BIOACOUSTIC_SCHEMA_VERSION,
+            "status": "failed" if blocking_models else "complete",
+            "verified_rows": int(verified_rows),
+            "models": model_summaries,
+            "blocking_models": blocking_models,
+            "optional_models_with_issues": optional_models_with_issues,
+        },
+    )
+    print(f"Verification report: {report_path}")
+    if optional_models_with_issues:
+        print(
+            "WARNING: Optional models incomplete: "
+            + ", ".join(optional_models_with_issues),
             file=sys.stderr,
         )
-        for warning in warnings[:50]:
-            print(f"- {warning}", file=sys.stderr)
-    if issues:
+    if blocking_models:
         print(
-            f"ERROR: Step 6_2 shard verification found {len(issues)} issue(s).",
+            "ERROR: Required models incomplete: " + ", ".join(blocking_models),
             file=sys.stderr,
         )
-        for issue in issues[:50]:
-            print(f"- {issue}", file=sys.stderr)
         return 2
     print("Step 6_2 shard verification: OK")
     return 0
@@ -357,13 +415,16 @@ def select_predictions(
 
 def main() -> int:
     args = parse_args()
+    config_path = args.config.resolve()
     # Keep Bacpipe's relative checkpoint lookup stable for direct and Slurm runs.
-    os.chdir(args.config.resolve().parent)
-    config = load_config(args.config)
+    os.chdir(config_path.parent)
+    config = load_config(config_path)
     if args.verify_shards:
         return verify_shards(config)
     section = bio_config(config)
     models = configured_models(config)
+    checkpoint_dir = resolve_model_checkpoint_dir(section, config_path)
+    os.chdir(bacpipe_working_directory(checkpoint_dir))
     shard_count = int(section.get("shard_count", 16))
     task_index = slurm_task_index() if args.task_index is None else args.task_index
     model_index, shard_index = divmod(task_index, shard_count)
@@ -385,7 +446,16 @@ def main() -> int:
     for root in [state_root, embedding_root, native_root]:
         root.mkdir(parents=True, exist_ok=True)
     state_path = state_root / f"model={model_name}" / f"shard={shard_index:04d}.json"
-    if args.force:
+    state = load_task_state(state_path)
+    expected_fp = str(task_rows["model_fingerprint"].iloc[0]) if not task_rows.empty else ""
+    reset_task = args.force or (
+        bool(state)
+        and (
+            state.get("model_fingerprint") != expected_fp
+            or int(state.get("shard_count", -1)) != shard_count
+        )
+    )
+    if reset_task:
         pattern = f"part-shard{shard_index:04d}-batch*.parquet"
         for root in [embedding_root, native_root]:
             task_dir = root / f"model={model_name}"
@@ -393,9 +463,6 @@ def main() -> int:
                 old_part.unlink()
         if state_path.is_file():
             state_path.unlink()
-    state = {} if args.force else load_task_state(state_path)
-    expected_fp = str(task_rows["model_fingerprint"].iloc[0]) if not task_rows.empty else ""
-    if state.get("model_fingerprint") != expected_fp:
         state = {}
     completed_work_keys = {
         str(key): str(value)
@@ -438,7 +505,25 @@ def main() -> int:
         return 1
 
     configure_bacpipe_runtime(bacpipe, section)
-    embedder = bacpipe.Embedder(model_name)
+    try:
+        embedder = bacpipe.Embedder(model_name)
+    except Exception as exc:
+        task_error = f"{type(exc).__name__}:{exc}"[:2000]
+        write_task_state(
+            state_path,
+            model=model_name,
+            shard_index=shard_index,
+            shard_count=shard_count,
+            model_fp=expected_fp,
+            completed_ids=completed_ids,
+            completed_work_keys=completed_work_keys,
+            failed_by_id=failed_by_id,
+            status="failed",
+            batch_count=batch_index,
+            task_error=task_error,
+        )
+        print(f"ERROR: Model initialisation failed: {task_error}", file=sys.stderr)
+        return 2
     configure_embedder_audio_suffixes(embedder, pending["source_path"])
     batch_size = max(1, int(section.get("checkpoint_batch_size", 16)))
     threshold = float(section.get("classifier_threshold", 0.1))
@@ -498,7 +583,28 @@ def main() -> int:
             },
         )
 
+    stop_requested = False
+    interrupted_signal = ""
+
+    def request_stop(signum: int, _frame: Any) -> None:
+        nonlocal stop_requested, interrupted_signal
+        stop_requested = True
+        interrupted_signal = signal.Signals(signum).name
+        print(
+            f"WARNING: Received {interrupted_signal}; stopping after current item.",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    handled_signals = [signal.SIGTERM]
+    if hasattr(signal, "SIGUSR1"):
+        handled_signals.append(signal.SIGUSR1)
+    for handled_signal in handled_signals:
+        signal.signal(handled_signal, request_stop)
+
     for index, work in enumerate(pending.to_dict("records"), start=1):
+        if stop_requested:
+            break
         dawn_id = str(work["dawn_chorus_id"])
         try:
             raw_embeddings = embedder.get_embeddings_from_model(str(work["source_path"]))
@@ -531,6 +637,26 @@ def main() -> int:
             flush()
             print(f"Checkpointed {index:,}/{len(pending):,}")
     flush()
+    if stop_requested:
+        write_task_state(
+            state_path,
+            model=model_name,
+            shard_index=shard_index,
+            shard_count=shard_count,
+            model_fp=expected_fp,
+            completed_ids=completed_ids,
+            completed_work_keys=completed_work_keys,
+            failed_by_id=failed_by_id,
+            status="interrupted",
+            batch_count=batch_index,
+            task_error="SLURM pre-timeout or termination signal received",
+            interrupted_signal=interrupted_signal,
+        )
+        print(
+            f"ERROR: Shard interrupted by {interrupted_signal}; checkpoint saved.",
+            file=sys.stderr,
+        )
+        return 3
     final_status = "complete" if not failed_by_id else "partial"
     write_task_state(
         state_path,

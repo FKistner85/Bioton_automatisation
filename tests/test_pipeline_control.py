@@ -25,12 +25,6 @@ import run_with_manifest
 import horeka_controller
 
 
-def test_horeka_controller_preserves_venv_python_symlink() -> None:
-    venv_python = Path("/tmp/test-venv/bin/python")
-    with patch.object(horeka_controller.sys, "executable", str(venv_python)):
-        assert horeka_controller.running_python() == venv_python
-
-
 def test_lock_ownership() -> None:
     with tempfile.TemporaryDirectory() as raw:
         lock = Path(raw) / "pipeline.lock"
@@ -39,6 +33,21 @@ def test_lock_ownership() -> None:
         assert pipeline_lock.release(lock, "run-b", force=False) == 4
         assert pipeline_lock.release(lock, "run-a", force=False) == 0
         assert not lock.exists()
+
+
+def test_dependency_never_satisfied_is_terminal() -> None:
+    with patch.object(
+        horeka_controller,
+        "command_output",
+        return_value="PENDING|DependencyNeverSatisfied",
+    ):
+        assert horeka_controller.slurm_job_state("123") == "DEPENDENCY_FAILED"
+    with patch.object(
+        horeka_controller,
+        "command_output",
+        return_value="PENDING|Dependency",
+    ):
+        assert horeka_controller.slurm_job_state("123") == "PENDING"
 
 
 def test_domain_fingerprint_change_detection() -> None:
@@ -389,6 +398,7 @@ def test_full_rebuild_step_contract_and_legacy_migration() -> None:
 
 if __name__ == "__main__":
     test_lock_ownership()
+    test_dependency_never_satisfied_is_terminal()
     test_domain_fingerprint_change_detection()
     test_add_reason_accumulates_per_id()
     test_inventory_baseline_requires_state_and_outputs()

@@ -11,7 +11,7 @@ LOGDIR="${BIOOTON_LOGDIR:-}"
 PARTITION="${BIOOTON_PARTITION:-cpuonly}"
 BIOACOUSTICS_PARTITION="${BIOOTON_BIOACOUSTICS_PARTITION:-${PARTITION}}"
 BIOACOUSTICS_GRES="${BIOOTON_BIOACOUSTICS_GRES:-}"
-BIOACOUSTICS_MEMORY="${BIOOTON_BIOACOUSTICS_MEMORY:-48G}"
+BIOACOUSTICS_MEMORY="${BIOOTON_BIOACOUSTICS_MEMORY:-}"
 ACCOUNT="${BIOOTON_ACCOUNT:-}"
 TIME_OVERRIDE="${BIOOTON_PIPELINE_TIME_OVERRIDE:-}"
 HYBRID_CONTROLLER="${BIOOTON_HYBRID_CONTROLLER:-0}"
@@ -34,7 +34,8 @@ HOSTRADA_RASTER_MEMORY="${BIOOTON_STEP54_MEMORY:-32G}"
 HOSTRADA_RASTER_MAX_CONCURRENT="${BIOOTON_STEP54_MAX_CONCURRENT_TASKS:-2}"
 MASTER_CPUS="${BIOOTON_MASTER_CPUS:-2}"
 FORMATION_COMPARE_CPUS="${BIOOTON_FORMATION_COMPARE_CPUS:-4}"
-BIOACOUSTICS_CPUS="${BIOOTON_BIOACOUSTICS_CPUS:-16}"
+BIOACOUSTICS_CPUS="${BIOOTON_BIOACOUSTICS_CPUS:-}"
+BIOACOUSTICS_TIME="${BIOOTON_BIOACOUSTICS_TIME:-}"
 
 usage() {
   cat <<'EOF'
@@ -61,7 +62,9 @@ Useful environment variables:
   BIOOTON_STEP54_MAX_CONCURRENT_TASKS=2
   BIOOTON_BACPIPE_PYTHON=/path/to/.venv_bacpipe/bin/python
   BIOOTON_BIOACOUSTICS_PARTITION=cpuonly        # Standard, keine GPU noetig
-  BIOOTON_BIOACOUSTICS_CPUS=16
+  BIOOTON_BIOACOUSTICS_CPUS=4
+  BIOOTON_BIOACOUSTICS_MEMORY=24G
+  BIOOTON_BIOACOUSTICS_TIME=12:00:00
 
 GPU optional, falls der Account Zugriff hat:
   BIOOTON_BIOACOUSTICS_PARTITION=accelerated-h100
@@ -84,6 +87,15 @@ if [[ -z "${LOGDIR}" ]]; then
   LOGDIR="$("${PYTHON}" -c "import json; print(json.load(open('${CONFIG}', encoding='utf-8')).get('slurm_log_dir', ''))")"
 fi
 [[ -n "${LOGDIR}" ]] || { echo "Missing slurm_log_dir in config or BIOOTON_LOGDIR." >&2; exit 1; }
+if [[ -z "${BIOACOUSTICS_CPUS}" ]]; then
+  BIOACOUSTICS_CPUS="$("${PYTHON}" -c "import json; print(int(json.load(open('${CONFIG}', encoding='utf-8'))['bioacoustics'].get('slurm_cpus_per_task', 4)))")"
+fi
+if [[ -z "${BIOACOUSTICS_MEMORY}" ]]; then
+  BIOACOUSTICS_MEMORY="$("${PYTHON}" -c "import json; print(json.load(open('${CONFIG}', encoding='utf-8'))['bioacoustics'].get('slurm_memory', '24G'))")"
+fi
+if [[ -z "${BIOACOUSTICS_TIME}" ]]; then
+  BIOACOUSTICS_TIME="$("${PYTHON}" -c "import json; print(json.load(open('${CONFIG}', encoding='utf-8'))['bioacoustics'].get('slurm_time', '12:00:00'))")"
+fi
 if [[ -z "${WEATHER_SHARD_LIMIT}" ]]; then
   WEATHER_SHARD_LIMIT="$("${PYTHON}" -c "import json; print(int(json.load(open('${CONFIG}', encoding='utf-8'))['weather_download'].get('slurm_shard_count', 8)))")"
 fi
@@ -92,6 +104,9 @@ if [[ -z "${WEATHER_MAX_CONCURRENT}" ]]; then
 fi
 [[ "${WEATHER_SHARD_LIMIT}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid weather shard count: ${WEATHER_SHARD_LIMIT}" >&2; exit 1; }
 [[ "${WEATHER_MAX_CONCURRENT}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid weather max concurrency: ${WEATHER_MAX_CONCURRENT}" >&2; exit 1; }
+[[ "${BIOACOUSTICS_CPUS}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid bioacoustic CPU count: ${BIOACOUSTICS_CPUS}" >&2; exit 1; }
+[[ -n "${BIOACOUSTICS_MEMORY}" ]] || { echo "Invalid empty bioacoustic memory request." >&2; exit 1; }
+[[ "${BIOACOUSTICS_TIME}" =~ ^[0-9]+:[0-5][0-9]:[0-5][0-9]$ ]] || { echo "Invalid bioacoustic time: ${BIOACOUSTICS_TIME}" >&2; exit 1; }
 mkdir -p "${LOGDIR}"
 BIOACOUSTICS_ENABLED="$("${PYTHON}" -c "import json; print('1' if json.load(open('${CONFIG}', encoding='utf-8')).get('bioacoustics', {}).get('enabled', True) else '0')")"
 if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ && ! -x "${BACPIPE_PYTHON}" ]]; then
@@ -257,12 +272,13 @@ submit_bacpipe_array() {
     "${bio_resource_args[@]}" \
     --mem="${BIOACOUSTICS_MEMORY}" \
     --time="${walltime}" \
+    --signal=B:USR1@180 \
     --array="0-${last_task}%${max_concurrent}" \
     --output="${LOGDIR}/${LOG_STAMP}_${job_name}_%A_%a.out" \
     --error="${LOGDIR}/${LOG_STAMP}_${job_name}_%A_%a.err" \
     "${account_args[@]}" \
     "${dep_args[@]}" \
-    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.err\"; export OMP_NUM_THREADS='${BIOACOUSTICS_CPUS}'; '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name '${step_name}' -- '${BACPIPE_PYTHON}' '${PIPELINE_DIR}/${target}' --config '${CONFIG}' --task-index \${SLURM_ARRAY_TASK_ID} ${extra_args[*]}"
+    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.err\"; export OMP_NUM_THREADS='${BIOACOUSTICS_CPUS}' OPENBLAS_NUM_THREADS='${BIOACOUSTICS_CPUS}' MKL_NUM_THREADS='${BIOACOUSTICS_CPUS}' NUMEXPR_NUM_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTRAOP_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTEROP_THREADS=1; exec '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name '${step_name}' -- '${BACPIPE_PYTHON}' '${PIPELINE_DIR}/${target}' --config '${CONFIG}' --task-index \${SLURM_ARRAY_TASK_ID} ${extra_args[*]}"
 }
 
 submit_bacpipe_job() {
@@ -297,7 +313,7 @@ submit_bacpipe_job() {
     --error="${LOGDIR}/${LOG_STAMP}_${job_name}_%j.err" \
     "${account_args[@]}" \
     "${dep_args[@]}" \
-    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_JOB_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_JOB_ID}.err\"; export OMP_NUM_THREADS='${BIOACOUSTICS_CPUS}'; '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name '${step_name}' -- '${BACPIPE_PYTHON}' '${PIPELINE_DIR}/${target}' --config '${CONFIG}' ${extra_args[*]}"
+    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_JOB_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_JOB_ID}.err\"; export OMP_NUM_THREADS='${BIOACOUSTICS_CPUS}' OPENBLAS_NUM_THREADS='${BIOACOUSTICS_CPUS}' MKL_NUM_THREADS='${BIOACOUSTICS_CPUS}' NUMEXPR_NUM_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTRAOP_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTEROP_THREADS=1; '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name '${step_name}' -- '${BACPIPE_PYTHON}' '${PIPELINE_DIR}/${target}' --config '${CONFIG}' ${extra_args[*]}"
 }
 
 submit_weather_array() {
@@ -532,7 +548,7 @@ if [[ "${MODE}" == "from_scratch" ]]; then
   t_step55="08:00:00"
   t_step60="02:00:00"
   t_step61="01:00:00"
-  t_step62="12:00:00"
+  t_step62="${BIOACOUSTICS_TIME}"
   t_step63="04:00:00"
   t_step64="04:00:00"
   t_step65="04:00:00"
@@ -556,7 +572,7 @@ else
   t_step55="04:00:00"
   t_step60="02:00:00"
   t_step61="00:30:00"
-  t_step62="04:00:00"
+  t_step62="${BIOACOUSTICS_TIME}"
   t_step63="01:00:00"
   t_step64="01:00:00"
   t_step65="01:00:00"
@@ -698,7 +714,7 @@ if [[ "$(plan_run step_5_2_weather_download)" == "1" ]]; then
 fi
 j51post="skipped_plan"
 if [[ "${j52}" =~ ^[0-9]+$ ]]; then
-  j51post="$(submit_python bio_step51post step_5_1_weather_inventory_post "${STEP51_CPUS}" "${t_step51}" "$(afterany_jobs "${j52verify}")" scripts/Step_5_1_Weather_inventory.py)"
+  j51post="$(submit_python bio_step51post step_5_1_weather_inventory_post "${STEP51_CPUS}" "${t_step51}" "$(afterok_jobs "${j52verify}")" scripts/Step_5_1_Weather_inventory.py)"
   submit_master_update weather "${j51post}" "${weather_ids}"
 fi
 
@@ -751,7 +767,7 @@ fi
 
 j63="skipped_plan"
 if [[ "$(plan_run step_6_3_species_predictions)" == "1" ]]; then
-  j63="$(submit_python bio_step63 step_6_3_species_predictions 1 "${t_step63}" "$(afterany_jobs "${j62verify}")" scripts/Step_6_3_normalise_species_predictions.py)"
+  j63="$(submit_python bio_step63 step_6_3_species_predictions 1 "${t_step63}" "$(afterok_jobs "${j62verify}")" scripts/Step_6_3_normalise_species_predictions.py)"
 fi
 j64="skipped_plan"
 if [[ "$(plan_run step_6_4_germany_taxonomy_filter)" == "1" ]]; then
@@ -766,7 +782,7 @@ j66="skipped_plan"
 if [[ "$(plan_run step_6_6_bioacoustic_qc)" == "1" ]]; then
   # j65 already transitively waits for j62. Keeping only j65 avoids a
   # redundant dependency without allowing QC before aggregation.
-  j66="$(submit_python bio_step66 step_6_6_bioacoustic_qc 1 "${t_step66}" "$(afterany_jobs "${j65}")" scripts/Step_6_6_bioacoustic_quality_control.py)"
+  j66="$(submit_python bio_step66 step_6_6_bioacoustic_qc 1 "${t_step66}" "$(afterok_jobs "${j65}")" scripts/Step_6_6_bioacoustic_quality_control.py)"
   submit_master_update bioacoustics "${j66}" "${bioacoustic_ids}"
 fi
 

@@ -4,8 +4,8 @@
 
 Step 7_0 creates a compact ID-level master table for each `dawn_chorus_id`.
 It combines the most important status fields from metadata, 100m/10m formation
-products, audio, photos, Sentinel-2, HOSTRADA point weather and HOSTRADA 100m
-raster status.
+products, direct LRT intersections, audio, photos, Sentinel-2, HOSTRADA point
+weather/raster status, bioacoustic QC, readiness, and manual release state.
 
 ## Input
 
@@ -21,6 +21,8 @@ outputs/step_4_0_Sentinel2_inventory/sentinel2_inventory_*.csv
 outputs/step_5_1_weather_inventory/weather_inventory_compact.csv
 outputs/step_5_4_hostrada_raster_products/
 outputs/step_5_5_hostrada_raster_quality_check/hostrada_raster_quality.csv
+outputs/step_6_5_bioacoustic_recording_summary/recording_summary.csv
+outputs/step_6_6_bioacoustic_quality_control/bioacoustic_qc_compact.csv
 ```
 
 ## Output
@@ -32,6 +34,8 @@ Bio_O_Ton_Mastertable_summary.json
 outputs/step_0_control/status_events.csv
 Bio_O_Ton_Formation_Variants.csv
 Bio_O_Ton_Formation_Variants.parquet
+Bio_O_Ton_Variant_Summary.csv
+Bio_O_Ton_Variant_Temporal_Summary.csv
 ```
 
 The output files are written directly below `Data_automatisation_skripts/outputs`.
@@ -49,7 +53,8 @@ master job runs before `bio_validate`.
 ## Notes
 
 The master table does not replace the detailed logs. It only condenses their
-most important ID-level information. Full column definitions are documented in
-`MASTER_TABLE_README.md`. Canonical domain statuses, the source fingerprint,
-workflow run ID and preserved manual review fields are stored in the master
-table; status changes are written to the event log.
+most important ID-level information. All 99 columns and their exact readiness
+rules are defined in the [master-table reference](../../MASTER_TABLE_README.md).
+Canonical domain statuses, the source fingerprint, workflow run ID, and
+preserved manual review fields are stored in the master table; status changes
+are written to the event log.

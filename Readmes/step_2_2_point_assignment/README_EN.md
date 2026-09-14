@@ -28,7 +28,7 @@ Result-relevant settings are centralised in `config.horeka.json`: `point_lrt_ass
 `SLURM_CPUS_PER_TASK` limits effective parallelism. The step uses no more processes/workers than configured. IDs or chunks have unique status/checkpoint keys, while the global pipeline lock prevents concurrent writing workflows.
 
 ## Checkpoint/Resume
-Bei unveraenderten Spatial Inputs werden nur neue IDs verarbeitet.
+When spatial inputs are unchanged, only affected/new IDs are processed.
 
 ## Quality Control
 Output existence alone is not treated as validity. Compact and detailed logs, batch status files and the run manifest record validation and failures. `bash run_final_validation_report.sh` creates the final gate; formation products can additionally be compared with `bash slurm_compare_formation_status.sh`.

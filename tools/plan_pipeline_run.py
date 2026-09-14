@@ -875,6 +875,8 @@ def main() -> int:
         },
         "step_6_0_bioacoustic_model_preflight": {
             "run": bio_enabled and (
+                bool(id_reasons["bioacoustic"])
+                or
                 bio_model_changed
                 or not registry_path.is_file()
                 or bio_required_model_unavailable
@@ -883,9 +885,18 @@ def main() -> int:
                 [
                     "bacpipe_environment_or_model_registry_changed"
                     if bio_model_changed or not registry_path.is_file()
-                    else "required_bioacoustic_model_unavailable"
+                    else (
+                        "required_bioacoustic_model_unavailable"
+                        if bio_required_model_unavailable
+                        else "bioacoustic_work_requires_fresh_preflight"
+                    )
                 ]
-                if bio_model_changed or not registry_path.is_file() or bio_required_model_unavailable
+                if (
+                    bool(id_reasons["bioacoustic"])
+                    or bio_model_changed
+                    or not registry_path.is_file()
+                    or bio_required_model_unavailable
+                )
                 else []
             ),
         },
