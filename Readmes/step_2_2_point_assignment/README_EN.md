@@ -1,7 +1,9 @@
 # Step 2_2 Point Assignment (EN)
 
 ## Purpose
-Assigns Dawn Chorus points to grid cells and LRT polygons.
+Assigns every Dawn Chorus point to its INSPIRE 100 m grid cell and LRT polygons.
+The grid ID is emitted even without a majority formation; majority formation
+remains a separate attribute.
 
 ## Script
 `scripts/Step_2_2_assign_points_to_lrt_grid.py`

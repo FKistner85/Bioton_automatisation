@@ -1,7 +1,9 @@
 # Step 2_2 Point Assignment (DE)
 
 ## Zweck
-Ordnet Dawn-Chorus-Punkte Gridzellen und LRT-Polygonen zu.
+Ordnet jeden Dawn-Chorus-Punkt der INSPIRE-100m-Gridzelle und LRT-Polygonen zu.
+Die Grid-ID wird auch ohne Majority Formation ausgegeben; eine vorhandene
+Majority Formation bleibt ein separates Attribut.
 
 ## Script
 `scripts/Step_2_2_assign_points_to_lrt_grid.py`

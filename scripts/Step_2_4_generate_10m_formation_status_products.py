@@ -26,6 +26,7 @@ from tqdm import tqdm
 from common import (
     finish_step_manifest,
     start_step_manifest,
+    susi_10m_grid_id_from_parent,
     utc_now_iso,
     workflow_run_id,
     write_batch_status,
@@ -112,11 +113,13 @@ def make_10m_cells(grid_id: str) -> list[dict[str, Any]]:
         for dx in range(10):
             minx = x0 + dx * 10
             miny = y0 + dy * 10
-            east_10 = east_100 * 10 + dx
-            north_10 = north_100 * 10 + dy
             cells.append(
                 {
-                    "grid_id_10": f"10mN{north_10}E{east_10}",
+                    "grid_id_10": susi_10m_grid_id_from_parent(
+                        grid_id,
+                        x0 + dx * 10,
+                        y0 + dy * 10,
+                    ),
                     "grid_id_100": grid_id,
                     "geometry": box(minx, miny, minx + 10, miny + 10),
                 }

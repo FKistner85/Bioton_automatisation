@@ -1,5 +1,5 @@
 from __future__ import annotations
-import hashlib, json, os, platform, re, shutil, subprocess, sys, tempfile, time, uuid
+import hashlib, json, math, os, platform, re, shutil, subprocess, sys, tempfile, time, uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
@@ -10,6 +10,7 @@ import pandas as pd
 LSDF_LOGICAL_PREFIX = "/lsdf/"
 GFSE_LSDF_PREFIX = "/gfse/data/LSDF/lsdf01/lsdf/"
 INVALID_LSDF01_PREFIX = "/lsdf01/lsdf/"
+SUSI_100M_GRID_ID_PATTERN = re.compile(r"100mN(-?\d+)E(-?\d+)")
 
 CANONICAL_STATUSES = {
     "not_started",
@@ -76,6 +77,47 @@ class ResolvedPath:
 
 def load_config(path: str | Path) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
+
+
+def susi_10m_grid_id_from_parent(
+    grid_id_100: str,
+    x: float,
+    y: float,
+) -> str:
+    """Return the Susi-compatible 10 m ID for an EPSG:3035 point.
+
+    This exactly mirrors Step 2.4's expansion of an INSPIRE 100 m cell:
+    ``10mN(N100*10+dy)E(E100*10+dx)``.
+    """
+    match = SUSI_100M_GRID_ID_PATTERN.fullmatch(str(grid_id_100))
+    if match is None:
+        raise ValueError(f"Invalid 100 m grid_id: {grid_id_100}")
+    north_100, east_100 = (int(value) for value in match.groups())
+    dx = math.floor((float(x) - east_100 * 100) / 10)
+    dy = math.floor((float(y) - north_100 * 100) / 10)
+    if not (0 <= dx <= 9 and 0 <= dy <= 9):
+        raise ValueError(
+            f"Point ({x}, {y}) is outside 100 m grid cell {grid_id_100}"
+        )
+    return f"10mN{north_100 * 10 + dy}E{east_100 * 10 + dx}"
+
+
+def attach_optional_grid_majority(
+    grid: pd.DataFrame,
+    majority: pd.DataFrame,
+    grid_id_column: str,
+) -> pd.DataFrame:
+    """Attach majority attributes without dropping valid INSPIRE grid cells."""
+    required = {grid_id_column, "majority_formation"}
+    missing = required - set(majority.columns)
+    if missing:
+        raise ValueError(
+            "Missing required grid-majority columns: "
+            + ", ".join(sorted(missing))
+        )
+    majority = majority[majority["majority_formation"].notna()].copy()
+    majority = majority.drop_duplicates(grid_id_column, keep="first")
+    return grid.merge(majority, on=grid_id_column, how="left")
 
 
 def lsdf_path_candidates(path: str | Path) -> list[Path]:

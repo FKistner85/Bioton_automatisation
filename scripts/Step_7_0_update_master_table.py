@@ -28,6 +28,7 @@ from common import (
     load_config,
     processed_root_from_config,
     read_ids_file,
+    susi_10m_grid_id_from_parent,
     utc_now_iso,
     workflow_run_id,
 )
@@ -945,16 +946,21 @@ def compute_10m_grid_ids(table: pd.DataFrame) -> pd.Series:
         return pd.Series(pd.NA, index=table.index)
     transformer = Transformer.from_crs("EPSG:4326", "EPSG:3035", always_xy=True)
     ids: list[str | pd.NA] = []
-    for lon, lat in zip(table["lon"], table["lat"]):
+    grid_100m_ids = table.get(
+        "grid_100m_id", pd.Series(pd.NA, index=table.index)
+    )
+    for grid_id_100, lon, lat in zip(grid_100m_ids, table["lon"], table["lat"]):
         try:
-            if pd.isna(lon) or pd.isna(lat):
+            if pd.isna(grid_id_100) or pd.isna(lon) or pd.isna(lat):
                 ids.append(pd.NA)
                 continue
             x, y = transformer.transform(float(lon), float(lat))
             if not math.isfinite(x) or not math.isfinite(y):
                 ids.append(pd.NA)
                 continue
-            ids.append(f"10mN{math.floor(y / 10.0)}E{math.floor(x / 10.0)}")
+            ids.append(
+                susi_10m_grid_id_from_parent(str(grid_id_100), x, y)
+            )
         except Exception:
             ids.append(pd.NA)
     return pd.Series(ids, index=table.index, dtype="string")
@@ -992,6 +998,7 @@ def read_10m_rows(path: Path, grid_ids: list[str], columns: list[str]) -> pd.Dat
 
 def add_10m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
     table["grid_10m_id"] = compute_10m_grid_ids(table)
+    table["grid_10m_assignment_exists"] = table["grid_10m_id"].notna()
     path = Path(config.get("susi_10m_products", {}).get("final_parquet", ""))
     columns = [
         "grid_id_10",
@@ -1006,7 +1013,6 @@ def add_10m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFra
     ids = table["grid_10m_id"].dropna().astype(str).drop_duplicates().tolist()
     ten = read_10m_rows(path, ids, columns)
     if ten.empty:
-        table["grid_10m_assignment_exists"] = False
         table["grid_10m_has_majority_formation"] = False
         for column in [
             "majority_formation_10m",

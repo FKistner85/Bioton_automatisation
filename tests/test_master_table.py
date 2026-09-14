@@ -16,6 +16,10 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 import Step_7_0_update_master_table as master
+from common import (
+    attach_optional_grid_majority,
+    susi_10m_grid_id_from_parent,
+)
 
 
 def write_csv(path: Path, frame: pd.DataFrame) -> None:
@@ -198,6 +202,52 @@ def test_default_output_paths_use_master_basename() -> None:
     assert summary_path == root / "Bio_O_Ton_Master_summary.json"
 
 
+def test_susi_10m_grid_id_uses_the_parent_inspire_nomenclature() -> None:
+    assert (
+        susi_10m_grid_id_from_parent(
+            "100mN6283E1192", 119200.1, 628300.1
+        )
+        == "10mN62830E11920"
+    )
+    assert (
+        susi_10m_grid_id_from_parent(
+            "100mN6283E1192", 119299.9, 628399.9
+        )
+        == "10mN62839E11929"
+    )
+
+
+def test_optional_majority_keeps_every_inspire_grid_cell() -> None:
+    grid = pd.DataFrame({"grid_id": ["100mN1E1", "100mN1E2"]})
+    majority = pd.DataFrame(
+        {
+            "grid_id": ["100mN1E1"],
+            "majority_formation": ["Forests"],
+        }
+    )
+    result = attach_optional_grid_majority(grid, majority, "grid_id")
+    assert result["grid_id"].tolist() == ["100mN1E1", "100mN1E2"]
+    assert result.loc[0, "majority_formation"] == "Forests"
+    assert pd.isna(result.loc[1, "majority_formation"])
+
+
+def test_10m_grid_assignment_exists_without_a_majority_product() -> None:
+    original = master.compute_10m_grid_ids
+    try:
+        master.compute_10m_grid_ids = lambda table: pd.Series(
+            ["10mN62830E11920"], index=table.index, dtype="string"
+        )
+        result = master.add_10m_formation(
+            pd.DataFrame({"dawn_chorus_id": [1]}),
+            {"susi_10m_products": {"final_parquet": ""}},
+        )
+    finally:
+        master.compute_10m_grid_ids = original
+    assert result.loc[0, "grid_10m_id"] == "10mN62830E11920"
+    assert result.loc[0, "grid_10m_assignment_exists"]
+    assert not result.loc[0, "grid_10m_has_majority_formation"]
+
+
 def test_mixed_timezone_local_wall_times() -> None:
     values = pd.Series(
         [
@@ -250,6 +300,9 @@ if __name__ == "__main__":
     test_master_table_minimal_build()
     test_incremental_master_merge_preserves_unaffected_rows()
     test_default_output_paths_use_master_basename()
+    test_susi_10m_grid_id_uses_the_parent_inspire_nomenclature()
+    test_optional_majority_keeps_every_inspire_grid_cell()
+    test_10m_grid_assignment_exists_without_a_majority_product()
     test_mixed_timezone_local_wall_times()
     test_formation_variant_status_is_summarised()
     print("test_master_table.py: OK")

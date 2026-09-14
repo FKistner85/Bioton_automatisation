@@ -127,7 +127,7 @@ There is intentionally no 10 m weather-raster column. Optional 100 m weather ras
 
 | Column | Definition |
 |---|---|
-| `grid_100m_id` | 100 m grid cell assigned to the recording point by Step 2.2. |
+| `grid_100m_id` | Authoritative INSPIRE 100 m grid cell assigned to the recording point by Step 2.2, whether or not the cell has a majority formation. |
 | `grid_100m_assignment_exists` | `True` when a 100 m grid ID is available. |
 | `grid_100m_has_majority_formation` | `True` when the assigned cell has a majority formation. |
 | `majority_formation_100m` | Formation with the largest area share in the assigned 100 m cell. |
@@ -159,7 +159,7 @@ These fields describe direct point-in-polygon hits against the cleaned primary L
 
 | Column | Definition |
 |---|---|
-| `grid_10m_id` | 10 m grid identifier derived from the point in the EPSG:3035 grid logic. |
+| `grid_10m_id` | Susi-compatible 10 m identifier derived from the assigned INSPIRE 100 m ID and the point's EPSG:3035 position, whether or not the cell has a majority formation. |
 | `grid_10m_assignment_exists` | `True` when a 10 m grid ID could be derived. |
 | `grid_10m_has_majority_formation` | `True` when the 10 m product contains a majority formation for the derived cell. |
 | `majority_formation_10m` | Formation with the largest share in the 10 m cell. |
