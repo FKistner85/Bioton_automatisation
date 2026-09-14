@@ -10,14 +10,9 @@ param(
 # Minimal local refresh for the primary master table.  It deliberately omits
 # media, Sentinel-2, HOSTRADA and bioacoustic processing.
 $ErrorActionPreference = "Stop"
-# PowerShell 7 otherwise turns any stderr output of a native process into a
-# terminating NativeCommandError.  Step 2 deliberately emits an informational
-# warning when it uses its safe Windows single-process fallback.
-if ($PSVersionTable.PSVersion.Major -ge 7) {
-    $PSNativeCommandUseErrorActionPreference = $false
-}
 
 $LocalRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $LocalRoot "native_process.ps1")
 $RepoRoot = Split-Path -Parent $LocalRoot
 Set-Location $RepoRoot
 
@@ -101,54 +96,18 @@ function Invoke-RefreshStep {
 
     Write-Host "START $Label"
     $previousCpus = $env:SLURM_CPUS_PER_TASK
-    $previousSlurmJob = $env:SLURM_JOB_ID
     $env:SLURM_CPUS_PER_TASK = [string]([Math]::Max(1, $Cpus))
-    # Step 2 uses this variable solely to distinguish a managed multi-core
-    # execution from an accidental interactive run.  Windows PowerShell 5
-    # promotes its informational stderr warning to a terminating error, so
-    # identify this deliberate local workflow explicitly.
-    $env:SLURM_JOB_ID = "local_master_refresh_$PID"
     try {
-        & $CorePython (Join-Path $RepoRoot $Script) --config $GeneratedConfig @ExtraArguments `
-            1> (Join-Path $LogDir "${Stamp}_${Label}.out") `
-            2> (Join-Path $LogDir "${Stamp}_${Label}.err")
-        if ($LASTEXITCODE -ne 0) { throw "$Label fehlgeschlagen. Details: $LogDir" }
+        Invoke-LoggedNativeProcess -Executable $CorePython `
+            -Arguments (@('-u', (Join-Path $RepoRoot $Script), '--config', $GeneratedConfig) + $ExtraArguments) `
+            -WorkingDirectory $RepoRoot `
+            -StdoutPath (Join-Path $LogDir "${Stamp}_${Label}.out") `
+            -StderrPath (Join-Path $LogDir "${Stamp}_${Label}.err")
+        Write-Host "DONE  $Label"
     }
     finally {
         $env:SLURM_CPUS_PER_TASK = $previousCpus
-        $env:SLURM_JOB_ID = $previousSlurmJob
     }
-}
-
-function Start-RefreshStep {
-    param(
-        [Parameter(Mandatory = $true)][string]$Label,
-        [Parameter(Mandatory = $true)][string]$Script,
-        [int]$Cpus = 1,
-        [string[]]$ExtraArguments = @()
-    )
-
-    $stdout = Join-Path $LogDir "${Stamp}_${Label}.out"
-    $stderr = Join-Path $LogDir "${Stamp}_${Label}.err"
-    return Start-Job -Name $Label -ScriptBlock {
-        param($Python, $Repo, $Config, $TargetScript, $AllocatedCpus, $Extra, $OutFile, $ErrFile, $LocalJobId)
-        Set-Location $Repo
-        $env:SLURM_CPUS_PER_TASK = [string]([Math]::Max(1, $AllocatedCpus))
-        $env:SLURM_JOB_ID = $LocalJobId
-        & $Python (Join-Path $Repo $TargetScript) --config $Config --force @Extra 1> $OutFile 2> $ErrFile
-        [int]$LASTEXITCODE
-    } -ArgumentList $CorePython, $RepoRoot, $GeneratedConfig, $Script, $Cpus, $ExtraArguments, $stdout, $stderr, "local_master_refresh_$PID"
-}
-
-function Complete-RefreshStep {
-    param([Parameter(Mandatory = $true)]$Job)
-    Wait-Job -Job $Job | Out-Null
-    $exitCodes = @(Receive-Job -Job $Job)
-    Remove-Job -Job $Job -Force
-    if ($exitCodes.Count -ne 1 -or [int]$exitCodes[0] -ne 0) {
-        throw "$($Job.Name) fehlgeschlagen. Details: $LogDir"
-    }
-    Write-Host "DONE  $($Job.Name)"
 }
 
 $LockAcquired = $false
@@ -166,12 +125,10 @@ try {
 
     # Step 2.4 is scoped to the recording cells emitted by Step 2.2. This avoids
     # creating a nationwide 10 m product solely to refresh the master table.
-    $step22 = Start-RefreshStep -Label "step_2_2" -Script "scripts\Step_2_2_assign_points_to_lrt_grid.py" -Cpus 2
-    Complete-RefreshStep -Job $step22
+    Invoke-RefreshStep -Label "step_2_2" -Script "scripts\Step_2_2_assign_points_to_lrt_grid.py" -Cpus 2 -ExtraArguments @("--force")
     $LocalConfig = Get-Content -Raw -LiteralPath $GeneratedConfig | ConvertFrom-Json
     $PointAssignments = [string]$LocalConfig.point_lrt_assignment.output_csv
-    $step24 = Start-RefreshStep -Label "step_2_4" -Script "scripts\Step_2_4_generate_10m_formation_status_products.py" -Cpus ([int]$LocalSettings.logical_cpus) -ExtraArguments @("--grid-ids-file", $PointAssignments)
-    Complete-RefreshStep -Job $step24
+    Invoke-RefreshStep -Label "step_2_4" -Script "scripts\Step_2_4_generate_10m_formation_status_products.py" -Cpus ([int]$LocalSettings.logical_cpus) -ExtraArguments @("--force", "--grid-ids-file", $PointAssignments)
 
     Invoke-RefreshStep -Label "step_7_0" -Script "scripts\Step_7_0_update_master_table.py" -Cpus 2 -ExtraArguments @("--preserve-existing-nonformation-domains")
 
