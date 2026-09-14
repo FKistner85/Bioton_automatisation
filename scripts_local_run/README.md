@@ -96,6 +96,31 @@ powershell -ExecutionPolicy Bypass -File .\setup_local_env.ps1 -Recreate
 
 ## Start
 
+### Schlanker Neuaufbau der Mastertabelle
+
+Wenn nur der Deutschland-Filter, die primaeren 100-m/10-m-Formationen und die
+Mastertabelle aktualisiert werden sollen, verwende den gezielten Starter:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_master_refresh_local.ps1
+```
+
+Er verarbeitet ausschliesslich Step 1, 2.0, 2.1, 2.2, 2.4, 7.1 und 7.0. Es
+werden keine Audio-, Foto-, Sentinel-, Wetter- oder Bioakustik-Jobs gestartet;
+Step 2.3 wird ebenfalls ausgelassen. Die 100-m- und 10-m-Produkte werden aus
+der konfigurierten primaeren GPKG erzeugt. Der Starter bricht ab, solange ein
+Horeka-Pipeline-Lock vorhanden ist, damit niemals parallel in denselben
+Bestand gearbeitet wird.
+
+Die Mastertabelle bleibt standardmaessig lokal unter
+`<workspace_dir>/outputs/Bio_O_Ton_Master.csv`. Erst mit `-PublishToLsdf`
+werden die erfolgreichen lokalen Produkte nach LSDF veroeffentlicht:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_master_refresh_local.ps1 `
+  -SkipEnvironmentSetup -PublishToLsdf
+```
+
 Inkrementell fuer neue, geaenderte oder problematische IDs:
 
 ```powershell
