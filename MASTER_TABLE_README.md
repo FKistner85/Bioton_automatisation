@@ -25,7 +25,7 @@ Bio_O_Ton_Variant_Summary.csv
 Bio_O_Ton_Variant_Temporal_Summary.csv
 ```
 
-That normalized table contains one row per `dawn_chorus_id` and `lrt_variant`. The main master table remains one row per ID and uses the configured primary variant, currently `no_K_post2017_threshold_50`, for its detailed 100 m/10 m fields.
+That normalized table contains one row per `dawn_chorus_id` and `lrt_variant`. The main master table remains one row per ID and uses the configured primary variant, currently `no_K_post2017` from `All_Bundeslander_no_K_post2017.gpkg`, for its detailed 100 m/10 m fields.
 
 ## Source products
 

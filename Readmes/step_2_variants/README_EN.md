@@ -6,7 +6,7 @@ variant overwrites another one.
 
 Each branch executes Steps 2_0 through 2_4 and writes to
 `outputs/step_2_variants/<suffix>/`. The configured primary variant is
-`no_K_post2017_threshold_50`; its fields feed the compact ID-level master
+`no_K_post2017`; its fields feed the compact ID-level master
 table. Step 7_1 additionally writes
 `outputs/Bio_O_Ton_Formation_Variants.parquet` and CSV with one row per
 `dawn_chorus_id` and `lrt_variant` for sensitivity comparisons.

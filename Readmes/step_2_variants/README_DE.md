@@ -8,7 +8,7 @@ werden als getrennte fachliche Varianten verarbeitet. Kein Datensatz
 ueberschreibt einen anderen. Der Dateisuffix nach `All_Bundeslander_` ist die
 stabile Varianten-ID.
 
-Die Primärvariante ist derzeit `no_K_post2017_threshold_50`. Nur ihre
+Die Primärvariante ist derzeit `no_K_post2017`. Nur ihre
 Formation-Felder werden in der kompakten ID-Mastertabelle verwendet. Alle
 Varianten stehen zusaetzlich in einer normalisierten Vergleichstabelle.
 

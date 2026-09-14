@@ -216,11 +216,11 @@ Step 7.0 is serialized and uses an atomic file replacement plus a write lock. ID
 
 ## Formation products and variants
 
-The primary LRT variant is currently `no_K_post2017_threshold_50`, sourced from:
+The primary LRT variant is currently `no_K_post2017`, sourced from:
 
 ```text
 Biodiversity_data/Bundeslander/All_Bundeslander/
-  All_Bundeslander_no_K_post2017_threshold_50.gpkg
+  All_Bundeslander_no_K_post2017.gpkg
 ```
 
 Formation and LRT shares in Susi-compatible 100 m/10 m products are integer centi-percent values: `10000` means 100.00%. Formation totals include A/B/C/K. The majority formation status is selected within the majority formation from A/B/C only. A result is marked disputed when `majority_delta <= 200`, i.e. the leading two formations differ by at most two percentage points.

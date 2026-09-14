@@ -22,7 +22,7 @@ def base_config(root: Path) -> dict:
     source.mkdir(parents=True)
     for name in [
         "All_Bundeslander_base_v2.gpkg",
-        "All_Bundeslander_no_K_post2017_threshold_50.gpkg",
+        "All_Bundeslander_no_K_post2017.gpkg",
     ]:
         (source / name).write_bytes(b"synthetic")
     return {
@@ -31,7 +31,7 @@ def base_config(root: Path) -> dict:
         "lrt_variants": {
             "input_dir": str(source),
             "input_glob": "All_Bundeslander_*.gpkg",
-            "primary_suffix": "no_K_post2017_threshold_50",
+            "primary_suffix": "no_K_post2017",
             "output_root": str(output),
             "index_json": str(output / "variant_index.json"),
         },
@@ -63,7 +63,7 @@ def test_prepare_creates_isolated_configs() -> None:
 
         _, discovered = variants.prepare(config_path)
         assert [item.suffix for item in discovered] == [
-            "base_v2", "no_K_post2017_threshold_50",
+            "base_v2", "no_K_post2017",
         ]
         primary = discovered[1]
         generated = json.loads(primary.config_path.read_text(encoding="utf-8"))
@@ -95,7 +95,32 @@ def test_missing_primary_is_rejected() -> None:
             raise AssertionError("A missing primary variant must stop preparation.")
 
 
+def test_project_config_uses_no_k_post2017_for_primary_formations() -> None:
+    config = json.loads((ROOT / "config.horeka.json").read_text(encoding="utf-8"))
+    expected_source = (
+        "/lsdf/kit/ipf/projects/Bio-O-Ton/Biodiversity_data/Bundeslander/"
+        "All_Bundeslander/All_Bundeslander_no_K_post2017.gpkg"
+    )
+    assert config["lrt_variants"]["primary_suffix"] == "no_K_post2017"
+    assert config["lrt_cleaning"]["source_gpkgs"] == [expected_source]
+    primary_paths = [
+        config["lrt_grid_merge"]["lrt_gpkg"],
+        config["point_lrt_assignment"]["grid_majority_csv"],
+        config["point_lrt_assignment"]["output_csv"],
+        config["susi_10m_products"]["source_100m_parquet"],
+        config["susi_10m_products"]["final_parquet"],
+    ]
+    assert all("threshold_50" not in path for path in primary_paths)
+    assert "no_K_post2017/step_2_1/" in config["point_lrt_assignment"][
+        "grid_majority_csv"
+    ]
+    assert "no_K_post2017/step_2_4_susi_10m/" in config[
+        "susi_10m_products"
+    ]["final_parquet"]
+
+
 if __name__ == "__main__":
     test_prepare_creates_isolated_configs()
     test_missing_primary_is_rejected()
+    test_project_config_uses_no_k_post2017_for_primary_formations()
     print("test_step2_variants.py: OK")
