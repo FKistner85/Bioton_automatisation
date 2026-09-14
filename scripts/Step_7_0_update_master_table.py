@@ -155,6 +155,15 @@ def parse_args() -> argparse.Namespace:
             "from the existing master table."
         ),
     )
+    parser.add_argument(
+        "--preserve-existing-nonformation-domains",
+        action="store_true",
+        help=(
+            "Keep audio, photo, Sentinel, weather and bioacoustic values from "
+            "the existing master table. Intended for a focused metadata/Step-2 "
+            "refresh when those domain products are deliberately unavailable."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -373,6 +382,59 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
         if column not in base.columns:
             base[column] = pd.NA
     return base
+
+
+# Fields that do not depend on metadata or the primary formation products.
+# A focused local refresh can retain these values from a trusted previous
+# master instead of copying every historical domain product to the workstation.
+PRESERVED_NONFORMATION_COLUMNS = [
+    "sound_exists", "sound_has_issues", "sound_issue_codes",
+    "photo_exists", "photo_has_issues", "photo_issue_codes",
+    "sentinel_exists", "sentinel_has_issues", "sentinel_quality_score",
+    "sentinel_issue_codes",
+    "weather_point_exists", "weather_point_has_issues", "weather_point_issue_codes",
+    "weather_raster_hostrada_100m_exists",
+    "weather_raster_hostrada_100m_has_issues",
+    "weather_raster_hostrada_100m_issue_codes",
+    "bioacoustic_status", "bioacoustic_has_issues", "bioacoustic_issue_codes",
+    "bioacoustic_models_expected", "bioacoustic_models_complete",
+    "bioacoustic_required_models_complete", "bioacoustic_inference_version",
+    "bioacoustic_species_count", "bird_species_count", "nonbird_species_count",
+    "bioacoustic_max_confidence", "top_species_scientific",
+    "top_species_model_support",
+    "formation_variant_count_expected",
+    "formation_variants_with_100m_majority",
+    "formation_variants_with_10m_majority",
+    "formation_variant_products_complete",
+]
+
+
+def add_preserved_nonformation_domains(
+    table: pd.DataFrame,
+    previous_master: pd.DataFrame,
+    config: dict[str, Any],
+) -> pd.DataFrame:
+    """Reuse non-Step-2 domain values from an existing master snapshot."""
+    previous = normalise_id_column(previous_master, ["dawn_chorus_id", "id"])
+    available = [
+        column for column in PRESERVED_NONFORMATION_COLUMNS if column in previous.columns
+    ]
+    if available:
+        table = table.merge(
+            previous[["dawn_chorus_id", *available]].drop_duplicates(
+                "dawn_chorus_id", keep="last"
+            ),
+            on="dawn_chorus_id",
+            how="left",
+        )
+    for column in PRESERVED_NONFORMATION_COLUMNS:
+        if column not in table.columns:
+            table[column] = pd.NA
+
+    table["formation_primary_variant"] = str(
+        config.get("lrt_variants", {}).get("primary_suffix", "")
+    )
+    return table
 
 
 def aggregate_detail_issues(
@@ -1436,15 +1498,21 @@ def main() -> int:
 
             table = build_base_table(config, output_csv, now)
             table = restrict_to_ids(table, selected_ids)
-            table = add_media_status(table, config, "audio_inventory", "sound")
-            table = add_media_status(table, config, "photo_inventory", "photo")
-            table = add_bioacoustic_status(table, config)
-            table = add_sentinel_status(table, config)
-            table = add_weather_point_status(table, config)
-            table = add_weather_raster_status(table, config)
+            if args.preserve_existing_nonformation_domains:
+                table = add_preserved_nonformation_domains(
+                    table, previous_master, config
+                )
+            else:
+                table = add_media_status(table, config, "audio_inventory", "sound")
+                table = add_media_status(table, config, "photo_inventory", "photo")
+                table = add_bioacoustic_status(table, config)
+                table = add_sentinel_status(table, config)
+                table = add_weather_point_status(table, config)
+                table = add_weather_raster_status(table, config)
             table = add_100m_formation(table, config)
             table = add_10m_formation(table, config)
-            table = add_formation_variant_status(table, config)
+            if not args.preserve_existing_nonformation_domains:
+                table = add_formation_variant_status(table, config)
             table = add_agreement_and_ready_flags(table)
 
             for column in MASTER_COLUMNS:

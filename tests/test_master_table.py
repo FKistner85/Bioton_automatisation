@@ -248,6 +248,32 @@ def test_10m_grid_assignment_exists_without_a_majority_product() -> None:
     assert not result.loc[0, "grid_10m_has_majority_formation"]
 
 
+def test_focused_refresh_preserves_nonformation_domains() -> None:
+    current = pd.DataFrame({"dawn_chorus_id": ["1", "2"]})
+    previous = pd.DataFrame(
+        {
+            "dawn_chorus_id": ["1", "3"],
+            "sound_exists": [True, False],
+            "sound_has_issues": [False, True],
+            "weather_point_exists": [True, True],
+            "weather_point_has_issues": [False, False],
+            "formation_variant_count_expected": [12, 12],
+        }
+    )
+
+    result = master.add_preserved_nonformation_domains(
+        current,
+        previous,
+        {"lrt_variants": {"primary_suffix": "no_K_post2017"}},
+    ).set_index("dawn_chorus_id")
+
+    assert bool(result.loc["1", "sound_exists"])
+    assert not bool(result.loc["1", "sound_has_issues"])
+    assert pd.isna(result.loc["2", "sound_exists"])
+    assert result.loc["1", "formation_variant_count_expected"] == 12
+    assert result.loc["1", "formation_primary_variant"] == "no_K_post2017"
+
+
 def test_mixed_timezone_local_wall_times() -> None:
     values = pd.Series(
         [
@@ -303,6 +329,7 @@ if __name__ == "__main__":
     test_susi_10m_grid_id_uses_the_parent_inspire_nomenclature()
     test_optional_majority_keeps_every_inspire_grid_cell()
     test_10m_grid_assignment_exists_without_a_majority_product()
+    test_focused_refresh_preserves_nonformation_domains()
     test_mixed_timezone_local_wall_times()
     test_formation_variant_status_is_summarised()
     print("test_master_table.py: OK")

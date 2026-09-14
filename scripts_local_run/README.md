@@ -105,12 +105,20 @@ Mastertabelle aktualisiert werden sollen, verwende den gezielten Starter:
 powershell -ExecutionPolicy Bypass -File .\run_master_refresh_local.ps1
 ```
 
-Er verarbeitet ausschliesslich Step 1, 2.0, 2.1, 2.2, 2.4, 7.1 und 7.0. Es
+Er verarbeitet ausschliesslich Step 1, 2.0, 2.1, 2.2, 2.4 und 7.0. Es
 werden keine Audio-, Foto-, Sentinel-, Wetter- oder Bioakustik-Jobs gestartet;
 Step 2.3 wird ebenfalls ausgelassen. Die 100-m- und 10-m-Produkte werden aus
 der konfigurierten primaeren GPKG erzeugt. Der Starter bricht ab, solange ein
 Horeka-Pipeline-Lock vorhanden ist, damit niemals parallel in denselben
-Bestand gearbeitet wird.
+Bestand gearbeitet wird. Er kopiert von Horeka ausschliesslich die bestehende
+Master-CSV als Basis; keine gesamte Output-Struktur und keine Medien-, Wetter-
+oder Rasterdaten werden lokal gespiegelt. Die unveraenderte Audio-, Foto-,
+Sentinel-, Wetter- und Bioakustik-Information wird aus dieser Master-Basis
+uebernommen, waehrend Metadaten sowie die primaeren 100-m/10-m-Felder neu
+berechnet werden.
+
+Step 2.4 erzeugt dabei nur die 10-m-Zellen der in Step 2.2 tatsaechlich
+zugeordneten Aufnahmen, nicht das vollstaendige bundesweite 10-m-Produkt.
 
 Die Mastertabelle bleibt standardmaessig lokal unter
 `<workspace_dir>/outputs/Bio_O_Ton_Master.csv`. Erst mit `-PublishToLsdf`

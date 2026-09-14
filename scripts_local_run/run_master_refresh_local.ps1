@@ -50,10 +50,23 @@ if (Test-Path -LiteralPath $RemoteLock) {
     throw "Aktiver Horeka-Pipeline-Lock gefunden: $RemoteLock. Nicht parallel ausfuehren."
 }
 
+$Workspace = [Environment]::ExpandEnvironmentVariables([string]$LocalSettings.workspace_dir)
+$LocalOutputRoot = Join-Path $Workspace "outputs"
+$LocalMaster = Join-Path $LocalOutputRoot "Bio_O_Ton_Master.csv"
 if (-not $SkipHorekaBootstrap) {
-    & $CorePython (Join-Path $LocalRoot "sync_horeka_outputs.py") `
-        --settings $Settings --refresh
-    if ($LASTEXITCODE -ne 0) { throw "Horeka-Outputs konnten nicht lokal uebernommen werden." }
+    # Copy exactly one baseline file.  Step 7 uses it to retain already
+    # validated non-metadata/non-Step-2 domain values; no output tree is mirrored.
+    $RemoteOutputRoot = Join-Path ($MountDrive + '\\') "Data_automatisation_skripts\outputs"
+    $RemoteMaster = Join-Path $RemoteOutputRoot "Bio_O_Ton_Master.csv"
+    if (-not (Test-Path -LiteralPath $RemoteMaster)) {
+        throw "Horeka-Mastertabelle fehlt: $RemoteMaster"
+    }
+    New-Item -ItemType Directory -Path $LocalOutputRoot -Force | Out-Null
+    Copy-Item -LiteralPath $RemoteMaster -Destination $LocalMaster -Force
+    Write-Host "Nur Master-Basis kopiert: $LocalMaster"
+}
+if (-not (Test-Path -LiteralPath $LocalMaster)) {
+    throw "Lokale Master-Basis fehlt: $LocalMaster"
 }
 
 $GeneratedConfig = Join-Path $LocalRoot "config.local.generated.json"
@@ -62,10 +75,10 @@ $GeneratedConfig = Join-Path $LocalRoot "config.local.generated.json"
     --source-config (Join-Path $RepoRoot "config.horeka.json") `
     --output-config $GeneratedConfig `
     --repo-root $RepoRoot `
-    --device cpu
+    --device cpu `
+    --minimal-master-refresh
 if ($LASTEXITCODE -ne 0) { throw "Lokale Konfiguration konnte nicht erzeugt werden." }
 
-$Workspace = [Environment]::ExpandEnvironmentVariables([string]$LocalSettings.workspace_dir)
 $LogDir = Join-Path $Workspace "outputs\step_0_local_logs"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 $Stamp = Get-Date -Format "yyyyMMddTHHmmss"
@@ -98,18 +111,19 @@ function Start-RefreshStep {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
         [Parameter(Mandatory = $true)][string]$Script,
-        [int]$Cpus = 1
+        [int]$Cpus = 1,
+        [string[]]$ExtraArguments = @()
     )
 
     $stdout = Join-Path $LogDir "${Stamp}_${Label}.out"
     $stderr = Join-Path $LogDir "${Stamp}_${Label}.err"
     return Start-Job -Name $Label -ScriptBlock {
-        param($Python, $Repo, $Config, $TargetScript, $AllocatedCpus, $OutFile, $ErrFile)
+        param($Python, $Repo, $Config, $TargetScript, $AllocatedCpus, $Extra, $OutFile, $ErrFile)
         Set-Location $Repo
         $env:SLURM_CPUS_PER_TASK = [string]([Math]::Max(1, $AllocatedCpus))
-        & $Python (Join-Path $Repo $TargetScript) --config $Config --force 1> $OutFile 2> $ErrFile
+        & $Python (Join-Path $Repo $TargetScript) --config $Config --force @Extra 1> $OutFile 2> $ErrFile
         [int]$LASTEXITCODE
-    } -ArgumentList $CorePython, $RepoRoot, $GeneratedConfig, $Script, $Cpus, $stdout, $stderr
+    } -ArgumentList $CorePython, $RepoRoot, $GeneratedConfig, $Script, $Cpus, $ExtraArguments, $stdout, $stderr
 }
 
 function Complete-RefreshStep {
@@ -136,14 +150,16 @@ try {
     Invoke-RefreshStep -Label "step_2_0" -Script "scripts\Step_2_0_clean_lrts.py" -Cpus ([int]$LocalSettings.logical_cpus) -ExtraArguments @("--force")
     Invoke-RefreshStep -Label "step_2_1" -Script "scripts\Step_2_1_merge_lrts_and_grid.py" -Cpus ([int]$LocalSettings.logical_cpus) -ExtraArguments @("--force")
 
-    # Both consume Step 2.1 and write independent products, so run them together.
+    # Step 2.4 is scoped to the recording cells emitted by Step 2.2. This avoids
+    # creating a nationwide 10 m product solely to refresh the master table.
     $step22 = Start-RefreshStep -Label "step_2_2" -Script "scripts\Step_2_2_assign_points_to_lrt_grid.py" -Cpus 2
-    $step24 = Start-RefreshStep -Label "step_2_4" -Script "scripts\Step_2_4_generate_10m_formation_status_products.py" -Cpus ([int]$LocalSettings.logical_cpus)
     Complete-RefreshStep -Job $step22
+    $LocalConfig = Get-Content -Raw -LiteralPath $GeneratedConfig | ConvertFrom-Json
+    $PointAssignments = [string]$LocalConfig.point_lrt_assignment.output_csv
+    $step24 = Start-RefreshStep -Label "step_2_4" -Script "scripts\Step_2_4_generate_10m_formation_status_products.py" -Cpus ([int]$LocalSettings.logical_cpus) -ExtraArguments @("--grid-ids-file", $PointAssignments)
     Complete-RefreshStep -Job $step24
 
-    Invoke-RefreshStep -Label "step_7_1" -Script "scripts\Step_7_1_update_formation_variant_table.py" -Cpus 4 -ExtraArguments @("--force")
-    Invoke-RefreshStep -Label "step_7_0" -Script "scripts\Step_7_0_update_master_table.py" -Cpus 2
+    Invoke-RefreshStep -Label "step_7_0" -Script "scripts\Step_7_0_update_master_table.py" -Cpus 2 -ExtraArguments @("--preserve-existing-nonformation-domains")
 
     $MasterCsv = Join-Path $Workspace "outputs\Bio_O_Ton_Master.csv"
     if (-not (Test-Path -LiteralPath $MasterCsv)) { throw "Mastertabelle wurde nicht erzeugt: $MasterCsv" }

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import shutil
@@ -208,24 +209,37 @@ def apply_local_resources(config: dict, settings: dict) -> None:
     config["susi_10m_products"]["write_ix_chunks"] = bool(
         settings.get("step2_10m_write_ix_chunks", False)
     )
-    config["audio_inventory"]["workers"] = thread_workers
-    config["photo_inventory"]["workers"] = thread_workers
-    config["audio_download"]["workers"] = download_workers
-    config["photo_download"]["workers"] = download_workers
-    config["sentinel2_inventory"]["workers"] = thread_workers
-    config["weather_inventory"]["workers"] = thread_workers
-    config["weather_download"]["cache_download_workers"] = download_workers
-    config["weather_download"]["cache_download_max_workers"] = download_workers
-    config["weather_download"]["recording_workers"] = download_workers
-    config["weather_download"]["recording_max_workers"] = download_workers
-    config["hostrada_monthly_download"]["workers"] = download_workers
-    config["hostrada_raster_quality_check"]["workers"] = thread_workers
-    config["master_table"]["weather_qc_workers"] = thread_workers
-    config["bioacoustics"]["max_concurrent_tasks"] = int(
-        settings.get("bioacoustic_array_workers_gpu", 1)
-        if config["bioacoustics"].get("device") == "cuda"
-        else settings.get("bioacoustic_array_workers_cpu", 2)
-    )
+    if "audio_inventory" in config:
+        config["audio_inventory"]["workers"] = thread_workers
+    if "photo_inventory" in config:
+        config["photo_inventory"]["workers"] = thread_workers
+    if "audio_download" in config:
+        config["audio_download"]["workers"] = download_workers
+    if "photo_download" in config:
+        config["photo_download"]["workers"] = download_workers
+    if "sentinel2_inventory" in config:
+        config["sentinel2_inventory"]["workers"] = thread_workers
+    if "weather_inventory" in config:
+        config["weather_inventory"]["workers"] = thread_workers
+    if "weather_download" in config:
+        config["weather_download"].update({
+            "cache_download_workers": download_workers,
+            "cache_download_max_workers": download_workers,
+            "recording_workers": download_workers,
+            "recording_max_workers": download_workers,
+        })
+    if "hostrada_monthly_download" in config:
+        config["hostrada_monthly_download"]["workers"] = download_workers
+    if "hostrada_raster_quality_check" in config:
+        config["hostrada_raster_quality_check"]["workers"] = thread_workers
+    if "master_table" in config:
+        config["master_table"]["weather_qc_workers"] = thread_workers
+    if "bioacoustics" in config:
+        config["bioacoustics"]["max_concurrent_tasks"] = int(
+            settings.get("bioacoustic_array_workers_gpu", 1)
+            if config["bioacoustics"].get("device") == "cuda"
+            else settings.get("bioacoustic_array_workers_cpu", 2)
+        )
 
 
 def main() -> int:
@@ -236,10 +250,42 @@ def main() -> int:
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
     parser.add_argument("--skip-cache-copy", action="store_true")
+    parser.add_argument(
+        "--minimal-master-refresh",
+        action="store_true",
+        help=(
+            "Generate only the configuration needed for a metadata/primary "
+            "Step-2 master refresh; avoid mirroring the full LRT variant directory."
+        ),
+    )
     args = parser.parse_args()
 
     settings = load_json(args.settings)
     source_config = load_json(args.source_config)
+    if args.minimal_master_refresh:
+        required_sections = [
+            "dawn_chorus_csv",
+            "status_dir",
+            "metadata_extraction",
+            "lrt_cleaning",
+            "lrt_grid_merge",
+            "point_lrt_assignment",
+            "susi_10m_products",
+            "master_table",
+            "pipeline_control",
+        ]
+        source_config = {
+            key: copy.deepcopy(source_config[key])
+            for key in required_sections
+            if key in source_config
+        }
+        source_config["lrt_variants"] = {
+            "primary_suffix": str(
+                load_json(args.source_config).get("lrt_variants", {}).get(
+                    "primary_suffix", ""
+                )
+            )
+        }
     repo_root = args.repo_root.resolve()
     workspace = Path(settings["workspace_dir"]).expanduser().resolve()
     mounted_project = mount_root(settings)
@@ -247,7 +293,7 @@ def main() -> int:
     if not args.skip_cache_copy and not (mounted_project / "PointData").is_dir():
         raise FileNotFoundError(f"LSDF-Mount ist nicht lesbar: {mounted_project}")
 
-    if not args.skip_cache_copy:
+    if not args.skip_cache_copy and not args.minimal_master_refresh:
         for relative in LOCAL_CACHE_DIRECTORIES:
             relative_path = Path(*PurePosixPath(relative).parts)
             copy_directory_if_changed(
@@ -284,7 +330,8 @@ def main() -> int:
         ).strip().casefold(),
     }
     config["slurm_log_dir"] = windows_path(workspace / "outputs" / "step_0_local_logs")
-    config["bioacoustics"]["device"] = args.device
+    if "bioacoustics" in config:
+        config["bioacoustics"]["device"] = args.device
 
     credentials = repo_root / "credentials.json"
     token = workspace / "google_token.json"
@@ -294,6 +341,19 @@ def main() -> int:
 
     apply_local_resources(config, settings)
     if not args.skip_cache_copy:
+        if args.minimal_master_refresh:
+            for raw_path in source_config["lrt_cleaning"].get("source_gpkgs", []):
+                relative = project_relative(str(raw_path))
+                if relative is None:
+                    raise ValueError(
+                        "Primary LRT source is outside the configured LSDF project: "
+                        f"{raw_path}"
+                    )
+                relative_path = Path(*PurePosixPath(relative).parts)
+                copy_if_changed(
+                    mounted_project / relative_path,
+                    cache_root / relative_path,
+                )
         optional_inputs = optional_input_paths(settings)
         copy_config_inputs(
             cache_sources,

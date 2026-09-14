@@ -485,7 +485,36 @@ def parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parents[1] / "config.json",
     )
     parser.add_argument("--force", action="store_true")
+    parser.add_argument(
+        "--grid-ids-file",
+        type=Path,
+        help=(
+            "Optional CSV containing grid_100m_id (or grid_id). When supplied, "
+            "generate 10 m cells only for those parent 100 m cells."
+        ),
+    )
     return parser.parse_args()
+
+
+def read_selected_grid_ids(path: Path | None) -> set[str] | None:
+    if path is None:
+        return None
+    if not path.is_file():
+        raise FileNotFoundError(f"10 m grid selection CSV not found: {path}")
+    frame = pd.read_csv(path, low_memory=False)
+    column = next(
+        (name for name in ("grid_100m_id", "grid_id") if name in frame.columns),
+        None,
+    )
+    if column is None:
+        raise KeyError(
+            "10 m grid selection CSV needs a 'grid_100m_id' or 'grid_id' column."
+        )
+    selected = set(frame[column].dropna().astype(str).str.strip())
+    selected.discard("")
+    if not selected:
+        raise ValueError("10 m grid selection CSV contains no usable grid IDs.")
+    return selected
 
 
 def main() -> int:
@@ -510,6 +539,7 @@ def main() -> int:
         state_file = Path(settings.get("state_file", output_dir / "state.json"))
         chunk_size = int(settings.get("chunk_size_100m", 1000))
         processes = resolve_process_count(settings)
+        selected_grid_ids = read_selected_grid_ids(args.grid_ids_file)
 
         if not source.is_file():
             raise FileNotFoundError(f"Missing source parquet: {source}")
@@ -526,6 +556,11 @@ def main() -> int:
                 "chunk_size_100m": chunk_size,
                 "output_dir": str(output_dir.resolve()),
                 "final_parquet": str(final_parquet.resolve()),
+                "grid_ids_file": (
+                    file_fingerprint(args.grid_ids_file)
+                    if args.grid_ids_file is not None
+                    else None
+                ),
                 "susi_matrix_schema_version": SUSI_10M_MATRIX_SCHEMA_VERSION,
             },
         }
@@ -591,6 +626,14 @@ def main() -> int:
 
         ids = pd.read_parquet(source, columns=["grid_id"])["grid_id"]
         grid_ids = ids.dropna().astype(str).drop_duplicates().tolist()
+        if selected_grid_ids is not None:
+            grid_ids = [grid_id for grid_id in grid_ids if grid_id in selected_grid_ids]
+            print(
+                "10 m grid scope : recording cells only "
+                f"({len(grid_ids):,} matched of {len(selected_grid_ids):,} selected)"
+            )
+        if not grid_ids:
+            raise ValueError("No selected 100 m grid IDs occur in the Step 2.1 product.")
         lrt = gpd.read_file(lrt_gpkg, layer=lrt_layer, engine="pyogrio")
         if lrt.crs != "EPSG:3035":
             lrt = lrt.to_crs("EPSG:3035")
@@ -612,6 +655,7 @@ def main() -> int:
                 "chunk_size_100m": chunk_size,
                 "processes": processes,
                 "force": args.force,
+                "grid_ids_file": str(args.grid_ids_file) if args.grid_ids_file else "",
                 "schema_version": SUSI_10M_MATRIX_SCHEMA_VERSION,
             },
             force=args.force,
