@@ -202,7 +202,8 @@ def apply_local_resources(config: dict, settings: dict) -> None:
 
     config["lrt_cleaning"]["processes"] = process_workers
     config["lrt_grid_merge"]["processes"] = process_workers
-    config["lrt_grid_aggregation"]["processes"] = min(3, process_workers)
+    if "lrt_grid_aggregation" in config:
+        config["lrt_grid_aggregation"]["processes"] = min(3, process_workers)
     config["susi_10m_products"]["write_grid_chunks"] = bool(
         settings.get("step2_10m_write_grid_chunks", False)
     )
