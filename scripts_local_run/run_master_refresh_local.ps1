@@ -101,7 +101,13 @@ function Invoke-RefreshStep {
 
     Write-Host "START $Label"
     $previousCpus = $env:SLURM_CPUS_PER_TASK
+    $previousSlurmJob = $env:SLURM_JOB_ID
     $env:SLURM_CPUS_PER_TASK = [string]([Math]::Max(1, $Cpus))
+    # Step 2 uses this variable solely to distinguish a managed multi-core
+    # execution from an accidental interactive run.  Windows PowerShell 5
+    # promotes its informational stderr warning to a terminating error, so
+    # identify this deliberate local workflow explicitly.
+    $env:SLURM_JOB_ID = "local_master_refresh_$PID"
     try {
         & $CorePython (Join-Path $RepoRoot $Script) --config $GeneratedConfig @ExtraArguments `
             1> (Join-Path $LogDir "${Stamp}_${Label}.out") `
@@ -110,6 +116,7 @@ function Invoke-RefreshStep {
     }
     finally {
         $env:SLURM_CPUS_PER_TASK = $previousCpus
+        $env:SLURM_JOB_ID = $previousSlurmJob
     }
 }
 
@@ -124,12 +131,13 @@ function Start-RefreshStep {
     $stdout = Join-Path $LogDir "${Stamp}_${Label}.out"
     $stderr = Join-Path $LogDir "${Stamp}_${Label}.err"
     return Start-Job -Name $Label -ScriptBlock {
-        param($Python, $Repo, $Config, $TargetScript, $AllocatedCpus, $Extra, $OutFile, $ErrFile)
+        param($Python, $Repo, $Config, $TargetScript, $AllocatedCpus, $Extra, $OutFile, $ErrFile, $LocalJobId)
         Set-Location $Repo
         $env:SLURM_CPUS_PER_TASK = [string]([Math]::Max(1, $AllocatedCpus))
+        $env:SLURM_JOB_ID = $LocalJobId
         & $Python (Join-Path $Repo $TargetScript) --config $Config --force @Extra 1> $OutFile 2> $ErrFile
         [int]$LASTEXITCODE
-    } -ArgumentList $CorePython, $RepoRoot, $GeneratedConfig, $Script, $Cpus, $ExtraArguments, $stdout, $stderr
+    } -ArgumentList $CorePython, $RepoRoot, $GeneratedConfig, $Script, $Cpus, $ExtraArguments, $stdout, $stderr, "local_master_refresh_$PID"
 }
 
 function Complete-RefreshStep {
