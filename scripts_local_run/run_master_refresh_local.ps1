@@ -10,6 +10,12 @@ param(
 # Minimal local refresh for the primary master table.  It deliberately omits
 # media, Sentinel-2, HOSTRADA and bioacoustic processing.
 $ErrorActionPreference = "Stop"
+# PowerShell 7 otherwise turns any stderr output of a native process into a
+# terminating NativeCommandError.  Step 2 deliberately emits an informational
+# warning when it uses its safe Windows single-process fallback.
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 
 $LocalRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $LocalRoot
