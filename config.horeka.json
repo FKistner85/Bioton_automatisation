@@ -12,6 +12,8 @@
   },
   "metadata_extraction": {
     "timezone": "Europe/Berlin",
+    "country_column": "country",
+    "country_value": "Germany",
     "fingerprint_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_1_metadata/metadata_source_fingerprints.csv"
   },
   "lrt_cleaning": {
@@ -408,9 +410,9 @@
     "qc_state_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/step_6_6_bioacoustic_quality_control/state.json"
   },
   "master_table": {
-    "output_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Mastertable.csv",
-    "output_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Mastertable.parquet",
-    "summary_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Mastertable_summary.json",
+    "output_csv": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Master.csv",
+    "output_parquet": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Master.parquet",
+    "summary_json": "/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/Bio_O_Ton_Master_summary.json",
     "weather_qc_workers": 16
   },
   "final_validation": {

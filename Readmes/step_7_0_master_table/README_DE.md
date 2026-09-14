@@ -26,9 +26,9 @@ outputs/step_5_5_hostrada_raster_quality_check/hostrada_raster_quality.csv
 ## Output
 
 ```text
-Bio_O_Ton_Mastertable.csv
-Bio_O_Ton_Mastertable.parquet
-Bio_O_Ton_Mastertable_summary.json
+Bio_O_Ton_Master.csv
+Bio_O_Ton_Master.parquet
+Bio_O_Ton_Master_summary.json
 outputs/step_0_control/status_events.csv
 Bio_O_Ton_Formation_Variants.csv
 Bio_O_Ton_Formation_Variants.parquet

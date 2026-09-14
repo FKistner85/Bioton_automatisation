@@ -10,9 +10,9 @@ The main result is one row per unique `dawn_chorus_id` in:
 
 ```text
 /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/
-├── Bio_O_Ton_Mastertable.csv
-├── Bio_O_Ton_Mastertable.parquet
-└── Bio_O_Ton_Mastertable_summary.json
+├── Bio_O_Ton_Master.csv
+├── Bio_O_Ton_Master.parquet
+└── Bio_O_Ton_Master_summary.json
 ```
 
 The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-08-04-mastertable-v4`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).

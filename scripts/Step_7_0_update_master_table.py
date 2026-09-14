@@ -1369,9 +1369,9 @@ def append_status_events(
 def output_paths(config: dict[str, Any], config_path: Path) -> tuple[Path, Path, Path]:
     root = config_path.resolve().parents[0]
     section = config.get("master_table", {})
-    csv_path = Path(section.get("output_csv", root / "Bio_O_Ton_Mastertable.csv"))
-    parquet_path = Path(section.get("output_parquet", root / "Bio_O_Ton_Mastertable.parquet"))
-    summary_path = Path(section.get("summary_json", root / "Bio_O_Ton_Mastertable_summary.json"))
+    csv_path = Path(section.get("output_csv", root / "Bio_O_Ton_Master.csv"))
+    parquet_path = Path(section.get("output_parquet", root / "Bio_O_Ton_Master.parquet"))
+    summary_path = Path(section.get("summary_json", root / "Bio_O_Ton_Master_summary.json"))
     return csv_path, parquet_path, summary_path
 
 

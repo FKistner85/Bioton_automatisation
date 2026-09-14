@@ -19,6 +19,12 @@ Authoritative dependencies, scope and invalidation rules are defined in `pipelin
 ## Configuration
 Result-relevant settings are centralised in `config.horeka.json`: `dawn_chorus_csv`, `status_dir`, `metadata_extraction`. Paths, worker counts and domain thresholds are not duplicated in Slurm scripts.
 
+Step 1 processes only rows whose configured country column matches the
+configured target country (by default, `country = Germany`). The step fails if
+the country column is absent. If a previously processed ID changes to another
+country, it is removed from the Step 1 outputs and therefore cannot appear in
+the next master-table update.
+
 ## Execution
 `bash slurm_add_new_ids.sh` starts the regular incremental DAG; `bash slurm_from_scratch.sh` starts or resumes a full generation. An isolated technical direct run is available with:
 - `python scripts/Step_1_metadata_extraction.py --config config.horeka.json`

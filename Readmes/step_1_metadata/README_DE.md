@@ -19,6 +19,13 @@ Die verbindlichen Abhaengigkeiten, der Scope und die Invalidierungsregeln stehen
 ## Konfiguration
 Ergebnisrelevante Einstellungen stehen zentral in `config.horeka.json`: `dawn_chorus_csv`, `status_dir`, `metadata_extraction`. Pfade, Workerzahlen und fachliche Schwellen werden nicht im Slurm-Script dupliziert.
 
+Step 1 verarbeitet ausschliesslich Zeilen, bei denen die konfigurierte
+Länderspalte dem konfigurierten Zielland entspricht (standardmaessig
+`country = Germany`). Fehlt die Länderspalte, bricht der Step ab. Wechselt ein
+zuvor verarbeitetes ID in ein anderes Land, wird es aus den Step-1-Outputs
+entfernt und kann bei der folgenden Mastertable-Aktualisierung nicht mehr
+erscheinen.
+
 ## Ausfuehrung
 `bash slurm_add_new_ids.sh` startet den regulaeren inkrementellen DAG; `bash slurm_from_scratch.sh` startet oder setzt eine Vollgeneration fort. Ein isolierter technischer Direktlauf ist mit folgenden Befehlen moeglich:
 - `python scripts/Step_1_metadata_extraction.py --config config.horeka.json`

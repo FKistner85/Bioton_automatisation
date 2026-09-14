@@ -264,8 +264,8 @@ PointData/Weather/Hostrada/weather_<id>.csv
 Output:
 
 ```text
-outputs/step_6_0_final_mastertable/Bio_O_Ton_Final_Mastertable.csv
-outputs/step_6_0_final_mastertable/Bio_O_Ton_Final_Mastertable.parquet
+outputs/Bio_O_Ton_Master.csv
+outputs/Bio_O_Ton_Master.parquet
 outputs/step_6_0_final_mastertable/mastertable_quality_report.md
 outputs/step_6_0_final_mastertable/mastertable_quality_report.json
 ```

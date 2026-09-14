@@ -11,7 +11,7 @@ Checkpoints und Mastertable-Updates mit lokalen Prozessen nach.
 |---|---|
 | Pipeline-Code | uebergeordneter Git-Ordner |
 | Generierte Outputs | `<workspace_dir>/outputs/step_*` |
-| Finale Mastertabelle | `<workspace_dir>/outputs/Bio_O_Ton_Mastertable.*` |
+| Finale Mastertabelle | `<workspace_dir>/outputs/Bio_O_Ton_Master.*` |
 | Lokale Logs | `<workspace_dir>/outputs/step_0_local_logs` |
 | Grosse/statische LSDF-Eingaben | `<workspace_dir>/lsdf_cache` |
 | Python-Environments | `<environment_dir>/core` und `<environment_dir>/bacpipe` |

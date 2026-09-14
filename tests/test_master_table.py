@@ -29,7 +29,7 @@ def test_master_table_minimal_build() -> None:
         processed = root / "processed"
         status = processed / "step_1_metadata"
         weather = root / "PointData" / "Weather" / "Hostrada"
-        output_csv = root / "Bio_O_Ton_Mastertable.csv"
+        output_csv = root / "Bio_O_Ton_Master.csv"
         weather_inventory = processed / "step_5_1" / "weather_inventory_compact.csv"
         status_events = processed / "_control" / "status_events.csv"
 
@@ -117,8 +117,8 @@ def test_master_table_minimal_build() -> None:
             },
             "master_table": {
                 "output_csv": str(output_csv),
-                "output_parquet": str(root / "Bio_O_Ton_Mastertable.parquet"),
-                "summary_json": str(root / "Bio_O_Ton_Mastertable_summary.json"),
+                "output_parquet": str(root / "Bio_O_Ton_Master.parquet"),
+                "summary_json": str(root / "Bio_O_Ton_Master_summary.json"),
                 "weather_qc_workers": 1,
             },
         }
@@ -188,6 +188,16 @@ def test_incremental_master_merge_preserves_unaffected_rows() -> None:
     assert merged.loc["2", "sound_status"] == "validated"
 
 
+def test_default_output_paths_use_master_basename() -> None:
+    root = Path("C:/temporary/project")
+    csv_path, parquet_path, summary_path = master.output_paths(
+        {}, root / "config.json"
+    )
+    assert csv_path == root / "Bio_O_Ton_Master.csv"
+    assert parquet_path == root / "Bio_O_Ton_Master.parquet"
+    assert summary_path == root / "Bio_O_Ton_Master_summary.json"
+
+
 def test_mixed_timezone_local_wall_times() -> None:
     values = pd.Series(
         [
@@ -239,6 +249,7 @@ def test_formation_variant_status_is_summarised() -> None:
 if __name__ == "__main__":
     test_master_table_minimal_build()
     test_incremental_master_merge_preserves_unaffected_rows()
+    test_default_output_paths_use_master_basename()
     test_mixed_timezone_local_wall_times()
     test_formation_variant_status_is_summarised()
     print("test_master_table.py: OK")

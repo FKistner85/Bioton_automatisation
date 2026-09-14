@@ -207,7 +207,12 @@ def hash_values(row: pd.Series, columns: Iterable[str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def read_source(path: Path) -> pd.DataFrame:
+def read_source(
+    path: Path,
+    *,
+    country_column: str,
+    country_value: str,
+) -> pd.DataFrame:
     source = pd.read_csv(path, low_memory=False, encoding="utf-8-sig")
     if len(source.columns) == 1:
         alternate = pd.read_csv(
@@ -220,7 +225,14 @@ def read_source(path: Path) -> pd.DataFrame:
             source = alternate
     if "id" not in source.columns:
         raise ValueError("Missing required Dawn Chorus column: id")
+    if country_column not in source.columns:
+        raise ValueError(
+            "Missing required Dawn Chorus country column: "
+            f"{country_column}"
+        )
     source = source.copy()
+    source[country_column] = clean_text(source[country_column])
+    source = source[source[country_column] == country_value].copy()
     source["id"] = pd.to_numeric(source["id"], errors="coerce").astype("Int64")
     source = source[source["id"].notna()]
     return source.loc[~source["id"].duplicated(keep="first")].copy()
@@ -382,6 +394,12 @@ def main() -> int:
         timezone = config.get(
             "metadata_extraction", {}
         ).get("timezone", DEFAULT_TIMEZONE)
+        country_column = config.get(
+            "metadata_extraction", {}
+        ).get("country_column", "country")
+        country_value = config.get(
+            "metadata_extraction", {}
+        ).get("country_value", "Germany")
 
         clean_csv = status_dir / CLEAN_FILENAME
         log_csv = status_dir / LOG_FILENAME
@@ -399,7 +417,11 @@ def main() -> int:
 
         status_dir.mkdir(parents=True, exist_ok=True)
 
-        source = read_source(input_csv)
+        source = read_source(
+            input_csv,
+            country_column=country_column,
+            country_value=country_value,
+        )
         current_fingerprints = build_fingerprints(
             source,
             timezone=timezone,
@@ -483,6 +505,7 @@ def main() -> int:
     print(f"Slurm job                   : {os.environ.get('SLURM_JOB_ID', 'none')}")
     print(f"Config                      : {args.config}")
     print(f"Input CSV                   : {input_csv}")
+    print(f"Country filter              : {country_column} = {country_value}")
     print(f"Input rows                  : {len(source):,}")
     print(f"Previously fingerprinted IDs: {len(previous_ids):,}")
     print(f"Source IDs changed/new      : {len(source_targets):,}")

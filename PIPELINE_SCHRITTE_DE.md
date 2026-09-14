@@ -32,7 +32,7 @@ Inputs:
 ```text
 PointData/dawn-chorus-soundscape.csv
 outputs/step_1_metadata/metadata_source_fingerprints.csv
-Bio_O_Ton_Mastertable.csv
+Bio_O_Ton_Master.csv
 State-Dateien der globalen LRT/Grid-Schritte
 ```
 
@@ -488,9 +488,9 @@ Inputs: ID-Level-Outputs aus Step 1, 2, 3, 4, 5 und 6.
 Outputs:
 
 ```text
-Bio_O_Ton_Mastertable.csv
-Bio_O_Ton_Mastertable.parquet
-Bio_O_Ton_Mastertable_summary.json
+Bio_O_Ton_Master.csv
+Bio_O_Ton_Master.parquet
+Bio_O_Ton_Master_summary.json
 outputs/step_0_control/status_events.csv
 ```
 

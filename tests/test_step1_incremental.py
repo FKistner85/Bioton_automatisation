@@ -44,6 +44,7 @@ def test_changed_id_upsert() -> None:
                 "lng": [8.0, 9.0],
                 "datetime": ["2024-05-01 04:00:00", "2024-05-02 04:00:00"],
                 "localtimes": ["", ""],
+                "country": ["Germany", "Germany"],
                 "audio": ["audio-a", "audio-b"],
                 "photo": ["photo-a", "photo-b"],
             }
@@ -80,6 +81,52 @@ def test_changed_id_upsert() -> None:
         assert fingerprints["source_fingerprint"].nunique() == 2
 
 
+def test_country_filter_removes_existing_non_german_id() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        source = root / "dawn.csv"
+        status = root / "processed" / "step_1"
+        fingerprint = status / "metadata_source_fingerprints.csv"
+        config = root / "config.json"
+        frame = pd.DataFrame(
+            {
+                "id": [1, 2],
+                "lat": [49.0, 50.0],
+                "lng": [8.0, 9.0],
+                "datetime": ["2024-05-01 04:00:00", "2024-05-02 04:00:00"],
+                "localtimes": ["", ""],
+                "country": ["Germany", "Germany"],
+            }
+        )
+        frame.to_csv(source, index=False)
+        config.write_text(
+            json.dumps(
+                {
+                    "dawn_chorus_csv": str(source),
+                    "status_dir": str(status),
+                    "metadata_extraction": {
+                        "fingerprint_csv": str(fingerprint),
+                        "country_column": "country",
+                        "country_value": "Germany",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        run_step(config)
+
+        frame.loc[frame["id"] == 2, "country"] = "France"
+        frame.to_csv(source, index=False)
+        run_step(config)
+
+        clean = pd.read_csv(status / "dawnchorus_metadata_clean.csv")
+        assert clean["id"].tolist() == [1]
+        fingerprints = pd.read_csv(fingerprint)
+        assert fingerprints["dawn_chorus_id"].astype(int).tolist() == [1]
+
+
 if __name__ == "__main__":
     test_changed_id_upsert()
+    test_country_filter_removes_existing_non_german_id()
     print("test_step1_incremental.py: OK")
