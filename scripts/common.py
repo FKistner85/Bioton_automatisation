@@ -79,6 +79,36 @@ def load_config(path: str | Path) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
+def recording_weather_times_utc(
+    recording_datetime: Any,
+    preceding_days: int,
+    input_timezone: str,
+    interval_seconds: int = 3600,
+) -> pd.DatetimeIndex:
+    """Hours spanning complete local calendar days, including the recording day.
+
+    Construct calendar boundaries before attaching the timezone. A DST day can
+    contain 23 or 25 hours; arithmetic on offset-aware timestamps would instead
+    move the local calendar boundary by an hour.
+    """
+    if pd.isna(recording_datetime):
+        return pd.DatetimeIndex([], tz="UTC")
+    timestamp = pd.Timestamp(recording_datetime)
+    if pd.isna(timestamp):
+        return pd.DatetimeIndex([], tz="UTC")
+    if preceding_days < 0 or interval_seconds <= 0:
+        raise ValueError("Weather days must be nonnegative and interval positive.")
+    if timestamp.tzinfo is not None:
+        timestamp = timestamp.tz_convert(input_timezone).tz_localize(None)
+    day = timestamp.normalize()
+    start = (day - pd.Timedelta(days=preceding_days)).tz_localize(input_timezone)
+    end = (day + pd.Timedelta(days=1)).tz_localize(input_timezone)
+    return pd.date_range(
+        start=start.tz_convert("UTC"), end=end.tz_convert("UTC"),
+        freq=pd.Timedelta(seconds=interval_seconds), inclusive="left",
+    )
+
+
 def susi_10m_grid_id_from_parent(
     grid_id_100: str,
     x: float,

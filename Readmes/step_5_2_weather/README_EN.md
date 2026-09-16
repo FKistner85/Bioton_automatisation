@@ -39,6 +39,17 @@ problems from re-entering the worklist. Progress and ETA are written per shard
 to `progress_shard_<n>.json`.
 
 ## Quality Control
+
+The weather window includes `preceding_days` complete local calendar days before
+the recording plus the complete recording day in `input_timezone`. Ten preceding
+days normally give 264 hourly observations, or 263/265 across daylight-saving
+transitions. Download and inventory share the same calendar boundaries.
+The CSV retains local times without offsets. Inventory therefore expects the
+missing spring hour and repeated autumn hour, while still rejecting extra
+duplicates and missing observations. `weather_inventory.expected_rows` is only
+a fallback without a recording timestamp; otherwise the actual window sets the
+expected row count.
+
 Output existence alone is not treated as validity. Compact and detailed logs, batch status files and the run manifest record validation and failures. `bash run_final_validation_report.sh` creates the final gate; formation products can additionally be compared with `bash slurm_compare_formation_status.sh`.
 
 ## Status, Manifests And Master Table

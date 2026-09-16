@@ -169,6 +169,53 @@ def test_master_table_minimal_build() -> None:
         assert status_change["previous_value"] == "validated"
         assert status_change["current_value"] == "has_issues"
 
+        def run_master(extra: list[str] | None = None) -> int:
+            previous_argv = sys.argv
+            try:
+                sys.argv = ["Step_7_0_update_master_table.py", "--config", str(config_path), *(extra or [])]
+                return master.main()
+            finally:
+                sys.argv = previous_argv
+
+        def add_obsolete_row() -> None:
+            existing = pd.read_csv(output_csv)
+            obsolete = existing.iloc[[0]].copy()
+            obsolete["dawn_chorus_id"] = 999
+            write_csv(output_csv, pd.concat([existing, obsolete], ignore_index=True))
+
+        # Full rebuild: the obsolete row is absent from clean metadata and must go.
+        add_obsolete_row()
+        assert run_master() == 0
+        assert pd.read_csv(output_csv)["dawn_chorus_id"].tolist() == [1]
+        events = pd.read_csv(status_events)
+        assert ((events["dawn_chorus_id"] == 999) & (events["current_value"] == "deleted")).any()
+
+        # Deletion-only incremental run: remove exactly the requested obsolete ID.
+        add_obsolete_row()
+        before = pd.read_csv(output_csv).query("dawn_chorus_id == 1").reset_index(drop=True)
+        ids_file = root / "ids.csv"
+        write_csv(ids_file, pd.DataFrame({"dawn_chorus_id": [999]}))
+        assert run_master(["--ids-file", str(ids_file)]) == 0
+        after = pd.read_csv(output_csv)
+        pd.testing.assert_frame_equal(after, before)
+        events = pd.read_csv(status_events)
+        assert len(events[(events["dawn_chorus_id"] == 999) & (events["current_value"] == "deleted")]) == 2
+
+        # An absent input is an error, not authorization to empty the master.
+        clean_path = status / "dawnchorus_metadata_clean.csv"
+        clean_bytes = clean_path.read_bytes()
+        clean_path.unlink()
+        assert run_master() == 1
+        pd.testing.assert_frame_equal(pd.read_csv(output_csv), before)
+        clean_path.write_bytes(clean_bytes)
+
+        # A valid, header-only clean product means every source ID was removed.
+        write_csv(clean_path, pd.DataFrame(columns=["id", "datetime", "lat", "lon"]))
+        assert run_master() == 0
+        assert pd.read_csv(output_csv).empty
+        events = pd.read_csv(status_events)
+        assert ((events["dawn_chorus_id"] == 1) & (events["current_value"] == "deleted")).any()
+
 
 def test_incremental_master_merge_preserves_unaffected_rows() -> None:
     columns = master.MASTER_COLUMNS
@@ -190,6 +237,11 @@ def test_incremental_master_merge_preserves_unaffected_rows() -> None:
     merged = merged.set_index("dawn_chorus_id")
     assert merged.loc["1", "sound_status"] == "validated"
     assert merged.loc["2", "sound_status"] == "validated"
+    pd.testing.assert_frame_equal(
+        master.merge_master_rows(previous, pd.DataFrame()), previous.reset_index(drop=True)
+    )
+    deleted = master.merge_master_rows(previous, pd.DataFrame(), replace_ids={"2"})
+    assert deleted["dawn_chorus_id"].tolist() == ["1"]
 
 
 def test_default_output_paths_use_master_basename() -> None:

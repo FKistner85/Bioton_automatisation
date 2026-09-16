@@ -46,8 +46,11 @@ coverage and completeness counts.
 
 The central Slurm orchestrator submits a serial `bio_master_*` job after each
 relevant Step 2, Step 3, Step 4, Step 5 and Step 6 result. ID-specific steps
-use `--ids-file`: only those rows are replaced and all other master rows are
-preserved. Global grid or raster products trigger a full update. The final
+use `--ids-file`: only those rows are replaced or removed when absent from clean
+metadata; all other master rows are preserved. A full update adopts the complete
+current clean-metadata ID set. A valid header-only input produces an empty master;
+a missing input aborts the update. Deletions are logged for partial updates too.
+Global grid or raster products trigger a full update. The final
 master job runs before `bio_validate`.
 
 ## Notes
@@ -58,3 +61,8 @@ rules are defined in the [master-table reference](../../MASTER_TABLE_README.md).
 Canonical domain statuses, the source fingerprint, workflow run ID, and
 preserved manual review fields are stored in the master table; status changes
 are written to the event log.
+
+`datetime_local` now stores the German clock without an offset (`YYYY-MM-DD HH:MM:SS`,
+schema v5). UTC is derived from the aware Step-1 product before removing that offset.
+A focused local refresh marks preserved weather/Sentinel results for rechecking
+when their relevant recording date changes. It does not regenerate those products.

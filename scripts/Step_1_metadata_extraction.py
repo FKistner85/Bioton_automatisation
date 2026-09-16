@@ -29,6 +29,7 @@ from typing import Any, Iterable
 import pandas as pd
 
 from common import atomic_write_csv
+from recording_time import TIME_POLICY_VERSION, resolve_recording_time
 
 
 REQUIRED_COLUMNS = ["id", "lat", "lng", "datetime", "localtimes"]
@@ -41,7 +42,7 @@ FINGERPRINT_GROUPS = {
     "audio_fingerprint": ["id", "audio"],
     "photo_fingerprint": ["id", "photo"],
     "weather_fingerprint": ["id", "lat", "lng", "datetime", "localtimes"],
-    "sentinel_fingerprint": ["id", "lat", "lng"],
+    "sentinel_fingerprint": ["id", "lat", "lng", "datetime", "localtimes"],
 }
 
 
@@ -64,36 +65,6 @@ def load_config(config_path: Path) -> dict:
 
 def clean_text(series: pd.Series) -> pd.Series:
     return series.astype("string").str.strip().replace("", pd.NA)
-
-
-def strip_timezone_suffix(series: pd.Series) -> pd.Series:
-    return clean_text(series).str.replace(
-        r"(Z|[+-]\d{2}:?\d{2})$", "", regex=True
-    )
-
-
-def parse_walltime(series: pd.Series, timezone: str) -> pd.Series:
-    parsed = pd.to_datetime(
-        strip_timezone_suffix(series),
-        errors="coerce",
-        format="mixed",
-    )
-    return parsed.dt.tz_localize(
-        timezone,
-        ambiguous="NaT",
-        nonexistent="NaT",
-    )
-
-
-def format_iso(series: pd.Series) -> pd.Series:
-    output = series.dt.strftime("%Y-%m-%dT%H:%M:%S%z").astype("string")
-    output = output.str.replace(
-        r"([+-]\d{2})(\d{2})$",
-        r"\1:\2",
-        regex=True,
-    )
-    output[series.isna()] = pd.NA
-    return output
 
 
 def build_outputs(
@@ -121,72 +92,28 @@ def build_outputs(
     localtimes_raw = clean_text(work["localtimes"])
     datetime_raw = clean_text(work["datetime"])
 
-    localtimes_parsed = parse_walltime(localtimes_raw, timezone)
-    datetime_parsed = parse_walltime(datetime_raw, timezone)
-
-    use_localtimes = localtimes_parsed.notna()
-    use_datetime = ~use_localtimes & datetime_parsed.notna()
-
-    effective = localtimes_parsed.copy()
-    effective.loc[use_datetime] = datetime_parsed.loc[use_datetime]
-
-    datetime_clean = format_iso(effective)
-
-    clean = pd.DataFrame(
-        {
-            "id": work["id"],
-            "datetime": datetime_clean,
-            "lat": work["lat"],
-            "lon": work["lng"],
-        }
+    decisions = pd.DataFrame(
+        [resolve_recording_time(local, utc, timezone)
+         for local, utc in zip(localtimes_raw, datetime_raw)],
+        index=work.index,
     )
-
-    log = pd.DataFrame(
-        {
-            "source_row": work["source_row"],
-            "id": work["id"],
-            "datetime_clean": datetime_clean,
-            "datetime_source": pd.Series(
-                pd.NA, index=work.index, dtype="string"
-            ),
-            "conversion_needed": pd.Series(
-                False, index=work.index, dtype="boolean"
-            ),
-            "conversion_step": pd.Series(
-                pd.NA, index=work.index, dtype="string"
-            ),
-            "localtimes_raw": localtimes_raw,
-            "datetime_raw": datetime_raw,
-            "lat_raw": work["lat"],
-            "lng_raw": work["lng"],
-            "lat_clean": work["lat"],
-            "lon_clean": work["lng"],
-        }
-    )
-
-    log.loc[use_localtimes, "datetime_source"] = "localtimes"
-    log.loc[use_datetime, "datetime_source"] = "datetime"
-
-    log.loc[use_localtimes, "conversion_needed"] = True
-    log.loc[use_localtimes, "conversion_step"] = (
-        f"remove_timezone_suffix; "
-        f"interpret_as_{timezone}_walltime; "
-        "format_ISO8601"
-    )
-
-    log.loc[use_datetime, "conversion_needed"] = True
-    log.loc[use_datetime, "conversion_step"] = (
-        "fallback_to_datetime; "
-        "remove_timezone_suffix; "
-        f"interpret_as_{timezone}_walltime; "
-        "format_ISO8601"
-    )
-
-    no_datetime = effective.isna()
-    log.loc[no_datetime, "conversion_needed"] = False
-    log.loc[no_datetime, "conversion_step"] = (
-        "no_parseable_datetime"
-    )
+    clean = pd.DataFrame({
+        "id": work["id"], "datetime": decisions["datetime_clean"],
+        "lat": work["lat"], "lon": work["lng"],
+    })
+    log = pd.concat([work[["source_row", "id"]], decisions], axis=1)
+    log["localtimes_raw"] = localtimes_raw
+    log["datetime_raw"] = datetime_raw
+    log["lat_raw"] = source["lat"]
+    log["lng_raw"] = source["lng"]
+    log["lat_clean"] = work["lat"]
+    log["lon_clean"] = work["lng"]
+    # A bounding rectangle is a plausibility check, not a country-border test.
+    valid_coordinates = work["lat"].between(-90, 90) & work["lng"].between(-180, 180)
+    germany_bounds = work["lat"].between(47, 55.2) & work["lng"].between(5.5, 15.6)
+    log["coordinate_check"] = "within_broad_germany_bounds"
+    log.loc[~germany_bounds, "coordinate_check"] = "outside_broad_germany_bounds"
+    log.loc[~valid_coordinates, "coordinate_check"] = "invalid_wgs84_coordinates"
 
     return clean, log
 
@@ -249,12 +176,12 @@ def build_fingerprints(
         }
     )
     for name, columns in FINGERPRINT_GROUPS.items():
-        if name == "metadata_fingerprint":
+        if name in {"metadata_fingerprint", "weather_fingerprint", "sentinel_fingerprint"}:
             result[name] = source.apply(
                 lambda row: hashlib.sha256(
                     (
                         hash_values(row, columns)
-                        + f"\x1ftimezone={timezone}"
+                        + f"\x1ftimezone={timezone};time_policy={TIME_POLICY_VERSION}"
                     ).encode("utf-8")
                 ).hexdigest(),
                 axis=1,
@@ -400,6 +327,8 @@ def main() -> int:
         country_value = config.get(
             "metadata_extraction", {}
         ).get("country_value", "Germany")
+        if timezone != DEFAULT_TIMEZONE or country_value != "Germany":
+            raise ValueError("This pipeline requires country Germany and timezone Europe/Berlin")
 
         clean_csv = status_dir / CLEAN_FILENAME
         log_csv = status_dir / LOG_FILENAME
@@ -496,6 +425,16 @@ def main() -> int:
             or not fingerprint_csv.is_file()
             or args.force
         ):
+            if requested_ids is not None and not args.force:
+                # Never acknowledge a policy/source change for unprocessed IDs.
+                keep = previous_fingerprints.copy()
+                if not keep.empty:
+                    old_ids = pd.to_numeric(keep["dawn_chorus_id"], errors="coerce")
+                    keep = keep.loc[~old_ids.isin(requested_ids)]
+                current_scope = current_fingerprints.loc[
+                    pd.to_numeric(current_fingerprints["dawn_chorus_id"]).isin(requested_ids)
+                ]
+                current_fingerprints = pd.concat([keep, current_scope], ignore_index=True)
             atomic_write_csv(current_fingerprints, fingerprint_csv)
 
     except Exception as exc:

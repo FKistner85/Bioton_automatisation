@@ -1,0 +1,12 @@
+{
+  "raw_rows": 111866,
+  "countries": {
+    "Germany": 111866
+  },
+  "duplicate_ids": 0,
+  "missing_ids": 0,
+  "datetime_suffix_counts": {
+    "+00:00": 111866
+  },
+  "fractional_source_localtimes": 2553
+}

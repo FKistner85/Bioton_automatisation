@@ -43,7 +43,11 @@ kompakte Vollstaendigkeits- und Abdeckungszaehler.
 Der zentrale Slurm-Orchestrator reiht nach jedem relevanten Step-2-, Step-3-,
 Step-4-, Step-5- und Step-6-Ergebnis einen seriellen `bio_master_*`-Job ein.
 Bei ID-spezifischen Steps wird `--ids-file` verwendet: Nur diese Zeilen werden
-ersetzt, alle anderen bestehenden Masterzeilen bleiben erhalten. Nach globalen
+ersetzt oder bei fehlender ID in den Clean-Metadaten entfernt; alle anderen
+bestehenden Masterzeilen bleiben erhalten. Ein Vollupdate uebernimmt die gesamte
+aktuelle ID-Menge der Clean-Metadaten. Eine gueltige Datei nur mit Spaltenkopf
+ergibt eine leere Mastertabelle; eine fehlende Datei fuehrt zum Abbruch.
+Entfernte IDs werden auch bei Teillaeufen im Event-Log protokolliert. Nach globalen
 Grid- oder Rasterprodukten erfolgt ein Vollupdate. Der letzte Masterjob laeuft
 vor `bio_validate`.
 
@@ -54,3 +58,8 @@ wichtigste ID-Level-Informationen. Die vollstaendige Spaltendokumentation steht
 in `MASTER_TABLE_README.md`. Kanonische Domaenenstatus, Quellfingerprint,
 Workflow-Run-ID und manuelle Freigabefelder werden in der Mastertabelle
 gespeichert; Statusaenderungen stehen im Event-Log.
+
+`datetime_local` now stores the German clock without an offset (`YYYY-MM-DD HH:MM:SS`,
+schema v5). UTC is derived from the aware Step-1 product before removing that offset.
+A focused local refresh marks preserved weather/Sentinel results for rechecking
+when their relevant recording date changes. It does not regenerate those products.

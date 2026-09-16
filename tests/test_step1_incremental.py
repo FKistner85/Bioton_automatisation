@@ -126,7 +126,36 @@ def test_country_filter_removes_existing_non_german_id() -> None:
         assert fingerprints["dawn_chorus_id"].astype(int).tolist() == [1]
 
 
+def test_scoped_policy_migration_does_not_acknowledge_other_ids() -> None:
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        config = root / "config.json"
+        source_path = root / "dawn.csv"
+        source = pd.DataFrame({"id": [1, 2], "lat": [49., 49.], "lng": [8., 8.],
+                               "datetime": ["2025-07-01T06:00:00Z"] * 2,
+                               "localtimes": [""] * 2, "country": ["Germany"] * 2})
+        source.to_csv(source_path, index=False)
+        config.write_text(json.dumps({"dawn_chorus_csv": str(source_path), "status_dir": str(root)}))
+        run_step(config)
+        fingerprint_path = root / step1.FINGERPRINT_FILENAME
+        previous = pd.read_csv(fingerprint_path)
+        previous["metadata_fingerprint"] = "old-policy"
+        previous["weather_fingerprint"] = "old-policy"
+        previous.to_csv(fingerprint_path, index=False)
+        ids = root / "ids.csv"
+        pd.DataFrame({"id": [1]}).to_csv(ids, index=False)
+        run_step(config, ids)
+        partial = pd.read_csv(fingerprint_path).set_index("dawn_chorus_id")
+        assert partial.loc[1, "metadata_fingerprint"] != "old-policy"
+        assert partial.loc[2, "metadata_fingerprint"] == "old-policy"
+        assert partial.loc[2, "weather_fingerprint"] == "old-policy"
+        run_step(config)
+        final = pd.read_csv(fingerprint_path)
+        assert final["metadata_fingerprint"].ne("old-policy").all()
+
+
 if __name__ == "__main__":
     test_changed_id_upsert()
     test_country_filter_removes_existing_non_german_id()
+    test_scoped_policy_migration_does_not_acknowledge_other_ids()
     print("test_step1_incremental.py: OK")

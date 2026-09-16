@@ -139,6 +139,56 @@ def test_weather_inventory_good_and_missing() -> None:
         assert state["weather_files_revalidated"] == 0
 
 
+def test_dst_calendar_windows_and_real_defects() -> None:
+    settings = {"required_columns": ["datetime", "air_temperature_mean"], "expected_rows": 264}
+    download = {"preceding_days": 10, "input_timezone": "Europe/Berlin"}
+    cases = [
+        ("2025-03-30T06:00:00+02:00", "2025-03-20", "2025-03-31", 263),
+        ("2025-04-01T06:00:00+02:00", "2025-03-22", "2025-04-02", 263),
+        ("2025-10-26T06:00:00+01:00", "2025-10-16", "2025-10-27", 265),
+        ("2025-05-11T06:00:00+02:00", "2025-05-01", "2025-05-12", 264),
+    ]
+    with tempfile.TemporaryDirectory() as raw:
+        path = Path(raw) / "weather_1.csv"
+        for recording, start, end, count in cases:
+            # Independent oracle: explicit calendar boundaries, not the pipeline helper.
+            expected = pd.date_range(start, end, tz="Europe/Berlin", freq="h", inclusive="left").tz_localize(None)
+            frame = pd.DataFrame({"datetime": expected, "air_temperature_mean": 10.0})
+            write_csv(path, frame)
+            result = inventory.inspect_weather_csv(path, recording, settings, download)
+            assert result["expected_rows"] == count
+            assert not result["has_issues"], result
+            assert inventory.previous_row_is_reusable(result, path, recording, download, False)
+            legacy = {key: value for key, value in result.items() if key != "time_qc_version"}
+            assert not inventory.previous_row_is_reusable(legacy, path, recording, download, False)
+            assert result["expected_first_datetime"] == pd.Timestamp(start).isoformat()
+            assert result["expected_last_datetime"] == (pd.Timestamp(end) - pd.Timedelta(hours=1)).isoformat()
+
+            # A real extra duplicate must still be rejected, even in autumn.
+            broken = frame.copy()
+            broken.loc[1, "datetime"] = broken.loc[0, "datetime"]
+            write_csv(path, broken)
+            result = inventory.inspect_weather_csv(path, recording, settings, download)
+            assert "duplicate_datetime" in result["issues"]
+            assert "unexpected_time_interval" in result["issues"]
+
+            write_csv(path, frame.iloc[:-1])
+            result = inventory.inspect_weather_csv(path, recording, settings, download)
+            assert "unexpected_row_count" in result["issues"]
+            assert "unexpected_time_window" in result["issues"]
+
+        # The old fixed-264-hour spring product includes an extra previous-day hour.
+        old_times = pd.date_range("2025-03-19 22:00", periods=264, tz="UTC", freq="h").tz_convert("Europe/Berlin").tz_localize(None)
+        write_csv(path, pd.DataFrame({"datetime": old_times, "air_temperature_mean": 10.0}))
+        result = inventory.inspect_weather_csv(path, cases[0][0], settings, download)
+        assert "unexpected_row_count" in result["issues"]
+        assert "unexpected_time_window" in result["issues"]
+
+        result = inventory.inspect_weather_csv(path, "invalid", settings, download)
+        assert "invalid_metadata_datetime" in result["issues"]
+
+
 if __name__ == "__main__":
     test_weather_inventory_good_and_missing()
+    test_dst_calendar_windows_and_real_defects()
     print("test_weather_inventory.py: OK")

@@ -41,6 +41,17 @@ Run-Plans werden nicht unbeabsichtigt erneut verarbeitet. Fortschritt und ETA
 werden pro Shard in `progress_shard_<n>.json` gespeichert.
 
 ## Qualitaetskontrolle
+
+Das Wetterfenster umfasst `preceding_days` vollstaendige lokale Kalendertage
+vor der Aufnahme plus den gesamten Aufnahmetag in `input_timezone`.
+Bei zehn Vortagen sind das normalerweise 264 Stunden, bei einer Zeitumstellung
+263 oder 265 Stunden. Download und Inventar verwenden dieselben Kalendergrenzen.
+Die CSV speichert weiterhin lokale Uhrzeiten ohne Offset. Das Inventar erwartet
+deshalb die fehlende Fruehjahrsstunde beziehungsweise die doppelte Herbststunde;
+zusaetzliche Duplikate und fehlende Messwerte bleiben Fehler.
+`weather_inventory.expected_rows` ist nur der Ersatzwert ohne Aufnahmezeit;
+sonst ergibt sich die Zeilenzahl aus dem konkreten Fenster.
+
 Outputs gelten nicht allein wegen ihrer Existenz als gueltig. Kompakte und detaillierte Logs, Batch-Statusdateien und das Run-Manifest dokumentieren Validierung und Fehler. Der finale Gate wird mit `bash run_final_validation_report.sh` erzeugt; Formation-Produkte koennen zusaetzlich mit `bash slurm_compare_formation_status.sh` verglichen werden.
 
 ## Status, Manifeste und Mastertabelle

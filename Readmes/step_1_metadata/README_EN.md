@@ -43,3 +43,22 @@ The Slurm orchestrator writes a manifest under `outputs/step_0_manifests/<step>/
 
 ## Typical Failures
 Missing inputs or configuration sections terminate the step with a non-zero exit code. Per-ID data problems are recorded where possible in detail/retry logs as `missing`, `has_issues` or `failed`. After a timeout, resubmit the same mode; valid checkpoints are reused.
+
+## German recording-time policy (2026-09-16)
+
+`localtimes` is authoritative when nonempty: preserve its local clock and apply
+Europe/Berlin DST rules. Only missing local values use `datetime` as an instant
+and convert it to Europe/Berlin. A datetime without an offset is assumed UTC and
+explicitly flagged; no such rows occur in the audited September input.
+Malformed/nonexistent local clocks and unresolved autumn folds remain invalid;
+there is no silent fallback or one-hour shift. A valid local offset, otherwise a
+matching UTC reference, resolves the autumn fold. Conflicting UTC references and
+non-German local offsets are logged, while the local clock remains authoritative.
+`coordinate_check` is only a WGS84 / broad Germany rectangle plausibility check,
+not a country-border or timezone-polygon test.
+
+The clean intermediate `datetime` retains the correct +01:00/+02:00 offset.
+The master `datetime_local` stores only the German clock, without an offset.
+Planner and extraction share fingerprints. A policy change invalidates metadata,
+weather and Sentinel planning. The first migration therefore revisits existing IDs,
+not only newly added IDs. A scoped extraction never acknowledges untouched IDs.

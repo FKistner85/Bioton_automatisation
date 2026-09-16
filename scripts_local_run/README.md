@@ -105,6 +105,19 @@ Mastertabelle aktualisiert werden sollen, verwende den gezielten Starter:
 powershell -ExecutionPolicy Bypass -File .\run_master_refresh_local.ps1
 ```
 
+Der Starter erzeugt danach zusaetzlich `outputs/Bio_O_Ton_Master_CI_TEC.csv`
+mit den 14 Spalten des ci-tec-README. Der Export uebernimmt Werte und Zeilen
+unveraendert aus der vollstaendigen Mastertabelle. Er kann separat erzeugt werden:
+
+```powershell
+python tools/export_ci_tec_master.py --input D:/BioOTon_local_workspace/outputs/Bio_O_Ton_Master.csv
+```
+
+Neue IDs haben noch keine uebernommenen Domaenenpruefergebnisse. Deren Sound-,
+Sentinel- und Wetterflags koennen daher leer sein; leer bedeutet unbekannt und
+ist nicht mit `False` gleichzusetzen. Ein nachfolgender regulaerer Horeka-Lauf
+ergaenzt diese Ergebnisse aus Inventaren und Verarbeitungsschritten.
+
 Er verarbeitet ausschliesslich Step 1, 2.0, 2.1, 2.2, 2.4 und 7.0. Es
 werden keine Audio-, Foto-, Sentinel-, Wetter- oder Bioakustik-Jobs gestartet;
 Step 2.3 wird ebenfalls ausgelassen. Die 100-m- und 10-m-Produkte werden aus
@@ -340,3 +353,13 @@ Nach Ende aller lokalen Pipeline-Prozesse:
 ```powershell
 net use L: /delete /y
 ```
+
+### Audited recording-time correction
+
+`scripts_local_run/refresh_recording_times.py` applies an already audited time
+correction to the local workspace. It verifies source/master hashes against the
+supplied audit JSON, acquires the local lock, backs up all replaced metadata and
+master products, runs Steps 1 and 7, exports the ci-tec subset, and independently
+checks all resulting times and subset cells. It does not publish to LSDF or run
+Horeka jobs. Use `--help` for required paths. The full CSV retains technical UTC,
+date and time fields; the ci-tec subset has only `datetime_local`, without timezone.

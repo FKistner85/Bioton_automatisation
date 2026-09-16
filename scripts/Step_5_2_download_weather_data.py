@@ -49,6 +49,7 @@ from pyproj import Transformer
 from tqdm import tqdm
 
 from common import (
+    recording_weather_times_utc,
     finish_step_manifest,
     processed_root_from_config,
     read_ids_file,
@@ -139,17 +140,8 @@ def recording_time_window_utc(
     preceding_days: int,
     input_tz: str,
 ) -> pd.DatetimeIndex:
-    ts = pd.Timestamp(recording_dt_naive_or_aware)
-    if ts.tzinfo is None:
-        ts = ts.tz_localize(input_tz, ambiguous=True, nonexistent="shift_forward")
-    local_day_start = ts.normalize()
-    window_start_local = local_day_start - pd.Timedelta(days=preceding_days)
-    window_end_local = local_day_start + pd.Timedelta(hours=23)
-    return pd.date_range(
-        start=window_start_local.tz_convert("UTC"),
-        end=window_end_local.tz_convert("UTC"),
-        freq="1h",
-        tz="UTC",
+    return recording_weather_times_utc(
+        recording_dt_naive_or_aware, preceding_days, input_tz,
     )
 
 

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bio-o-ton.local/schemas/master-table-row-v4.json",
+  "$id": "https://bio-o-ton.local/schemas/master-table-row-v5.json",
   "schema_name": "bio_o_ton_master_table_row",
-  "schema_version": "2026-08-04-mastertable-v4",
+  "schema_version": "2026-09-16-mastertable-v5",
   "type": "object",
   "required": [
     "mastertable_schema_version",
@@ -24,11 +24,11 @@
     "release_status"
   ],
   "properties": {
-    "mastertable_schema_version": {"const": "2026-08-04-mastertable-v4"},
+    "mastertable_schema_version": {"const": "2026-09-16-mastertable-v5"},
     "workflow_run_id": {"type": "string", "minLength": 1},
     "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
     "source_fingerprint": {"type": ["string", "null"]},
-    "datetime_local": {"type": ["string", "null"]},
+    "datetime_local": {"type": ["string", "null"], "description": "German local clock, no timezone suffix, YYYY-MM-DD HH:MM:SS"},
     "datetime_utc": {"type": ["string", "null"]},
     "date_local": {"type": ["string", "null"]},
     "time_local": {"type": ["string", "null"]},

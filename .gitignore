@@ -28,6 +28,7 @@ bio-o-ton-gee-*.json
 
 # Runtime artefacts are stored outside this source directory on Horeka.
 /output/
+/tmp/
 slurm_logs/
 bacpipe/model_checkpoints/
 

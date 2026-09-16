@@ -28,12 +28,28 @@ tqdm_stub.tqdm = lambda iterable=None, *args, **kwargs: iterable
 sys.modules.setdefault("tqdm", tqdm_stub)
 
 from Step_5_2_download_weather_data import (
+    recording_time_window_utc,
     load_input_recordings,
     recording_shard,
     select_recordings,
     upstream_unavailable_ids,
     verify_requested_outputs,
 )
+
+
+def test_weather_download_uses_local_calendar_days() -> None:
+    for recording, first, last, count in [
+        ("2025-03-30T06:00:00+02:00", "2025-03-19T23:00:00Z", "2025-03-30T21:00:00Z", 263),
+        ("2025-10-26T06:00:00+01:00", "2025-10-15T22:00:00Z", "2025-10-26T22:00:00Z", 265),
+        # The recording's German calendar date is March 31, not March 30 UTC.
+        ("2025-03-30T23:30:00Z", "2025-03-20T23:00:00Z", "2025-03-31T21:00:00Z", 263),
+        ("2025-05-11 06:00:00", "2025-04-30T22:00:00Z", "2025-05-11T21:00:00Z", 264),
+    ]:
+        actual = recording_time_window_utc(pd.Timestamp(recording), 10, "Europe/Berlin")
+        assert len(actual) == count
+        assert actual[0] == pd.Timestamp(first)
+        assert actual[-1] == pd.Timestamp(last)
+        assert (actual.to_series().diff().dropna() == pd.Timedelta(hours=1)).all()
 
 
 def test_incremental_scope_and_shards() -> None:
@@ -104,6 +120,7 @@ def test_upstream_unavailable_status_is_detected() -> None:
 
 
 if __name__ == "__main__":
+    test_weather_download_uses_local_calendar_days()
     test_incremental_scope_and_shards()
     test_weather_output_verification()
     test_upstream_unavailable_status_is_detected()

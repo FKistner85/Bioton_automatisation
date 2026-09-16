@@ -18,6 +18,8 @@ SCRIPT_ROOT = Path(__file__).resolve().parent
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
+from recording_time import german_wall_times
+
 from Step_7_0_update_master_table import (
     add_100m_formation,
     add_10m_formation,
@@ -165,6 +167,10 @@ def load_metadata(config: dict[str, Any]) -> pd.DataFrame:
     missing = required - set(metadata.columns)
     if missing:
         raise KeyError(f"Metadata missing columns: {sorted(missing)}")
+    if "datetime" in metadata.columns:
+        # Step 1 is the authoritative source, including after a time correction.
+        metadata["datetime_local"] = german_wall_times(metadata["datetime"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+        metadata["datetime_utc"] = pd.to_datetime(metadata["datetime"], utc=True, format="mixed", errors="coerce").dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     keep = [column for column in ["dawn_chorus_id", "lat", "lon", "datetime_local", "datetime_utc"] if column in metadata.columns]
     return metadata[keep].drop_duplicates("dawn_chorus_id")
 
@@ -187,13 +193,14 @@ def load_recording_context(config: dict[str, Any], metadata: pd.DataFrame) -> pd
         context = metadata.copy()
     context = normalise_id_column(context, ["dawn_chorus_id", "id"])
     for time_column in ["datetime_local", "datetime_utc"]:
-        if time_column not in context.columns and time_column in metadata.columns:
+        if time_column in metadata.columns:
+            context = context.drop(columns=[time_column], errors="ignore")
             context = context.merge(metadata[["dawn_chorus_id", time_column]], on="dawn_chorus_id", how="left")
     local_values = context["datetime_local"] if "datetime_local" in context.columns else pd.Series(pd.NaT, index=context.index)
     utc_values = context["datetime_utc"] if "datetime_utc" in context.columns else pd.Series(pd.NaT, index=context.index)
-    local_time = pd.to_datetime(local_values, errors="coerce")
-    if local_time.isna().all():
-        local_time = pd.to_datetime(utc_values, errors="coerce", utc=True)
+    local_time = german_wall_times(local_values)
+    fallback = pd.to_datetime(utc_values, errors="coerce", utc=True, format="mixed").dt.tz_convert("Europe/Berlin").dt.tz_localize(None)
+    local_time = local_time.fillna(fallback)
     context["recording_year"] = local_time.dt.year.astype("Int64")
     context["recording_month"] = local_time.dt.month.astype("Int64")
     keep = [column for column in RECORDING_CONTEXT_COLUMNS if column in context.columns]

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from recording_time import german_wall_times
 
 from common import atomic_write_json, load_config, utc_now_iso
 from common import file_fingerprint
@@ -101,9 +102,7 @@ def apply_filter(
         metadata = metadata.copy()
         metadata["dawn_chorus_id"] = metadata["dawn_chorus_id"].map(normalise_id)
         datetime_column = "datetime_local" if "datetime_local" in metadata.columns else "datetime"
-        metadata["recording_month"] = pd.to_datetime(
-            metadata.get(datetime_column), errors="coerce"
-        ).dt.month
+        metadata["recording_month"] = german_wall_times(metadata[datetime_column]).dt.month
         result = result.merge(
             metadata[["dawn_chorus_id", "recording_month"]].drop_duplicates("dawn_chorus_id"),
             on="dawn_chorus_id",

@@ -34,7 +34,7 @@ from common import (
 )
 
 
-SCHEMA_VERSION = "2026-08-04-mastertable-v4"
+SCHEMA_VERSION = "2026-09-16-mastertable-v5"
 MASTER_COLUMNS = [
     "mastertable_schema_version",
     "workflow_run_id",
@@ -254,15 +254,17 @@ def restrict_to_ids(table: pd.DataFrame, selected_ids: set[str] | None) -> pd.Da
     return table[table["dawn_chorus_id"].astype(str).isin(selected_ids)].copy()
 
 
-def merge_master_rows(previous: pd.DataFrame, updates: pd.DataFrame) -> pd.DataFrame:
-    """Atomically retain unaffected master rows while replacing updated IDs."""
+def merge_master_rows(
+    previous: pd.DataFrame, updates: pd.DataFrame,
+    *, replace_ids: set[str] | None = None,
+) -> pd.DataFrame:
+    """Replace the requested scope, including requested IDs with no new row."""
     if previous.empty:
         return updates.copy()
-    if updates.empty:
-        return previous.copy()
-    update_ids = set(updates["dawn_chorus_id"].astype(str))
+    update_ids = set(updates["dawn_chorus_id"].astype(str)) if not updates.empty else set()
+    replaced = update_ids if replace_ids is None else update_ids | replace_ids
     retained = previous[
-        ~previous["dawn_chorus_id"].astype(str).isin(update_ids)
+        ~previous["dawn_chorus_id"].astype(str).isin(replaced)
     ].copy()
     return pd.concat([retained, updates], ignore_index=True, sort=False)
 
@@ -288,6 +290,9 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
     status_dir = Path(config["status_dir"])
     clean = read_csv_optional(status_dir / "dawnchorus_metadata_clean.csv")
     if clean.empty:
+        if {"id", "datetime", "lat", "lon"}.issubset(clean.columns):
+            # A valid header-only Step-1 product represents an empty population.
+            return pd.DataFrame(columns=MASTER_COLUMNS)
         raise FileNotFoundError(
             f"Step 1 clean metadata is missing or empty: {status_dir / 'dawnchorus_metadata_clean.csv'}"
         )
@@ -303,9 +308,12 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
 
     base = clean[["dawn_chorus_id", "datetime_local", "lat", "lon"]].copy()
     parsed_local = parse_local_wall_times(base["datetime_local"])
-    parsed_utc = pd.to_datetime(base["datetime_local"], errors="coerce", utc=True)
+    parsed_utc = pd.to_datetime(base["datetime_local"], errors="coerce", utc=True, format="mixed")
     base["datetime_utc"] = parsed_utc.dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     base.loc[parsed_utc.isna(), "datetime_utc"] = pd.NA
+    # UTC must be obtained from the offset-aware Step-1 value BEFORE removing
+    # the offset for the consumer-facing German clock column.
+    base["datetime_local"] = parsed_local.dt.strftime("%Y-%m-%d %H:%M:%S")
     base["date_local"] = parsed_local.dt.strftime("%Y-%m-%d")
     base["time_local"] = parsed_local.dt.strftime("%H:%M:%S")
 
@@ -430,6 +438,16 @@ def add_preserved_nonformation_domains(
     for column in PRESERVED_NONFORMATION_COLUMNS:
         if column not in table.columns:
             table[column] = pd.NA
+
+    if "date_local" in previous.columns:
+        old_dates = previous.drop_duplicates("dawn_chorus_id").set_index("dawn_chorus_id")["date_local"]
+        before = table["dawn_chorus_id"].map(old_dates)
+        changed_day = before.notna() & table["date_local"].ne(before)
+        for prefix in ("weather_point", "sentinel"):
+            table.loc[changed_day, f"{prefix}_has_issues"] = True
+            table.loc[changed_day, f"{prefix}_issue_codes"] = table.loc[
+                changed_day, f"{prefix}_issue_codes"
+            ].map(lambda value: join_codes(split_issues(value) + ["recording_date_changed_recheck_required"]))
 
     table["formation_primary_variant"] = str(
         config.get("lrt_variants", {}).get("primary_suffix", "")
@@ -1498,28 +1516,36 @@ def main() -> int:
 
             table = build_base_table(config, output_csv, now)
             table = restrict_to_ids(table, selected_ids)
-            if args.preserve_existing_nonformation_domains:
-                table = add_preserved_nonformation_domains(
-                    table, previous_master, config
-                )
-            else:
-                table = add_media_status(table, config, "audio_inventory", "sound")
-                table = add_media_status(table, config, "photo_inventory", "photo")
-                table = add_bioacoustic_status(table, config)
-                table = add_sentinel_status(table, config)
-                table = add_weather_point_status(table, config)
-                table = add_weather_raster_status(table, config)
-            table = add_100m_formation(table, config)
-            table = add_10m_formation(table, config)
-            if not args.preserve_existing_nonformation_domains:
-                table = add_formation_variant_status(table, config)
-            table = add_agreement_and_ready_flags(table)
+            # Deletion-only updates have no domains to recompute.
+            if not table.empty:
+                if args.preserve_existing_nonformation_domains:
+                    table = add_preserved_nonformation_domains(
+                        table, previous_master, config
+                    )
+                else:
+                    table = add_media_status(table, config, "audio_inventory", "sound")
+                    table = add_media_status(table, config, "photo_inventory", "photo")
+                    table = add_bioacoustic_status(table, config)
+                    table = add_sentinel_status(table, config)
+                    table = add_weather_point_status(table, config)
+                    table = add_weather_raster_status(table, config)
+                table = add_100m_formation(table, config)
+                table = add_10m_formation(table, config)
+                if not args.preserve_existing_nonformation_domains:
+                    table = add_formation_variant_status(table, config)
+                table = add_agreement_and_ready_flags(table)
 
             for column in MASTER_COLUMNS:
                 if column not in table.columns:
                     table[column] = pd.NA
             updated_rows = table[MASTER_COLUMNS].copy()
-            table = merge_master_rows(previous_master, updated_rows)
+            replace_ids = selected_ids
+            if replace_ids is None:
+                replace_ids = (
+                    set(previous_master["dawn_chorus_id"].astype(str))
+                    if "dawn_chorus_id" in previous_master else set()
+                )
+            table = merge_master_rows(previous_master, updated_rows, replace_ids=replace_ids)
             for column in MASTER_COLUMNS:
                 if column not in table.columns:
                     table[column] = pd.NA
@@ -1536,7 +1562,9 @@ def main() -> int:
                 event_previous,
                 updated_rows,
                 now,
-                partial_update=selected_ids is not None,
+                # Both sides already contain only the requested scope. Missing
+                # current rows are real deletions, even for an incremental run.
+                partial_update=False,
             )
 
         summary = {

@@ -4,6 +4,8 @@ Bio-O-Ton is a restartable data-processing pipeline for Dawn Chorus recordings. 
 
 This document reflects the implementation and default configuration checked on **2026-08-26**. Paths and operational defaults come from [`config.horeka.json`](config.horeka.json), the executable step registry is [`pipeline_steps.json`](pipeline_steps.json), and the final table is written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py).
 
+For ci-tec, use the short [README_CI_TEC.pdf](README_CI_TEC.pdf) ([text version](README_CI_TEC.md)). The [time review](Readmes/time_review/README.md) documents the German-time correction and the LRT check of all 47 source conflicts.
+
 ## Master table at a glance
 
 The main result is one row per unique `dawn_chorus_id` in:
@@ -15,7 +17,7 @@ The main result is one row per unique `dawn_chorus_id` in:
 └── Bio_O_Ton_Master_summary.json
 ```
 
-The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-08-04-mastertable-v4`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
+The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-09-16-mastertable-v5`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
 
 The compact dictionary below covers **all 99 columns written by Step 7_0**. Related fields are grouped to keep the overview readable; every group links to its full definition.
 

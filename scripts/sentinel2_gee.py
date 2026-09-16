@@ -89,7 +89,7 @@ def read_metadata(path: Path) -> pd.DataFrame:
     result["lat"] = pd.to_numeric(result["lat"], errors="coerce")
     result["lon"] = pd.to_numeric(result["lon"], errors="coerce") if "lon" in result else pd.to_numeric(result["lng"], errors="coerce")
     result["datetime_utc"] = pd.to_datetime(
-        result[datetime_column], errors="coerce", utc=True
+        result[datetime_column], errors="coerce", utc=True, format="mixed"
     )
     result = result[(result["DC_id"] != "") & result["lat"].notna() & result["lon"].notna() & result["datetime_utc"].notna()]
     return result.drop_duplicates("DC_id", keep="last").reset_index(drop=True)

@@ -1,0 +1,50 @@
+[
+  {
+    "test": "test_recording_time",
+    "exit_code": 0
+  },
+  {
+    "test": "test_step1_incremental",
+    "exit_code": 0
+  },
+  {
+    "test": "test_pipeline_control",
+    "exit_code": 0
+  },
+  {
+    "test": "test_weather_inventory",
+    "exit_code": 0
+  },
+  {
+    "test": "test_weather_download_selection",
+    "exit_code": 0
+  },
+  {
+    "test": "test_master_table",
+    "exit_code": 0
+  },
+  {
+    "test": "test_pipeline_regressions",
+    "exit_code": 0
+  },
+  {
+    "test": "test_common_manifest",
+    "exit_code": 0
+  },
+  {
+    "test": "test_local_run",
+    "exit_code": 0
+  },
+  {
+    "test": "test_bioacoustics_pipeline",
+    "exit_code": 0
+  },
+  {
+    "test": "test_formation_variant_table",
+    "exit_code": 0
+  },
+  {
+    "test": "test_sentinel_gee",
+    "exit_code": 0
+  }
+]

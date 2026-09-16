@@ -18,15 +18,13 @@ if str(SCRIPT_ROOT) not in sys.path:
 
 from common import atomic_write_csv, atomic_write_json, file_fingerprint, load_config, processed_root_from_config, utc_now_iso
 from bioacoustics_common import configured_models, model_fingerprint
+from Step_5_1_Weather_inventory import WEATHER_TIME_QC_VERSION
+from Step_1_metadata_extraction import (
+    FINGERPRINT_GROUPS, build_fingerprints as metadata_fingerprints,
+    read_source as read_metadata_source,
+)
 
 
-FINGERPRINT_GROUPS = {
-    "metadata_fingerprint": ["id", "lat", "lng", "datetime", "localtimes"],
-    "audio_fingerprint": ["id", "audio"],
-    "photo_fingerprint": ["id", "photo"],
-    "weather_fingerprint": ["id", "lat", "lng", "datetime", "localtimes"],
-    "sentinel_fingerprint": ["id", "lat", "lng"],
-}
 FULL_REBUILD_STEPS = [
     "step_1_metadata",
     "step_2_0_lrt_cleaning",
@@ -75,15 +73,8 @@ def hash_values(row: pd.Series, columns: Iterable[str]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def read_source(path: Path) -> pd.DataFrame:
-    frame = pd.read_csv(path, low_memory=False, encoding="utf-8-sig")
-    if len(frame.columns) == 1:
-        alternate = pd.read_csv(path, sep=";", low_memory=False, encoding="utf-8-sig")
-        if len(alternate.columns) > 1:
-            frame = alternate
-    if "id" not in frame.columns:
-        raise KeyError(f"Missing id column in {path}")
-    frame = frame.copy()
+def read_source(path: Path, *, country_column="country", country_value="Germany") -> pd.DataFrame:
+    frame = read_metadata_source(path, country_column=country_column, country_value=country_value)
     frame["dawn_chorus_id"] = frame["id"].map(normalise_id)
     frame = frame[frame["dawn_chorus_id"] != ""]
     return frame.drop_duplicates("dawn_chorus_id", keep="first").reset_index(drop=True)
@@ -94,23 +85,9 @@ def build_fingerprints(
     *,
     timezone: str = "Europe/Berlin",
 ) -> pd.DataFrame:
-    result = pd.DataFrame({"dawn_chorus_id": source["dawn_chorus_id"].astype(str)})
-    for name, columns in FINGERPRINT_GROUPS.items():
-        if name == "metadata_fingerprint":
-            result[name] = source.apply(
-                lambda row: hashlib.sha256(
-                    (
-                        hash_values(row, columns)
-                        + f"\x1ftimezone={timezone}"
-                    ).encode("utf-8")
-                ).hexdigest(),
-                axis=1,
-            )
-        else:
-            result[name] = source.apply(lambda row: hash_values(row, columns), axis=1)
-    source_columns = sorted(set(column for columns in FINGERPRINT_GROUPS.values() for column in columns))
-    result["source_fingerprint"] = source.apply(lambda row: hash_values(row, source_columns), axis=1)
-    return result
+    # One implementation ensures the planner detects time-policy migrations.
+    return metadata_fingerprints(source, timezone=timezone)
+
 
 
 def fingerprint_path(config: dict[str, Any]) -> Path:
@@ -534,7 +511,8 @@ def main() -> int:
     args = parse_args()
     config = load_config(args.config)
     source_path = Path(config["dawn_chorus_csv"])
-    source = read_source(source_path)
+    metadata_settings = config.get("metadata_extraction", {})
+    source = read_source(source_path, country_column=metadata_settings.get("country_column", "country"), country_value=metadata_settings.get("country_value", "Germany"))
     timezone = str(
         config.get("metadata_extraction", {}).get(
             "timezone",
@@ -598,6 +576,15 @@ def main() -> int:
     weather_inventory_path = Path(
         str(config.get("weather_inventory", {}).get("compact_log", ""))
     )
+    weather_state_path = Path(str(config.get("weather_inventory", {}).get("state_file", "")))
+    try:
+        weather_state = json.loads(weather_state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        weather_state = {}
+    if config.get("weather_inventory") and weather_state.get("time_qc_version") != WEATHER_TIME_QC_VERSION:
+        # Step 1 may already have advanced source fingerprints before an
+        # interrupted downstream run. Keep the QC migration pending separately.
+        add_reason(id_reasons["weather"], all_current, "weather_time_qc_policy_changed")
     add_reason(
         id_reasons["weather"],
         inventory_problem_ids(weather_inventory_path) & all_current,

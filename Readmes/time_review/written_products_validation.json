@@ -1,0 +1,8 @@
+{
+  "rows": 111866,
+  "written_metadata_log_and_master_all_times_match": true,
+  "parquet_and_csv_all_time_fields_match": true,
+  "datetime_local_has_no_timezone_suffix": true,
+  "master_columns": 99,
+  "pending_source_conflicts": 47
+}

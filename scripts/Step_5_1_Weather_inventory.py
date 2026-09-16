@@ -22,13 +22,17 @@ from typing import Any
 
 import pandas as pd
 
-from common import atomic_write_csv, atomic_write_json, read_ids_file, utc_now_iso
+from common import (
+    atomic_write_csv, atomic_write_json, read_ids_file, utc_now_iso,
+    recording_weather_times_utc,
+)
 
 
 FILENAME_RE = re.compile(r"^weather_(?P<id>.+)\.csv$", re.IGNORECASE)
 
 DETAIL_COLUMNS = [
     "dawn_chorus_id",
+    "time_qc_version",
     "record_type",
     "filename",
     "path",
@@ -154,20 +158,11 @@ def expected_local_window(
 ) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
     if pd.isna(metadata_datetime):
         return None, None
-    timestamp = pd.Timestamp(metadata_datetime)
-    if pd.isna(timestamp):
+    times = recording_weather_times_utc(metadata_datetime, preceding_days, input_timezone)
+    if times.empty:
         return None, None
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.tz_localize(
-            input_timezone,
-            ambiguous=True,
-            nonexistent="shift_forward",
-        )
-    else:
-        timestamp = timestamp.tz_convert(input_timezone)
-    start = timestamp.normalize() - pd.Timedelta(days=preceding_days)
-    end = timestamp.normalize() + pd.Timedelta(hours=23)
-    return start.tz_localize(None), end.tz_localize(None)
+    local = times.tz_convert(input_timezone).tz_localize(None)
+    return local[0], local[-1]
 
 
 def check_numeric_ranges(
@@ -196,6 +191,8 @@ def check_numeric_ranges(
     return ok
 
 
+WEATHER_TIME_QC_VERSION = "german-calendar-dst-v2"
+
 def inspect_weather_csv(
     path: Path,
     metadata_datetime: Any,
@@ -207,10 +204,23 @@ def inspect_weather_csv(
     if not dawn_id:
         issues.append("filename_does_not_match_weather_id_pattern")
     stat = path.stat()
+    preceding_days = int(download_settings.get("preceding_days", 10))
+    input_timezone = str(download_settings.get("input_timezone", "Europe/Berlin"))
+    expected_interval_seconds = int(settings.get("expected_interval_seconds", 3600))
+    try:
+        expected_times = recording_weather_times_utc(
+            metadata_datetime, preceding_days, input_timezone, expected_interval_seconds,
+        )
+    except (TypeError, ValueError):
+        expected_times = pd.DatetimeIndex([], tz="UTC")
+        issues.append("invalid_metadata_datetime")
+    expected_local = expected_times.tz_convert(input_timezone).tz_localize(None)
+    expected_rows = len(expected_local) if len(expected_local) else int(settings.get("expected_rows", 264))
     if stat.st_size == 0:
         return {
             "dawn_chorus_id": dawn_id,
             "record_type": "file",
+            "time_qc_version": WEATHER_TIME_QC_VERSION,
             "filename": path.name,
             "path": str(path),
             "size_bytes": stat.st_size,
@@ -218,7 +228,7 @@ def inspect_weather_csv(
             "weather_exists": True,
             "read_ok": False,
             "row_count": 0,
-            "expected_rows": int(settings.get("expected_rows", 264)),
+            "expected_rows": expected_rows,
             "required_columns_present": False,
             "missing_required_columns": "",
             "datetime_parse_ok": False,
@@ -236,11 +246,7 @@ def inspect_weather_csv(
         }
 
     required_columns = [str(column) for column in settings.get("required_columns", [])]
-    expected_rows = int(settings.get("expected_rows", 264))
-    expected_interval_seconds = int(settings.get("expected_interval_seconds", 3600))
     max_nan_fraction = float(settings.get("max_nan_fraction", 0.0))
-    preceding_days = int(download_settings.get("preceding_days", 10))
-    input_timezone = str(download_settings.get("input_timezone", "Europe/Berlin"))
 
     read_ok = False
     row_count = 0
@@ -290,19 +296,28 @@ def inspect_weather_csv(
                 sorted_dt = parsed.sort_values().reset_index(drop=True)
                 first_datetime = sorted_dt.iloc[0].isoformat()
                 last_datetime = sorted_dt.iloc[-1].isoformat()
-                if parsed.duplicated().any():
+                counts = parsed.value_counts()
+                allowed_counts = expected_local.value_counts().reindex(counts.index, fill_value=1)
+                if (counts > allowed_counts).any():
                     issues.append("duplicate_datetime")
-                deltas = sorted_dt.diff().dropna().dt.total_seconds()
-                datetime_interval_ok = bool(
-                    deltas.empty or (deltas == expected_interval_seconds).all()
-                )
+                if len(expected_local):
+                    # Compare every expected wall-clock label and its multiplicity.
+                    # The repeated autumn hour and missing spring hour are valid;
+                    # additional duplicates or missing observations are not.
+                    datetime_interval_ok = pd.DatetimeIndex(sorted_dt).equals(
+                        expected_local.sort_values()
+                    )
+                else:
+                    deltas = sorted_dt.diff().dropna().dt.total_seconds()
+                    datetime_interval_ok = bool(
+                        deltas.empty or (deltas == expected_interval_seconds).all()
+                    )
                 if not datetime_interval_ok:
                     issues.append("unexpected_time_interval")
 
-                expected_first, expected_last = expected_local_window(
-                    metadata_datetime,
-                    preceding_days,
-                    input_timezone,
+                expected_first, expected_last = (
+                    (expected_local[0], expected_local[-1])
+                    if len(expected_local) else (None, None)
                 )
                 if expected_first is not None and expected_last is not None:
                     expected_first_datetime = expected_first.isoformat()
@@ -328,6 +343,7 @@ def inspect_weather_csv(
     return {
         "dawn_chorus_id": dawn_id,
         "record_type": "file",
+            "time_qc_version": WEATHER_TIME_QC_VERSION,
         "filename": path.name,
         "path": str(path),
         "size_bytes": stat.st_size,
@@ -452,7 +468,7 @@ def previous_row_is_reusable(
     download_settings: dict[str, Any],
     force: bool,
 ) -> bool:
-    if force or previous is None:
+    if force or previous is None or previous.get("time_qc_version") != WEATHER_TIME_QC_VERSION:
         return False
     stat = path.stat()
     if str(previous.get("size_bytes", "")) != str(stat.st_size):
@@ -622,6 +638,10 @@ def main() -> int:
             state_file,
             {
                 "schema_version": "2026-07-23-weather-inventory-v1",
+                "time_qc_version": WEATHER_TIME_QC_VERSION if all(
+                    row.get("time_qc_version") == WEATHER_TIME_QC_VERSION
+                    for row in rows if row.get("record_type") == "file"
+                ) else "mixed_pending_revalidation",
                 "finished_utc": utc_now_iso(),
                 "directory": str(directory),
                 "metadata_csv": str(metadata_csv),

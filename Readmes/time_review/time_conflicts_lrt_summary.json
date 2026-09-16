@@ -1,0 +1,15 @@
+{
+  "variant": "no_K_post2017",
+  "conflict_recordings": 47,
+  "unique_100m_cells": 29,
+  "recordings_in_cells_with_lrt_geometry": 0,
+  "recordings_in_cells_with_majority_formation": 0,
+  "recordings_inside_lrt_polygons": 0,
+  "recordings_covered_by_lrt_polygons": 0,
+  "source_conflicts": "output\\review\\time_correction_2026-09-16\\recording_time_conflicts.csv",
+  "master": "D:\\BioOTon_local_workspace\\outputs\\Bio_O_Ton_Master.csv",
+  "grid": "D:\\BioOTon_local_workspace\\lsdf_cache\\InspireGrid\\Vector_Data\\grid.gpkg",
+  "lrt": "D:\\BioOTon_local_workspace\\outputs\\step_2_variants\\no_K_post2017\\step_2_0\\lrt_no_K_post2017.gpkg",
+  "majority_table": "D:\\BioOTon_local_workspace\\outputs\\step_2_variants\\no_K_post2017\\step_2_1\\LRT_Grid_Majority_no_K_post2017.csv",
+  "checks": "actual grid geometries, point containment, LRT polygon overlap, majority table, point assignment and master flags"
+}

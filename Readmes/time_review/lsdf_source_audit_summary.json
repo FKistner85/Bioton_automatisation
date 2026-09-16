@@ -1,0 +1,37 @@
+{
+  "policy": "german-local-priority-utc-fallback-v2",
+  "source": "L:\\PointData\\dawn-chorus-soundscape.csv",
+  "source_sha256": "111d8ab25f628cad588b8f2fe5c22baea9cea8145ab200ce3233c8b841c43f2d",
+  "baseline": "D:\\BioOTon_local_workspace\\outputs\\Bio_O_Ton_Master.csv",
+  "baseline_sha256": "4c06f32fe9bc6161993a01ed179b0db6c02d27a66c1dff486135cca806948904",
+  "rows": 111866,
+  "localtimes_present_preserved": 108578,
+  "utc_fallback": 3288,
+  "unresolved": 0,
+  "local_clock_mismatches": 0,
+  "utc_fallback_mismatches": 0,
+  "clock_changes": 3288,
+  "clock_change_seconds_counts": {
+    "7200.0": 3264,
+    "3600.0": 24
+  },
+  "local_date_changes": 4,
+  "timestamp_status_counts": {
+    "validated": 111819,
+    "warning": 47
+  },
+  "issue_counts": {
+    "localtimes_offset_mismatch": 46,
+    "utc_local_conflict": 47
+  },
+  "coordinate_check_counts": {
+    "within_broad_germany_bounds": 111866
+  },
+  "weather_window_hour_counts": {
+    "264": 105357,
+    "263": 6267,
+    "265": 242
+  },
+  "datetime_min": "2011-03-26 06:31:00",
+  "datetime_max": "2026-09-15 08:27:45"
+}

@@ -1,6 +1,6 @@
 # Bio-O-Ton Master Table Reference
 
-This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-08-04-mastertable-v4` and contains 99 columns.
+This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-09-16-mastertable-v5` and contains 99 columns.
 
 ## Products and row model
 
@@ -50,7 +50,7 @@ The master table deliberately condenses these sources. File-level, segment-level
 
 | Column | Definition |
 |---|---|
-| `mastertable_schema_version` | Master-table row version. Current constant: `2026-08-04-mastertable-v4`. |
+| `mastertable_schema_version` | Master-table row version. Current constant: `2026-09-16-mastertable-v5`. |
 | `workflow_run_id` | Shared workflow ID that most recently updated the row. Outside an orchestrated run, the writer's fallback run ID is used. |
 | `dawn_chorus_id` | Unique numeric Dawn Chorus recording ID. It is normalized to a digit string and is the table's primary key. |
 | `source_fingerprint` | SHA-256 fingerprint from Step 1 over the source fields relevant to the ID. It supports changed-record detection. |
@@ -61,8 +61,8 @@ The master table deliberately condenses these sources. File-level, segment-level
 
 | Column | Definition |
 |---|---|
-| `datetime_local` | Cleaned local recording timestamp from Step 1, including its UTC offset when available. |
-| `datetime_utc` | `datetime_local` converted to UTC and formatted as `YYYY-MM-DDTHH:MM:SSZ`. |
+| `datetime_local` | German local clock from Step 1, stored without a timezone suffix as `YYYY-MM-DD HH:MM:SS`. |
+| `datetime_utc` | UTC instant from the offset-aware Step-1 product, formatted as `YYYY-MM-DDTHH:MM:SSZ`; calculated before removing the offset for `datetime_local`. |
 | `date_local` | Local calendar date derived from `datetime_local`. |
 | `time_local` | Local wall-clock time derived from `datetime_local`; the local offset is not applied twice. |
 | `timestamp_source` | Source selected by Step 1, such as `localtimes` or `datetime`. |
@@ -70,6 +70,16 @@ The master table deliberately condenses these sources. File-level, segment-level
 | `timestamp_change_reason` | Step-1 explanation of the timestamp conversion/normalization. |
 | `lat` | Cleaned WGS84 latitude; valid range is -90 to 90. |
 | `lon` | Cleaned WGS84 longitude; valid range is -180 to 180. |
+
+Step 1 always preserves the clock in a nonempty source `localtimes` field and
+assigns `Europe/Berlin`. Only an absent local value enables conversion of the
+source `datetime` instant to Germany (including historical DST rules). Invalid,
+nonexistent or unresolved ambiguous local clocks do not silently fall back.
+The Step-1 log records `timestamp_status`, `timestamp_issue_codes`, the UTC
+reference and the difference in seconds. These source-consistency warnings are
+separate from the master's syntactic `metadata_status` check. Source offsets
+inconsistent with Germany never override an explicitly supplied local clock.
+The ci-tec export contains only `datetime_local` as its recording-time column.
 
 ### Status fields
 
@@ -257,7 +267,7 @@ The first-insertion time and manual review fields are carried forward from the p
 | `previous_value` | Value before the update. |
 | `current_value` | Value after the update. |
 
-Full updates record added and deleted IDs; incremental updates record additions and tracked changes but do not infer deletions outside their selected ID set. Tracked changes include canonical domain statuses, `record_status`, `release_status`, the main readiness flags, and `record_blocking_issue_codes`.
+Full updates reconcile the master with the complete clean-metadata ID set and record additions and deletions. Incremental updates replace or delete only explicitly selected IDs and record those lifecycle events; rows outside their selected ID set are retained. A valid header-only clean input permits an empty master, while missing input aborts the update. Tracked changes include canonical domain statuses, `record_status`, `release_status`, the main readiness flags, and `record_blocking_issue_codes`.
 
 ## Execution
 
