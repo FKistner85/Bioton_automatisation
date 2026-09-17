@@ -32,6 +32,8 @@ WEATHER_MAX_CONCURRENT="${BIOOTON_WEATHER_MAX_CONCURRENT_TASKS:-}"
 HOSTRADA_RASTER_CPUS="${BIOOTON_STEP54_CPUS:-8}"
 HOSTRADA_RASTER_MEMORY="${BIOOTON_STEP54_MEMORY:-32G}"
 HOSTRADA_RASTER_MAX_CONCURRENT="${BIOOTON_STEP54_MAX_CONCURRENT_TASKS:-2}"
+HOSTRADA_WORKERS="${BIOOTON_STEP54_WORKERS:-2}"
+BIOACOUSTICS_WORKERS="${BIOOTON_BIOACOUSTICS_WORKERS:-4}"
 MASTER_CPUS="${BIOOTON_MASTER_CPUS:-2}"
 FORMATION_COMPARE_CPUS="${BIOOTON_FORMATION_COMPARE_CPUS:-4}"
 BIOACOUSTICS_CPUS="${BIOOTON_BIOACOUSTICS_CPUS:-}"
@@ -60,6 +62,8 @@ Useful environment variables:
   BIOOTON_STEP54_CPUS=8
   BIOOTON_STEP54_MEMORY=32G
   BIOOTON_STEP54_MAX_CONCURRENT_TASKS=2
+  BIOOTON_STEP54_WORKERS=2
+  BIOOTON_BIOACOUSTICS_WORKERS=4
   BIOOTON_BACPIPE_PYTHON=/path/to/.venv_bacpipe/bin/python
   BIOOTON_BIOACOUSTICS_PARTITION=cpuonly        # Standard, keine GPU noetig
   BIOOTON_BIOACOUSTICS_CPUS=4
@@ -107,6 +111,9 @@ fi
 [[ "${BIOACOUSTICS_CPUS}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid bioacoustic CPU count: ${BIOACOUSTICS_CPUS}" >&2; exit 1; }
 [[ -n "${BIOACOUSTICS_MEMORY}" ]] || { echo "Invalid empty bioacoustic memory request." >&2; exit 1; }
 [[ "${BIOACOUSTICS_TIME}" =~ ^[0-9]+:[0-5][0-9]:[0-5][0-9]$ ]] || { echo "Invalid bioacoustic time: ${BIOACOUSTICS_TIME}" >&2; exit 1; }
+for worker_setting in BIOACOUSTICS_WORKERS HOSTRADA_WORKERS HOSTRADA_RASTER_MAX_CONCURRENT; do
+  [[ "${!worker_setting}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid ${worker_setting}: ${!worker_setting}" >&2; exit 1; }
+done
 mkdir -p "${LOGDIR}"
 BIOACOUSTICS_ENABLED="$("${PYTHON}" -c "import json; print('1' if json.load(open('${CONFIG}', encoding='utf-8')).get('bioacoustics', {}).get('enabled', True) else '0')")"
 if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ && ! -x "${BACPIPE_PYTHON}" ]]; then
@@ -251,11 +258,13 @@ submit_bacpipe_array() {
   local max_concurrent="$7"
   shift 7
   local extra_args=("$@")
-  local last_task=$((task_count - 1))
+  local worker_count="${BIOACOUSTICS_WORKERS}"
+  (( worker_count > task_count )) && worker_count="${task_count}"
+  local last_task=$((worker_count - 1))
   if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
     dry_run_submit "${job_name}[0-${last_task}%${max_concurrent}]" "${step_name}" "${BIOACOUSTICS_PARTITION}" \
       "${BIOACOUSTICS_CPUS}" "${walltime}" "${BIOACOUSTICS_MEMORY}" "${dependency}" \
-      "${BACPIPE_PYTHON}" "${PIPELINE_DIR}/${target}" --config "${CONFIG}" --task-index '<array-task-id>' "${extra_args[@]}"
+      "${PYTHON}" "${PIPELINE_DIR}/tools/run_array_worker.py" --worker-index '<array-task-id>' --worker-count "${worker_count}" --task-count "${task_count}" -- "${BACPIPE_PYTHON}" "${PIPELINE_DIR}/${target}" --config "${CONFIG}" "${extra_args[@]}"
     return
   fi
   local dep_args=()
@@ -278,7 +287,7 @@ submit_bacpipe_array() {
     --error="${LOGDIR}/${LOG_STAMP}_${job_name}_%A_%a.err" \
     "${account_args[@]}" \
     "${dep_args[@]}" \
-    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.err\"; export OMP_NUM_THREADS='${BIOACOUSTICS_CPUS}' OPENBLAS_NUM_THREADS='${BIOACOUSTICS_CPUS}' MKL_NUM_THREADS='${BIOACOUSTICS_CPUS}' NUMEXPR_NUM_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTRAOP_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTEROP_THREADS=1; exec '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name '${step_name}' -- '${BACPIPE_PYTHON}' '${PIPELINE_DIR}/${target}' --config '${CONFIG}' --task-index \${SLURM_ARRAY_TASK_ID} ${extra_args[*]}"
+    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_${job_name}_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.err\"; export OMP_NUM_THREADS='${BIOACOUSTICS_CPUS}' OPENBLAS_NUM_THREADS='${BIOACOUSTICS_CPUS}' MKL_NUM_THREADS='${BIOACOUSTICS_CPUS}' NUMEXPR_NUM_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTRAOP_THREADS='${BIOACOUSTICS_CPUS}' TF_NUM_INTEROP_THREADS=1; exec '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name '${step_name}' -- '${PYTHON}' '${PIPELINE_DIR}/tools/run_array_worker.py' --worker-count '${worker_count}' --task-count '${task_count}' -- '${BACPIPE_PYTHON}' '${PIPELINE_DIR}/${target}' --config '${CONFIG}' ${extra_args[*]}"
 }
 
 submit_bacpipe_job() {
@@ -357,13 +366,15 @@ submit_hostrada_raster_array() {
   local task_count="$3"
   shift 3
   local extra_args=("$@")
-  local last_task=$((task_count - 1))
+  local worker_count="${HOSTRADA_WORKERS}"
+  (( worker_count > task_count )) && worker_count="${task_count}"
+  local last_task=$((worker_count - 1))
   if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
     dry_run_submit "bio_step54[0-${last_task}%${HOSTRADA_RASTER_MAX_CONCURRENT}]" \
       step_5_4_hostrada_raster_array_task "${PARTITION}" "${HOSTRADA_RASTER_CPUS}" "${walltime}" \
       "${HOSTRADA_RASTER_MEMORY}" "${dependency}" \
-      "${PYTHON}" "${PIPELINE_DIR}/tools/run_hostrada_raster_all.py" --config "${CONFIG}" \
-      --task-index '<array-task-id>' "${extra_args[@]}"
+      "${PYTHON}" "${PIPELINE_DIR}/tools/run_array_worker.py" --worker-index '<array-task-id>' --worker-count "${worker_count}" --task-count "${task_count}" -- \
+      "${PYTHON}" "${PIPELINE_DIR}/tools/run_hostrada_raster_all.py" --config "${CONFIG}" "${extra_args[@]}"
     return
   fi
   local dep_args=()
@@ -384,7 +395,7 @@ submit_hostrada_raster_array() {
     --error="${LOGDIR}/${LOG_STAMP}_bio_step54_%A_%a.err" \
     "${account_args[@]}" \
     "${dep_args[@]}" \
-    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_bio_step54_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_bio_step54_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.err\"; export OMP_NUM_THREADS='${HOSTRADA_RASTER_CPUS}' OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1; '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name 'step_5_4_hostrada_raster_array_task' -- '${PYTHON}' '${PIPELINE_DIR}/tools/run_hostrada_raster_all.py' --config '${CONFIG}' --task-index \${SLURM_ARRAY_TASK_ID} ${extra_args[*]}"
+    --wrap="set -euo pipefail; cd '${PIPELINE_DIR}'; export BIOOTON_RUN_ID='${RUN_ID}' BIOOTON_RUN_PLAN='${RUN_PLAN:-}'; export BIOOTON_STDOUT_LOG=\"${LOGDIR}/${LOG_STAMP}_bio_step54_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.out\" BIOOTON_STDERR_LOG=\"${LOGDIR}/${LOG_STAMP}_bio_step54_\${SLURM_ARRAY_JOB_ID}_\${SLURM_ARRAY_TASK_ID}.err\"; export OMP_NUM_THREADS='${HOSTRADA_RASTER_CPUS}' OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1; exec '${PYTHON}' '${PIPELINE_DIR}/tools/run_with_manifest.py' --config '${CONFIG}' --step-name 'step_5_4_hostrada_raster_array_task' -- '${PYTHON}' '${PIPELINE_DIR}/tools/run_array_worker.py' --worker-count '${worker_count}' --task-count '${task_count}' -- '${PYTHON}' '${PIPELINE_DIR}/tools/run_hostrada_raster_all.py' --config '${CONFIG}' ${extra_args[*]}"
 }
 
 afterany_jobs() {
