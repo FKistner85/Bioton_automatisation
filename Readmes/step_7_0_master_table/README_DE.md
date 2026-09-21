@@ -53,6 +53,19 @@ vor `bio_validate`.
 
 ## Hinweise
 
+Bei jedem Masterupdate (auch direkt nach dem Metadatenlauf) werden fehlende
+`grid_100m_id` aus dem vollstaendigen `point_lrt_assignment.grid_gpkg` ergaenzt,
+unabhaengig von vorhandenen Formationsprodukten. Die Zuordnung verwendet
+unveraendert die Projektion, `within`-Pruefung und Mehrfachtreffer-Auswahl aus
+Step 2.2. `grid_10m_id` wird weiterhin mit derselben bestehenden Funktion aus
+der 100-m-Elternzelle abgeleitet. Vorhandene 100-m-IDs bleiben erhalten.
+Ohne gueltige Koordinaten oder ausserhalb des Referenzrasters bleibt die ID leer.
+Ein konfiguriertes, nicht lesbares Raster fuehrt zum Fehler statt zu erfundenen IDs.
+
+Eine bestehende CSV kann separat mit `tools/backfill_master_grid_ids.py`
+(`--input`, `--output`, `--grid-gpkg`) ergaenzt werden. Das Werkzeug prueft,
+dass vorhandene IDs und alle fachfremden Spaltenwerte unveraendert bleiben.
+
 Die Mastertabelle ersetzt nicht die Detail-Logs. Sie verdichtet nur deren
 wichtigste ID-Level-Informationen. Die vollstaendige Spaltendokumentation steht
 in `MASTER_TABLE_README.md`. Kanonische Domaenenstatus, Quellfingerprint,

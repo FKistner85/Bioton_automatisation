@@ -374,7 +374,53 @@ def test_formation_variant_status_is_summarised() -> None:
         assert result["formation_variant_products_complete"].all()
 
 
+def test_grid_ids_without_formation_or_assignment_products() -> None:
+    import geopandas as gpd
+    from pyproj import Transformer
+    from shapely.geometry import box
+
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw)
+        grid_path = root / "grid.gpkg"
+        gpd.GeoDataFrame(
+            {"grid_id": ["100mN30000E40000", "100mN30000E40001"]},
+            geometry=[box(4000000, 3000000, 4000100, 3000100),
+                      box(4000100, 3000000, 4000200, 3000100)],
+            crs="EPSG:3035",
+        ).to_file(grid_path, layer="grid", driver="GPKG", engine="pyogrio")
+        inverse = Transformer.from_crs(3035, 4326, always_xy=True)
+        coordinates = [inverse.transform(x, 3000025) for x in (4000025, 4000125, 4000250)]
+        table = pd.DataFrame({
+            "dawn_chorus_id": ["1", "2", "3", "4"],
+            "lon": [p[0] for p in coordinates] + [None],
+            "lat": [p[1] for p in coordinates] + [None],
+        }, index=[8, 3, 10, 2])
+        config = {"point_lrt_assignment": {"grid_gpkg": str(grid_path)}}
+        result = master.add_10m_formation(master.add_100m_formation(table.copy(), config), config)
+        assert result["grid_100m_id"].iloc[:2].tolist() == ["100mN30000E40000", "100mN30000E40001"]
+        assert result["grid_10m_id"].iloc[:2].tolist() == ["10mN300002E400002", "10mN300002E400012"]
+        assert result["grid_100m_id"].iloc[2:].isna().all()
+        assert result["grid_10m_id"].iloc[2:].isna().all()
+        assert not result["grid_100m_has_majority_formation"].any()
+        assert not result["grid_10m_has_majority_formation"].any()
+        assert result.index.tolist() == table.index.tolist()
+
+        # A legacy formation-filtered assignment must not block other cells.
+        assignment = root / "assignment.csv"
+        write_csv(assignment, pd.DataFrame({"id": [1], "grid_id": ["100mN30000E40000"],
+                                            "majority_formation": ["forest"],
+                                            "majority_value": [10000], "majority_delta": [10000]}))
+        config["point_lrt_assignment"]["output_csv"] = str(assignment)
+        partial = master.add_10m_formation(master.add_100m_formation(table.copy(), config), config)
+        assert partial["grid_100m_id"].tolist()[:2] == result["grid_100m_id"].tolist()[:2]
+        assert partial["grid_10m_id"].tolist()[:2] == result["grid_10m_id"].tolist()[:2]
+        assert partial["grid_100m_has_majority_formation"].tolist() == [True, False, False, False]
+        again = master.complete_100m_grid_ids(partial.copy(), config)
+        pd.testing.assert_series_equal(again["grid_100m_id"], partial["grid_100m_id"])
+
+
 if __name__ == "__main__":
+    test_grid_ids_without_formation_or_assignment_products()
     test_master_table_minimal_build()
     test_incremental_master_merge_preserves_unaffected_rows()
     test_default_output_paths_use_master_basename()

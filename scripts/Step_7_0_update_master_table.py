@@ -918,6 +918,89 @@ def centi_percent_from_pct(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce").mul(100).round().astype("Int64")
 
 
+def read_grid_at_points(grid_path, layer, grid_column, projected):
+    """Use the GeoPackage R-tree for candidates; retain exact geometry checks."""
+    import geopandas as gpd
+    import sqlite3
+
+    with contextlib.closing(sqlite3.connect(
+        Path(grid_path).resolve().as_uri() + "?mode=ro", uri=True
+    )) as connection:
+        geometry = connection.execute(
+            "SELECT column_name FROM gpkg_geometry_columns WHERE table_name = ?",
+            (layer,),
+        ).fetchone()
+        index_name = f"rtree_{layer}_{geometry[0]}" if geometry else ""
+        indexed = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (index_name,),
+        ).fetchone()
+        if indexed:
+            quoted_index = '"' + index_name.replace('"', '""') + '"'
+            query = (f"SELECT id FROM {quoted_index} WHERE minx <= ? AND maxx >= ? "
+                     "AND miny <= ? AND maxy >= ?")
+            candidates = set()
+            coordinates = set(zip(projected.geometry.x, projected.geometry.y))
+            for x, y in coordinates:
+                candidates.update(row[0] for row in connection.execute(query, (x, x, y, y)))
+            if not candidates:
+                return gpd.GeoDataFrame(
+                    {grid_column: pd.Series(dtype="string")}, geometry=[], crs=projected.crs
+                )
+            return gpd.read_file(
+                grid_path, layer=layer, engine="pyogrio", columns=[grid_column],
+                fids=sorted(candidates),
+            )
+    return gpd.read_file(
+        grid_path, layer=layer, engine="pyogrio", columns=[grid_column],
+        mask=projected.geometry,
+    )
+
+
+def complete_100m_grid_ids(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
+    """Fill missing IDs from the original grid, independently of LRT products.
+
+    Reuse Step 2.2's projection, within predicate and overlap tie-breaking.
+    IDs are read verbatim from the reference grid, never synthesised.
+    """
+    ids = table.get("grid_100m_id", pd.Series(pd.NA, index=table.index)).astype("string")
+    missing = ids.isna() | ids.str.strip().eq("")
+    settings = config.get("point_lrt_assignment", {})
+    grid_path = settings.get("grid_gpkg")
+    if missing.any() and grid_path:
+        import pyogrio
+        from Step_2_2_assign_points_to_lrt_grid import (
+            assign_points_to_grid,
+            build_point_geodataframe,
+        )
+
+        layer = settings.get("grid_layer", "grid")
+        grid_column = settings.get("grid_id_column", "grid_id")
+        info = pyogrio.read_info(grid_path, layer=layer)
+        if not info["crs"]:
+            raise ValueError("The INSPIRE grid has no CRS.")
+        points = table.loc[missing, ["lat", "lon"]].copy()
+        # Use row positions rather than recording IDs to preserve index/order.
+        points["id"] = range(len(points))
+        for column in ("lat", "lon"):
+            points[column] = pd.to_numeric(points[column], errors="coerce")
+        points = points.loc[
+            points["lat"].between(-90, 90) & points["lon"].between(-180, 180)
+        ]
+        projected = build_point_geodataframe(points, info["crs"])
+        if not projected.empty:
+            # Spatial filtering avoids loading the entire national 100 m grid.
+            grid = read_grid_at_points(grid_path, layer, grid_column, projected)
+            assigned = assign_points_to_grid(projected, grid, grid_column)
+            by_position = assigned.set_index("id")[grid_column]
+            ids.loc[missing] = pd.array(
+                by_position.reindex(range(int(missing.sum()))), dtype="string"
+            )
+    table["grid_100m_id"] = ids
+    table["grid_100m_assignment_exists"] = ids.notna() & ids.str.strip().ne("")
+    return table
+
+
 def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
     point_cfg = config.get("point_lrt_assignment", {})
     assignment = normalise_id_column(
@@ -951,7 +1034,7 @@ def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFr
         table["grid_100m_has_majority_formation"] = False
         table["inside_lrt_polygon"] = False
         table["lrt_polygon_count"] = 0
-        return table
+        return complete_100m_grid_ids(table, config)
 
     grid_col = config.get("point_lrt_assignment", {}).get("grid_id_column", "grid_id")
     keep = [column for column in assignment.columns if column in {
@@ -1016,7 +1099,8 @@ def add_100m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFr
         result["majority_disputed_100m"] = bool_series(result["majority_disputed"])
     else:
         result["majority_disputed_100m"] = result["majority_delta_100m"].le(200)
-    return result.drop(columns=[column for column in [grid_col] if column in result.columns], errors="ignore")
+    result = result.drop(columns=[column for column in [grid_col] if column in result.columns], errors="ignore")
+    return complete_100m_grid_ids(result, config)
 
 
 def compute_10m_grid_ids(table: pd.DataFrame) -> pd.Series:
