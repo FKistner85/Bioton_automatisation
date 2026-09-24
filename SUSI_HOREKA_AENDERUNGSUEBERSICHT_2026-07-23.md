@@ -1,5 +1,8 @@
 # Susi vs. HoreKa: Aenderungsuebersicht LRT/Grid/10m
 
+> Historischer Stand: Befunde und Zahlen gelten fuer den damaligen Audit/Lauf. Aktuelle Betriebsanweisungen stehen in der Haupt-README und Readmes/pipeline_phases.md.
+
+
 Stand: 2026-07-23
 
 Verglichene Susi-Dateien:

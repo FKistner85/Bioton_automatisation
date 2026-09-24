@@ -19,6 +19,7 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from recording_time import german_wall_times
+from input_consistency import require_point_coverage
 
 from Step_7_0_update_master_table import (
     add_100m_formation,
@@ -243,9 +244,15 @@ def build_variant_rows(
     source_gpkg: Path,
 ) -> pd.DataFrame:
     assignment = Path(config["point_lrt_assignment"]["output_csv"])
+    require_point_coverage(metadata, config)
     ten_m = Path(config["susi_10m_products"]["final_parquet"])
     table = add_100m_formation(metadata.copy(), config)
     table = add_10m_formation(table, config)
+    # CSV inference can produce numeric years/codes in one variant and text in
+    # another; normalize diagnostic lists before concatenating Parquet parts.
+    for column in ('lrt_codes','lrt_formations','lrt_conservation_statuses','lrt_mapping_years'):
+        if column in table:
+            table[column] = table[column].astype('string')
     table = table.merge(context, on="dawn_chorus_id", how="left", suffixes=("", "_context"))
     for column in RECORDING_CONTEXT_COLUMNS:
         context_column = f"{column}_context"

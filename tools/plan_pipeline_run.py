@@ -17,8 +17,8 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common import atomic_write_csv, atomic_write_json, file_fingerprint, load_config, processed_root_from_config, utc_now_iso
-from bioacoustics_common import configured_models, model_fingerprint
 from Step_5_1_Weather_inventory import WEATHER_TIME_QC_VERSION
+from input_consistency import guard_source_population, point_output_gaps
 from Step_1_metadata_extraction import (
     FINGERPRINT_GROUPS, build_fingerprints as metadata_fingerprints,
     read_source as read_metadata_source,
@@ -397,9 +397,12 @@ def step24_needed(config: dict[str, Any], upstream: bool) -> tuple[bool, list[st
             "chunk_size_100m": int(section.get("chunk_size_100m", 1000)),
             "output_dir": str(Path(section["output_dir"]).resolve()),
             "final_parquet": str(final.resolve()),
+            "grid_ids_file": None,
             "susi_matrix_schema_version": "2026-08-03-centi-percent-abck-coastal-v3",
         }
-        if state.get("processing") != expected_processing:
+        actual_processing = dict(state.get('processing', {}))
+        actual_processing.setdefault('grid_ids_file', None)
+        if actual_processing != expected_processing:
             reasons.append("changed_processing_config")
         if state.get("status") != "complete":
             reasons.append("incomplete_state")
@@ -432,6 +435,7 @@ def add_reason(
 def full_rebuild_context(
     config: dict[str, Any],
     workflow_run_id: str,
+    phase: str = "all",
 ) -> dict[str, Any]:
     configured_root = config.get("pipeline_control", {}).get("full_rebuild_root")
     rebuild_root = (
@@ -441,7 +445,8 @@ def full_rebuild_context(
     )
     rebuild_root.mkdir(parents=True, exist_ok=True)
     state_path = rebuild_root / "current.json"
-    expected_steps = list(FULL_REBUILD_STEPS)
+    expected_steps = [step for step in FULL_REBUILD_STEPS
+                      if phase != "core" or not step.startswith("step_6_")]
     state = read_json(state_path)
     resume = False
 
@@ -503,13 +508,64 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
-    parser.add_argument("--mode", choices=["add_new_ids", "from_scratch"], default="add_new_ids")
+    parser.add_argument("--mode", choices=["add_new_ids", "from_scratch", "bioacoustics"], default="add_new_ids")
     return parser.parse_args()
+
+
+def plan_bioacoustics(config: dict[str, Any], args: argparse.Namespace) -> Path:
+    """Reconcile the prepared dataset independently of Step-1 change history.
+
+    All current audio/model work keys are checked; Step 6_2 retains its existing
+    checkpoint reuse. Rebuilding the worklist also removes deleted recordings.
+    """
+    if not config.get("bioacoustics", {}).get("enabled", True):
+        raise ValueError("Bioacoustics is disabled in this configuration.")
+    metadata = Path(config["status_dir"]) / "dawnchorus_metadata_clean.csv"
+    inventory = Path(config["audio_inventory"]["detailed_log"])
+    master = Path(config["master_table"]["output_csv"])
+    for path in (metadata, inventory, master):
+        if not path.is_file():
+            raise FileNotFoundError(f"Run the core pipeline first; missing prerequisite: {path}")
+    prepared = pd.read_csv(metadata, dtype=str)
+    id_column = "dawn_chorus_id" if "dawn_chorus_id" in prepared else "id"
+    ids = set(prepared[id_column].map(normalise_id)) - {""}
+    master_ids = set(pd.read_csv(master, usecols=["dawn_chorus_id"], dtype=str)["dawn_chorus_id"].map(normalise_id))
+    if ids != master_ids:
+        raise ValueError("Prepared metadata and master IDs differ; finish the core pipeline first.")
+    root = config.get("pipeline_control", {}).get("run_plan_dir")
+    run_dir = (Path(root) if root else processed_root_from_config(config) / "step_0_control" / "run_plans") / args.run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    id_files = {}
+    for name in ("metadata", "point_assignment", "audio", "photo", "sentinel", "weather", "bioacoustic"):
+        path = run_dir / f"{name}_ids.csv"
+        write_id_file(path, {value: {"independent_audio_reconciliation"} for value in ids} if name == "bioacoustic" else {})
+        id_files[name] = str(path)
+    steps = {step: {"run": step.startswith("step_6_") or step == "step_7_0_master_table",
+                    "reasons": ["separate_bioacoustics_phase"]}
+             for step in FULL_REBUILD_STEPS}
+    steps["final_validation"] = {"run": True, "reasons": ["workflow_gate"]}
+    path = run_dir / "run_plan.json"
+    atomic_write_json(path, {
+        "schema_version": "2026-07-23-run-plan-v1", "phase": "bioacoustics",
+        "mode": args.mode, "workflow_run_id": args.run_id, "created_utc": utc_now_iso(),
+        "config_path": str(args.config), "source": file_fingerprint(metadata),
+        "source_id_count": len(ids), "deleted_ids": [], "full_rebuild": {},
+        "id_files": id_files, "id_counts": {name: len(ids) if name == "bioacoustic" else 0 for name in id_files},
+        "steps": steps,
+    })
+    return path
 
 
 def main() -> int:
     args = parse_args()
     config = load_config(args.config)
+    if args.mode == "bioacoustics":
+        print(plan_bioacoustics(config, args))
+        return 0
+    spatial_configs = [config]
+    if config.get('lrt_variants', {}).get('input_dir'):
+        from step2_variants import discover_variants, configure_variant
+        spatial_configs = [configure_variant(config, variant) for variant in discover_variants(config)]
     source_path = Path(config["dawn_chorus_csv"])
     metadata_settings = config.get("metadata_extraction", {})
     source = read_source(source_path, country_column=metadata_settings.get("country_column", "country"), country_value=metadata_settings.get("country_value", "Germany"))
@@ -524,7 +580,7 @@ def main() -> int:
     previous = read_previous_fingerprints(previous_path)
     master = read_master(config)
     full_rebuild = (
-        full_rebuild_context(config, args.run_id)
+        full_rebuild_context(config, args.run_id, phase="core")
         if args.mode == "from_scratch"
         else {}
     )
@@ -536,6 +592,8 @@ def main() -> int:
     all_current = set(current["dawn_chorus_id"].astype(str))
     all_previous = set(previous["dawn_chorus_id"].astype(str))
     deleted = all_previous - all_current
+    master_ids = set(master['dawn_chorus_id'].astype(str)) if not master.empty else set()
+    guard_source_population(all_current, all_previous | master_ids, metadata_settings)
 
     id_reasons: dict[str, dict[str, set[str]]] = {
         name: {}
@@ -564,6 +622,15 @@ def main() -> int:
         add_reason(id_reasons[target], changed, f"changed:{group}")
         add_reason(id_reasons[target], removed, "deleted_id")
 
+    # Step 1 may have committed its fingerprints before downstream work failed.
+    # Reconcile the actual point product independently on every restart.
+    for spatial in spatial_configs:
+        add_reason(id_reasons['point_assignment'], point_output_gaps(
+            source, spatial['point_lrt_assignment']['output_csv'],
+            spatial['point_lrt_assignment'].get('log_csv')), 'point_output_missing_or_stale')
+    for target in ('metadata', 'point_assignment', 'audio', 'photo', 'sentinel', 'weather'):
+        add_reason(id_reasons[target], all_current - master_ids, 'missing_master_row')
+
     for prefix, target in [
         ("sound", "audio"),
         ("photo", "photo"),
@@ -591,94 +658,6 @@ def main() -> int:
         "inventory:weather_problem",
     )
 
-    bio_section = config.get("bioacoustics", {})
-    bio_enabled = bool(bio_section.get("enabled", True))
-    bio_qc_path = Path(str(bio_section.get("qc_compact_csv", "")))
-    if bio_enabled and (
-        master.empty
-        or "bioacoustic_status" not in master.columns
-        or not bio_qc_path.is_file()
-        or bio_qc_path.stat().st_size == 0
-    ):
-        add_reason(
-            id_reasons["bioacoustic"],
-            all_current,
-            "missing_bioacoustic_baseline",
-        )
-
-    registry_path = Path(str(bio_section.get("model_registry_json", "")))
-    previous_model_fingerprints: dict[str, str] = {}
-    registry_required_models_healthy = False
-    if registry_path.is_file():
-        try:
-            registry = json.loads(registry_path.read_text(encoding="utf-8"))
-            previous_model_fingerprints = {
-                str(model.get("name")): str(model.get("model_fingerprint"))
-                for model in registry.get("models", [])
-                if model.get("name") and model.get("model_fingerprint")
-            }
-            registry_models = {
-                str(model.get("name")): str(model.get("initialisation", ""))
-                for model in registry.get("models", [])
-                if model.get("name")
-            }
-            registry_required_models_healthy = all(
-                registry_models.get(model["name"], "").lower() == "ok"
-                for model in configured_models(config)
-                if model["required"]
-            )
-        except (OSError, json.JSONDecodeError):
-            previous_model_fingerprints = {}
-    current_model_fingerprints = (
-        {
-            model["name"]: model_fingerprint(config, model)
-            for model in configured_models(config)
-        }
-        if bio_enabled
-        else {}
-    )
-    bio_model_changed = (
-        bio_enabled
-        and previous_model_fingerprints != current_model_fingerprints
-    )
-    bio_required_model_unavailable = bio_enabled and not registry_required_models_healthy
-    if bio_model_changed:
-        add_reason(
-            id_reasons["bioacoustic"],
-            all_current,
-            "bioacoustic_model_or_runtime_changed",
-        )
-
-    taxonomy_path = Path(str(bio_section.get("taxonomy_allowlist_csv", "")))
-    taxonomy_state_path = Path(str(bio_section.get("taxonomy_state_json", "")))
-    previous_taxonomy_fingerprint: dict[str, Any] = {}
-    if taxonomy_state_path.is_file():
-        try:
-            taxonomy_state = json.loads(taxonomy_state_path.read_text(encoding="utf-8"))
-            previous_taxonomy_fingerprint = taxonomy_state.get(
-                "allowlist_fingerprint",
-                {},
-            )
-        except (OSError, json.JSONDecodeError):
-            previous_taxonomy_fingerprint = {}
-    current_taxonomy_fingerprint = (
-        file_fingerprint(taxonomy_path) if taxonomy_path.is_file() else {}
-    )
-    bio_taxonomy_changed = (
-        bio_enabled
-        and previous_taxonomy_fingerprint != current_taxonomy_fingerprint
-    )
-    bio_metadata_changed = bio_enabled and bool(
-        changes["metadata_fingerprint"][0]
-        | changes["metadata_fingerprint"][1]
-        | changes["metadata_fingerprint"][2]
-    )
-    bio_postprocess_needed = (
-        bool(id_reasons["bioacoustic"])
-        or bio_taxonomy_changed
-        or bio_metadata_changed
-    )
-
     step1_outputs = [
         Path(config["status_dir"]) / "dawnchorus_metadata_clean.csv",
         Path(config["status_dir"]) / "dawnchorus_metadata_log.csv",
@@ -695,6 +674,7 @@ def main() -> int:
         for target in id_reasons:
             add_reason(id_reasons[target], all_current | deleted, "from_scratch")
 
+    id_reasons["bioacoustic"].clear()  # The independent phase reconciles prepared audio itself.
     run_root_cfg = config.get("pipeline_control", {}).get("run_plan_dir")
     run_root = Path(run_root_cfg) if run_root_cfg else processed_root_from_config(config) / "step_0_control" / "run_plans"
     run_dir = run_root / args.run_id
@@ -709,8 +689,10 @@ def main() -> int:
         run20, reasons20 = True, ["from_scratch"]
         run21, reasons21 = True, ["from_scratch"]
     else:
-        run20, reasons20 = step20_needed(config)
-        run21, reasons21 = step21_needed(config, run20)
+        reasons20 = sorted({r for cfg in spatial_configs for r in step20_needed(cfg)[1]})
+        run20 = bool(reasons20)
+        reasons21 = sorted({r for cfg in spatial_configs for r in step21_needed(cfg, run20)[1]})
+        run21 = bool(reasons21)
 
     point_ids = set(id_reasons["point_assignment"])
     if run21:
@@ -724,8 +706,10 @@ def main() -> int:
         run23, reasons23 = True, ["from_scratch"]
         run24, reasons24 = True, ["from_scratch"]
     else:
-        run23, reasons23 = step23_needed(config, run21)
-        run24, reasons24 = step24_needed(config, run21)
+        reasons23 = sorted({r for cfg in spatial_configs for r in step23_needed(cfg, run21)[1]})
+        run23 = bool(reasons23)
+        reasons24 = sorted({r for cfg in spatial_configs for r in step24_needed(cfg, run21)[1]})
+        run24 = bool(reasons24)
 
     hostrada_local = (
         str(config.get("local_runtime", {}).get("hostrada_execution", "local"))
@@ -799,7 +783,7 @@ def main() -> int:
         "step_2_1_100m_formation": {"run": run21, "reasons": reasons21},
         "step_2_2_point_assignment": {
             "run": run22,
-            "reasons": ["affected_point_ids"] if point_ids else ["missing_output"],
+            "reasons": ["affected_point_ids"] if point_ids else (["missing_output"] if run22 else []),
             "ids_file": id_files["point_assignment"],
         },
         "step_2_3_grid_aggregation": {"run": run23, "reasons": reasons23},
@@ -860,66 +844,11 @@ def main() -> int:
             "run": hostrada_raster_run,
             "reasons": hostrada_raster_reasons,
         },
-        "step_6_0_bioacoustic_model_preflight": {
-            "run": bio_enabled and (
-                bool(id_reasons["bioacoustic"])
-                or
-                bio_model_changed
-                or not registry_path.is_file()
-                or bio_required_model_unavailable
-            ),
-            "reasons": (
-                [
-                    "bacpipe_environment_or_model_registry_changed"
-                    if bio_model_changed or not registry_path.is_file()
-                    else (
-                        "required_bioacoustic_model_unavailable"
-                        if bio_required_model_unavailable
-                        else "bioacoustic_work_requires_fresh_preflight"
-                    )
-                ]
-                if (
-                    bool(id_reasons["bioacoustic"])
-                    or bio_model_changed
-                    or not registry_path.is_file()
-                    or bio_required_model_unavailable
-                )
-                else []
-            ),
-        },
-        "step_6_1_bioacoustic_worklist": {
-            "run": bio_enabled and bool(id_reasons["bioacoustic"]),
-            "reasons": ["affected_audio_ids"] if id_reasons["bioacoustic"] else [],
-            "ids_file": id_files["bioacoustic"],
-        },
-        "step_6_2_bioacoustic_embeddings": {
-            "run": bio_enabled and bool(id_reasons["bioacoustic"]),
-            "reasons": ["affected_recording_model_rows"] if id_reasons["bioacoustic"] else [],
-            "ids_file": id_files["bioacoustic"],
-        },
-        "step_6_3_species_predictions": {
-            "run": bio_enabled and bool(id_reasons["bioacoustic"]),
-            "reasons": ["new_native_predictions"] if id_reasons["bioacoustic"] else [],
-        },
-        "step_6_4_germany_taxonomy_filter": {
-            "run": bio_enabled and bio_postprocess_needed,
-            "reasons": (
-                ["new_predictions_or_taxonomy_or_metadata"]
-                if bio_postprocess_needed
-                else []
-            ),
-        },
-        "step_6_5_bioacoustic_aggregation": {
-            "run": bio_enabled and bio_postprocess_needed,
-            "reasons": ["new_filtered_predictions"] if bio_postprocess_needed else [],
-        },
-        "step_6_6_bioacoustic_qc": {
-            "run": bio_enabled and bio_postprocess_needed,
-            "reasons": ["bioacoustic_reconciliation"] if bio_postprocess_needed else [],
-        },
         "step_7_0_master_table": {"run": True, "reasons": ["final_status_snapshot"]},
         "final_validation": {"run": True, "reasons": ["workflow_gate"]},
     }
+    steps.update({step: {"run": False, "reasons": ["separately_initiated_bioacoustics"]}
+                  for step in FULL_REBUILD_STEPS if step.startswith("step_6_")})
     if full_rebuild:
         completed = set(full_rebuild["completed_steps"])
         for step in FULL_REBUILD_STEPS:
@@ -930,6 +859,7 @@ def main() -> int:
                 steps[step]["reasons"] = ["completed_in_full_rebuild_generation"]
     plan = {
         "schema_version": "2026-07-23-run-plan-v1",
+        "phase": "core",
         "workflow_run_id": args.run_id,
         "created_utc": utc_now_iso(),
         "mode": args.mode,

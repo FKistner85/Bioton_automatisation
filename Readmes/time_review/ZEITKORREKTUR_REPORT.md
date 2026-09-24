@@ -1,5 +1,8 @@
 # Prüfung und Korrektur deutscher Aufnahmezeiten
 
+> Historischer Stand: Befunde und Zahlen gelten fuer den damaligen Audit/Lauf. Aktuelle Betriebsanweisungen stehen in der Haupt-README und Readmes/pipeline_phases.md.
+
+
 Stand: 16.09.2026. Quelle: aktualisierte `L:/PointData/dawn-chorus-soundscape.csv` vom 15.09.2026. Die Datei auf LSDF wurde vollständig gelesen und geprüft; ihr SHA-256 stimmt mit der anschließend verwendeten lokalen Kopie überein.
 
 **Die Metadatenkorrektur ist lokal abgeschlossen. Alle 111.866 Aufnahmen erfüllen die vereinbarte Zeitregel. 47 widersprüchliche Quellenangaben bleiben ausdrücklich dokumentiert.** Die wirkliche Geräteuhr dieser 47 Aufnahmen lässt sich aus den widersprüchlichen Angaben allein nicht zweifelsfrei bestätigen.

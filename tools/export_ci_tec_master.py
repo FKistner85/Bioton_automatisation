@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the ci-tec README columns from a complete master CSV, without coercion."""
+"""Optional legacy compact export; ci-tec now uses the shared complete master."""
 from __future__ import annotations
 
 import argparse

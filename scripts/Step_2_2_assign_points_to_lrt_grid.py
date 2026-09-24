@@ -667,6 +667,7 @@ def main() -> int:
             )
 
         points = load_points(metadata_csv)
+        from input_consistency import point_output_gaps
         requested_ids = read_ids_file(args.ids_file)
         if rebuild:
             target_ids = set(points["id"].dropna().astype(int))
@@ -678,6 +679,11 @@ def main() -> int:
                 .dropna()
                 .astype(int)
             )
+        # Also reconcile interrupted runs, coordinate edits and removed IDs
+        # when this step is called directly without a planner-generated list.
+        if not rebuild:
+            target_ids |= {int(v) for v in point_output_gaps(points, output_csv, log_csv)}
+            target_ids |= existing_ids - set(points['id'].astype(int))
         new_points = points.loc[points["id"].isin(target_ids)].copy()
 
         if not target_ids:

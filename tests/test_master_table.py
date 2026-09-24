@@ -126,6 +126,11 @@ def test_master_table_minimal_build() -> None:
                 "weather_qc_workers": 1,
             },
         }
+        # A checked negative match is distinct from an unprocessed recording.
+        point_output = root / 'points.csv'
+        write_csv(point_output, pd.DataFrame({'id': [1], 'lat': [49.0], 'lon': [8.4],
+            'inside_lrt_polygon': [False], 'lrt_polygon_count': [0]}))
+        config['point_lrt_assignment'] = {'output_csv': str(point_output)}
         config_path = root / "config.json"
         config_path.write_text(json.dumps(config), encoding="utf-8")
 
@@ -371,7 +376,8 @@ def test_formation_variant_status_is_summarised() -> None:
         assert result.loc["1", "formation_variants_with_100m_majority"] == 2
         assert result.loc["2", "formation_variants_with_10m_majority"] == 1
         assert result.loc["3", "formation_variants_with_100m_majority"] == 0
-        assert result["formation_variant_products_complete"].all()
+        assert result.loc[['1','2'], "formation_variant_products_complete"].all()
+        assert not result.loc['3', "formation_variant_products_complete"]
 
 
 def test_grid_ids_without_formation_or_assignment_products() -> None:

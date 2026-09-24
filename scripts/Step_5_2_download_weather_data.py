@@ -458,7 +458,7 @@ def process_recording(
             columns[variable_folder] = values
 
         frame = pd.DataFrame(columns)
-        expected_hours = (preceding_days + 1) * 24
+        expected_hours = len(times_utc)
         if len(frame) != expected_hours:
             logger.warning(
                 "[%s] Built %s rows, expected %s.",

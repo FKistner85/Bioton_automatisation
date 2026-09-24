@@ -34,7 +34,11 @@ from common import (
 )
 
 
-SCHEMA_VERSION = "2026-09-16-mastertable-v5"
+from spatiotemporal_duplicates import FLAG_COLUMNS, proximity_flags
+from pipeline_phase import execution_phase
+from input_consistency import require_point_coverage, guard_source_population
+
+SCHEMA_VERSION = "2026-09-17-mastertable-v6"
 MASTER_COLUMNS = [
     "mastertable_schema_version",
     "workflow_run_id",
@@ -136,6 +140,7 @@ MASTER_COLUMNS = [
     "manual_reviewed_by",
     "manual_reviewed_utc",
 ]
+MASTER_COLUMNS += FLAG_COLUMNS
 
 
 def parse_args() -> argparse.Namespace:
@@ -164,6 +169,8 @@ def parse_args() -> argparse.Namespace:
             "refresh when those domain products are deliberately unavailable."
         ),
     )
+    parser.add_argument('--allow-deferred-spatial', action='store_true',
+                        help='Intermediate updates only: retain the master while Step 2.2 is pending.')
     return parser.parse_args()
 
 
@@ -217,7 +224,10 @@ def normalise_id_column(frame: pd.DataFrame, candidates: list[str]) -> pd.DataFr
     result = frame.copy()
     for candidate in candidates:
         if candidate in result.columns:
-            result["dawn_chorus_id"] = result[candidate].map(id_string)
+            numeric = pd.to_numeric(result[candidate], errors='coerce')
+            result["dawn_chorus_id"] = numeric.map(
+                lambda value: '' if pd.isna(value) else str(int(value))
+            )
             return result[result["dawn_chorus_id"] != ""].copy()
     return pd.DataFrame()
 
@@ -647,6 +657,44 @@ def add_bioacoustic_status(
     return merged
 
 
+def refresh_bioacoustic_domain(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
+    """Refresh only Step-6 fields, preserving metadata, grids and other domains."""
+    result = table.copy()
+    bio = add_bioacoustic_status(table[["dawn_chorus_id"]], config)
+    bio.index = table.index
+    for column in bio.columns:
+        if column != "dawn_chorus_id":
+            result[column] = bio[column]
+    result["ready_for_bioacoustic_analysis"] = (
+        bool_series(result["sound_exists"])
+        & ~bool_series(result["sound_has_issues"].fillna(True))
+        & result["bioacoustic_status"].eq("validated")
+        & bool_series(result["bioacoustic_required_models_complete"])
+    )
+    return result
+
+
+def write_bioacoustic_master(config, output_csv, output_parquet, summary_json, now):
+    """The caller holds the shared master write lock. No spatial reconstruction."""
+    previous = read_previous_master(output_csv)
+    if previous.empty:
+        raise ValueError("Run the core pipeline first: an existing master is required.")
+    table = refresh_bioacoustic_domain(previous, config)
+    atomic_write_csv(table, output_csv)
+    parquet_written = write_parquet_optional(table, output_parquet)
+    append_status_events(config, previous, table, now, partial_update=False)
+    summary = json.loads(summary_json.read_text(encoding="utf-8")) if summary_json.is_file() else {}
+    summary.update({
+        "phase": "bioacoustics", "workflow_run_id": workflow_run_id(),
+        "created_utc": now, "rows": len(table), "rows_updated": len(table),
+        "output_csv": str(output_csv),
+        "output_parquet": str(output_parquet) if parquet_written else "",
+        "ready_for_bioacoustic_analysis": int(table["ready_for_bioacoustic_analysis"].sum()),
+    })
+    atomic_write_json(summary_json, summary)
+    print(f"Bioacoustic master fields refreshed: {len(table):,} recordings")
+
+
 def add_sentinel_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
     settings = config.get("sentinel2_inventory", {})
     compact = normalise_id_column(
@@ -725,84 +773,8 @@ def add_sentinel_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataF
     )
 
 
-def weather_required_columns(config: dict[str, Any]) -> list[str]:
-    required = config.get("weather_inventory", {}).get("required_columns")
-    if isinstance(required, list) and required:
-        return ["datetime", *[str(column) for column in required]]
-    return [
-        "datetime",
-        "air_temperature_mean",
-        "cloud_cover",
-        "humidity_relative",
-        "radiation_downwelling",
-        "wind_direction",
-        "wind_speed",
-    ]
-
-
-def check_weather_file(task: tuple[str, Path, dict[str, Any]]) -> dict[str, Any]:
-    dawn_id, path, settings = task
-    required_columns = settings["required_columns"]
-    expected_rows = settings["expected_rows"]
-    expected_interval_seconds = settings["expected_interval_seconds"]
-    issue_codes: list[str] = []
-    exists = path.is_file()
-    if not exists:
-        return {
-            "dawn_chorus_id": dawn_id,
-            "weather_point_exists": False,
-            "weather_point_has_issues": True,
-            "weather_point_issue_codes": "missing_file",
-        }
-    if path.stat().st_size == 0:
-        return {
-            "dawn_chorus_id": dawn_id,
-            "weather_point_exists": True,
-            "weather_point_has_issues": True,
-            "weather_point_issue_codes": "empty_file",
-        }
-    try:
-        frame = pd.read_csv(path, low_memory=False)
-        missing_columns = [column for column in required_columns if column not in frame.columns]
-        if missing_columns:
-            issue_codes.append("missing_required_column")
-        if len(frame) != expected_rows:
-            issue_codes.append("unexpected_row_count")
-        available_required = [column for column in required_columns if column in frame.columns]
-        if available_required and frame[available_required].isna().any(axis=None):
-            issue_codes.append("missing_value")
-        if "datetime" in frame.columns:
-            parsed = pd.to_datetime(frame["datetime"], errors="coerce")
-            if parsed.isna().any():
-                issue_codes.append("unparseable_datetime")
-            else:
-                deltas = parsed.sort_values().diff().dropna().dt.total_seconds()
-                if not deltas.empty and not (deltas == expected_interval_seconds).all():
-                    issue_codes.append("unexpected_time_interval")
-        if "air_temperature_mean" in frame.columns:
-            values = pd.to_numeric(frame["air_temperature_mean"], errors="coerce")
-            if values.notna().any() and (
-                (values < settings["temperature_min_C"]).any()
-                or (values > settings["temperature_max_C"]).any()
-            ):
-                issue_codes.append("implausible_value")
-        if "humidity_relative" in frame.columns:
-            values = pd.to_numeric(frame["humidity_relative"], errors="coerce")
-            if values.notna().any() and (
-                (values < settings["humidity_min_percent"]).any()
-                or (values > settings["humidity_max_percent"]).any()
-            ):
-                issue_codes.append("implausible_value")
-    except Exception as exc:
-        issue_codes.append(f"read_error_{type(exc).__name__}")
-    return {
-        "dawn_chorus_id": dawn_id,
-        "weather_point_exists": True,
-        "weather_point_has_issues": bool(issue_codes),
-        "weather_point_issue_codes": join_codes(issue_codes),
-    }
-
-
+# Weather files are checked exclusively by Step 5_1. The master consumes its
+# inventory; do not introduce a second fixed-24-hour DST check here.
 def add_weather_point_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
     inventory = config.get("weather_inventory", {})
     compact = normalise_id_column(
@@ -1156,8 +1128,8 @@ def read_10m_rows(path: Path, grid_ids: list[str], columns: list[str]) -> pd.Dat
             if "grid_id" in frame.columns and "grid_id_10" not in frame.columns:
                 frame = frame.rename(columns={"grid_id": "grid_id_10"})
             return frame[frame["grid_id_10"].astype(str).isin(set(grid_ids))].drop_duplicates("grid_id_10")
-        except Exception:
-            return pd.DataFrame()
+        except Exception as exc:
+            raise ValueError(f'FORMATION_10M_UNREADABLE: {path}') from exc
 
 
 def add_10m_formation(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
@@ -1285,7 +1257,11 @@ def add_formation_variant_status(
     ]].all().all(axis=1)
     actual_variants = int(variants["lrt_variant"].nunique())
     complete = bool(product_status.all()) and actual_variants == expected and expected > 0
-    table["formation_variant_products_complete"] = complete
+    # Global product existence cannot certify a recording absent from a variant.
+    coverage = variants.groupby('dawn_chorus_id')['lrt_variant'].nunique()
+    table["formation_variant_products_complete"] = (
+        complete & table['dawn_chorus_id'].map(coverage).eq(expected)
+    )
     return table
 
 
@@ -1591,6 +1567,9 @@ def main() -> int:
         now = utc_now_iso()
         output_csv, output_parquet, summary_json = output_paths(config, args.config)
         with mastertable_write_lock(output_csv):
+            if execution_phase() == "bioacoustics":
+                write_bioacoustic_master(config, output_csv, output_parquet, summary_json, now)
+                return 0
             previous_master = read_previous_master(output_csv)
             selected_ids: set[str] | None = None
             if args.ids_file is not None:
@@ -1599,9 +1578,22 @@ def main() -> int:
                 selected_ids = read_ids_file(args.ids_file)
 
             table = build_base_table(config, output_csv, now)
+            guard_source_population(table['dawn_chorus_id'],
+                previous_master.get('dawn_chorus_id', pd.Series(dtype=str)),
+                config.get('metadata_extraction', {}))
             table = restrict_to_ids(table, selected_ids)
             # Deletion-only updates have no domains to recompute.
             if not table.empty:
+                try:
+                    require_point_coverage(table, config)
+                    ten_path = config.get('susi_10m_products', {}).get('final_parquet')
+                    if ten_path and not Path(ten_path).is_file():
+                        raise ValueError(f'FORMATION_10M_MISSING: {ten_path}; existing master retained.')
+                except ValueError:
+                    if not getattr(args, 'allow_deferred_spatial', False):
+                        raise
+                    print('MASTER_UPDATE_DEFERRED: Step 2.2 incomplete; existing master retained. Final update requires complete coverage.')
+                    return 0
                 if args.preserve_existing_nonformation_domains:
                     table = add_preserved_nonformation_domains(
                         table, previous_master, config
@@ -1638,6 +1630,12 @@ def main() -> int:
                 keep="last",
             ).sort_values("dawn_chorus_id", key=lambda s: pd.to_numeric(s, errors="coerce"))
 
+            # Recompute across retained AND updated rows: new neighbors can flag old IDs.
+            flags = proximity_flags(table, config.get("proximity_review", {}))
+            for column in FLAG_COLUMNS:
+                table[column] = flags[column]
+            table["mastertable_schema_version"] = SCHEMA_VERSION
+
             atomic_write_csv(table, output_csv)
             parquet_written = write_parquet_optional(table, output_parquet)
             event_previous = restrict_to_ids(previous_master, selected_ids)
@@ -1668,6 +1666,16 @@ def main() -> int:
             "ready_for_multimodal_analysis": int(table["ready_for_multimodal_analysis"].sum()),
             "ready_for_bioacoustic_analysis": int(table["ready_for_bioacoustic_analysis"].sum()),
             "status_events_written": status_events_written,
+            "proximity_review": {
+                "algorithm": "spherical_distance_utc_connected_components_v1",
+                "thresholds": {**{"duplicate_distance_m": 10, "duplicate_seconds": 300,
+                                   "cluster_distance_m": 50, "cluster_seconds": 1800},
+                               **config.get("proximity_review", {})},
+                "duplicate_candidate_rows": int(table["duplicate_candidate"].sum()),
+                "duplicate_pairs": int(table["duplicate_neighbor_count"].sum() // 2),
+                "clustered_rows": int((table["spatiotemporal_cluster_size"] > 1).sum()),
+                "unchecked_rows": int((table["proximity_check_status"] != "checked").sum()),
+            },
             "record_status_counts": {
                 str(key): int(value)
                 for key, value in table["record_status"].value_counts(dropna=False).items()

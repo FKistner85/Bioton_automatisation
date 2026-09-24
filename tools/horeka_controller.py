@@ -39,6 +39,7 @@ def parse_args() -> argparse.Namespace:
         choices=[
             "functionality_test",
             "add_new_ids",
+            "bioacoustics",
             "from_scratch",
             "formation_compare",
         ],
@@ -255,6 +256,14 @@ def main() -> int:
             return 0
         final_states = wait_for_jobs(job_ids, args.poll_seconds, update) if job_ids else {}
         safe_to_release = True
+        # Views preserve original manifest paths; unsupported hard links are nonfatal.
+        try:
+            from organize_slurm_logs import organize
+            log_dir = os.environ.get("BIOOTON_LOGDIR") or config.get("slurm_log_dir")
+            if log_dir:
+                state["log_views"] = organize(Path(log_dir))
+        except (OSError, ValueError) as exc:
+            print(f"WARNING: Could not refresh Slurm log views: {exc}", file=sys.stderr)
         failed_jobs = {
             job_id: value
             for job_id, value in final_states.items()

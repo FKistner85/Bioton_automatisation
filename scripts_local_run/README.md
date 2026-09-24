@@ -1,5 +1,18 @@
 # Bio-O-Ton: lokaler Windows-Lauf mit LSDF
 
+## Getrennte Phasen (Stand 2026-09-23)
+
+`-Mode add_new_ids` und `-Mode from_scratch` fuehren keine Bioakustik aus und
+benoetigen dafuer kein Bacpipe-Environment. Nach Abschluss separat starten:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode bioacoustics
+```
+
+Dieser Lauf nutzt die vorbereiteten Metadaten und das Audioinventar, gleicht alle
+aktuellen IDs ab und verwendet vorhandene Inferenz-Checkpoints. Das Master-Update
+aendert nur Bioakustikfelder. [Details und Horeka 2](../Readmes/pipeline_phases.md).
+
 Dieser Ordner startet dieselben fachlichen Python-Skripte wie die Cluster-
 Pipeline. Slurm wird lokal nicht emuliert. `local_orchestrator.py` bildet den
 Abhaengigkeitsgraphen, parallele unabhaengige Schritte, Arrays, Manifeste,
@@ -105,9 +118,10 @@ Mastertabelle aktualisiert werden sollen, verwende den gezielten Starter:
 powershell -ExecutionPolicy Bypass -File .\run_master_refresh_local.ps1
 ```
 
-Der Starter erzeugt danach zusaetzlich `outputs/Bio_O_Ton_Master_CI_TEC.csv`
-mit den 14 Spalten des ci-tec-README. Der Export uebernimmt Werte und Zeilen
-unveraendert aus der vollstaendigen Mastertabelle. Er kann separat erzeugt werden:
+ci-tec verwendet die gemeinsame `outputs/Bio_O_Ton_Master.csv`. Der Starter
+erzeugt keine zweite Tabelle mehr. Das folgende Werkzeug bleibt nur fuer
+ausdruecklich benoetigte manuelle Altexporte verfuegbar; solche Kopien werden
+nicht automatisch aktuell gehalten:
 
 ```powershell
 python tools/export_ci_tec_master.py --input D:/BioOTon_local_workspace/outputs/Bio_O_Ton_Master.csv
@@ -187,7 +201,7 @@ Die schnellen Listen liegen unter `outputs/step_3_0_a_audio_inventory`,
 `add_new_ids`-Lauf neu erzeugt, auch wenn der aeltere Run-Plan keinen
 Downloadbedarf erkannt hatte.
 
-Kompletter Neuaufbau mit den gleichen `--force`-Regeln wie auf dem Cluster:
+Neuaufbau des Kerns (ohne Step 6) mit den gleichen `--force`-Regeln wie auf dem Cluster:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode from_scratch
@@ -212,7 +226,7 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_
 CPU fuer Step 6 erzwingen:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode add_new_ids -SkipEnvironmentSetup -CpuOnly
+powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode bioacoustics -SkipEnvironmentSetup -CpuOnly
 ```
 
 ## Vorhandene Horeka-Outputs
@@ -359,7 +373,7 @@ net use L: /delete /y
 `scripts_local_run/refresh_recording_times.py` applies an already audited time
 correction to the local workspace. It verifies source/master hashes against the
 supplied audit JSON, acquires the local lock, backs up all replaced metadata and
-master products, runs Steps 1 and 7, exports the ci-tec subset, and independently
-checks all resulting times and subset cells. It does not publish to LSDF or run
-Horeka jobs. Use `--help` for required paths. The full CSV retains technical UTC,
-date and time fields; the ci-tec subset has only `datetime_local`, without timezone.
+master products, runs Steps 1 and 7, and independently checks all resulting times.
+It does not generate a second ci-tec CSV, publish to LSDF or run Horeka jobs.
+Use `--help` for required paths. The full CSV retains technical UTC, date and time
+fields; ci-tec uses `datetime_local`, without timezone, as the recording clock.

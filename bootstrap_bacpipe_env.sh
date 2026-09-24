@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${PIPELINE_DIR}/cluster_profile.sh"
 ENV_PREFIX="${BIOOTON_BACPIPE_ENV_PREFIX:-${PIPELINE_DIR}/.venv_bacpipe}"
 PYTHON="${ENV_PREFIX}/bin/python"
 

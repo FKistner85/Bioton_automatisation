@@ -156,7 +156,7 @@ def test_add_new_ids_planner_main_path() -> None:
             "pipeline_control": {"run_plan_dir": str(plan_root)},
             "point_lrt_assignment": {"output_csv": str(root / "points.csv")},
             "weather_inventory": {},
-            "bioacoustics": {"enabled": False},
+            "bioacoustics": {"enabled": True},
             "master_table": {},
         }
         fingerprint_columns = [
@@ -209,6 +209,8 @@ def test_add_new_ids_planner_main_path() -> None:
             )
         )
         assert plan["mode"] == "add_new_ids"
+        assert plan["phase"] == "core"
+        assert not any(item["run"] for step, item in plan["steps"].items() if step.startswith("step_6_"))
         assert plan["id_counts"]["metadata"] == 1
         assert plan["steps"]["step_1_metadata"]["run"] is True
 
@@ -222,6 +224,7 @@ def test_run_plan_schema_contract() -> None:
     assert schema["properties"]["mode"]["enum"] == [
         "add_new_ids",
         "from_scratch",
+        "bioacoustics",
     ]
 
 

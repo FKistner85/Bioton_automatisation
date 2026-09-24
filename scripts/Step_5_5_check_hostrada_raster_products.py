@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import sys
 import time
@@ -193,7 +194,8 @@ def main() -> int:
         output_dir = Path(settings["output_dir"])
         output_dir.mkdir(parents=True, exist_ok=True)
         forced_nodata = settings.get("forced_nodata")
-        workers = int(settings.get("workers", 4))
+        workers = max(1, min(int(settings.get("workers", 4)),
+                             int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 1))))
         recursive = bool(settings.get("recursive", False))
 
         iterator = input_dir.rglob if recursive else input_dir.glob

@@ -396,29 +396,30 @@ class Pipeline:
             ), master_ids=metadata_ids)
         if self.plan_run("step_2_0_lrt_cleaning"):
             self.add("j20", "step_2_0", self.command_runner(
-                "step_2_0", "step_2_0_lrt_cleaning", "scripts/Step_2_0_clean_lrts.py", force,
+                "step_2_0", "step_2_0_lrt_cleaning", "tools/run_spatial_stage.py", ['--stage','2_0',*force],
             ))
         if self.plan_run("step_2_1_100m_formation"):
             self.add("j21", "step_2_1", self.command_runner(
-                "step_2_1", "step_2_1_100m_formation", "scripts/Step_2_1_merge_lrts_and_grid.py", force,
+                "step_2_1", "step_2_1_100m_formation", "tools/run_spatial_stage.py", ['--stage','2_1',*force],
             ), ["j20"])
         if self.plan_run("step_2_2_point_assignment"):
             self.add("j22", "step_2_2", self.command_runner(
-                "step_2_2", "step_2_2_point_assignment", "scripts/Step_2_2_assign_points_to_lrt_grid.py",
-                [*force, "--ids-file", str(point_ids)], cpus=2,
+                "step_2_2", "step_2_2_point_assignment", "tools/run_spatial_stage.py",
+                ['--stage','2_2',*force, "--ids-file", str(point_ids)], cpus=2,
             ), ["j1", "j21"], master_ids=point_ids)
         if self.plan_run("step_2_3_grid_aggregation"):
             self.add("j23", "step_2_3", self.command_runner(
-                "step_2_3", "step_2_3_grid_aggregation", "scripts/Step_2_3_generate_remaining_grid_products.py", force,
+                "step_2_3", "step_2_3_grid_aggregation", "tools/run_spatial_stage.py", ['--stage','2_3',*force],
             ), ["j21"])
         if self.plan_run("step_2_4_10m_formation"):
             self.add("j24", "step_2_4", self.command_runner(
-                "step_2_4", "step_2_4_10m_formation", "scripts/Step_2_4_generate_10m_formation_status_products.py", force,
+                "step_2_4", "step_2_4_10m_formation", "tools/run_spatial_stage.py", ['--stage','2_4',*force],
             ), ["j21"], master_global=True)
 
-        self.add("j3pre", "step_3_preflight", self.command_runner(
-            "step_3_preflight", "step_3_path_preflight", "tools/step3_path_preflight.py", cpus=1,
-        ))
+        if self.args.mode != "bioacoustics":
+            self.add("j3pre", "step_3_preflight", self.command_runner(
+                "step_3_preflight", "step_3_path_preflight", "tools/step3_path_preflight.py", cpus=1,
+            ))
         if quick_incremental or self.plan_run("step_3_0_audio_inventory"):
             self.add("j30a", "step_3_0a", self.command_runner(
                 "step_3_0a", "step_3_0_audio_inventory", "scripts/Step_3_0_a_audio_inventory.py",
@@ -512,7 +513,7 @@ class Pipeline:
             required = [item for item in ["j30apost", "j1", "j60"] if item in self.steps]
             self.add("j61", "step_6_1", self.command_runner(
                 "step_6_1", "step_6_1_bioacoustic_worklist", "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
-                [*force, "--ids-file", str(bio_ids)], cpus=2,
+                ["--reconcile-all"], cpus=2,
             ), required, required)
         if self.plan_run("step_6_2_bioacoustic_embeddings"):
             section = self.config["bioacoustics"]
@@ -547,12 +548,15 @@ class Pipeline:
 
     def update_master(self, stage: str, ids_file: Path | None = None) -> int:
         extra = ["--ids-file", str(ids_file)] if ids_file else []
+        target = 'tools/finalize_master.py' if stage == 'final' else 'scripts/Step_7_0_update_master_table.py'
+        if stage != 'final':
+            extra.append('--allow-deferred-spatial')
         with self.master_lock:
             code = self.run_logged(
                 f"master_{stage}",
                 self.manifest_command(
                     f"step_7_0_master_{stage}",
-                    "scripts/Step_7_0_update_master_table.py",
+                    target,
                     extra,
                 ),
                 cpus=2,
@@ -655,7 +659,7 @@ def run_lock(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["add_new_ids", "from_scratch", "functionality_test"], required=True)
+    parser.add_argument("--mode", choices=["add_new_ids", "from_scratch", "bioacoustics", "functionality_test"], required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--core-python", type=Path, required=True)

@@ -321,8 +321,12 @@ def main() -> int:
     for step in STEPS:
         directory = readme_root / str(step["slug"])
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "README_DE.md").write_text(render(step, "DE"), encoding="utf-8")
-        (directory / "README_EN.md").write_text(render(step, "EN"), encoding="utf-8")
+        # Editorial documentation is maintained in the Markdown files. Never
+        # replace reviewed time-policy, resource or recovery explanations.
+        for language in ("DE", "EN"):
+            path = directory / f"README_{language}.md"
+            if not path.exists():
+                path.write_text(render(step, language), encoding="utf-8")
         index_lines.append(f"- `{step['slug']}`: [{step['title']}]({step['slug']}/README_DE.md)")
         generated_slugs.add(str(step["slug"]))
     for directory in sorted(path for path in readme_root.iterdir() if path.is_dir()):
@@ -335,8 +339,11 @@ def main() -> int:
         index_lines.append(
             f"- `{directory.name}`: [{first_line}]({directory.name}/README_DE.md)"
         )
-    (readme_root / "README_INDEX.md").write_text("\n".join(index_lines) + "\n", encoding="utf-8")
-    print(f"Wrote {len(STEPS) * 2 + 1} README files under {readme_root}")
+    if not (readme_root / "README_INDEX.md").exists():
+        (readme_root / "README_INDEX.md").write_text("\n".join(index_lines) + "\n", encoding="utf-8")
+    from documentation_reference import update
+    changed = update()
+    print(f"Refreshed {len(changed)} diagnostic appendices; editorial text preserved.")
     return 0
 
 

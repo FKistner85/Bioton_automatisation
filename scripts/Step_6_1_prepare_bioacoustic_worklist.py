@@ -52,6 +52,8 @@ def parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parents[1] / "config.horeka.json",
     )
     parser.add_argument("--ids-file", type=Path)
+    parser.add_argument("--reconcile-all", action="store_true",
+                        help="Replace worklist with current prepared metadata IDs; keep inference checkpoints.")
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
 
@@ -149,6 +151,12 @@ def main() -> int:
             raise FileNotFoundError(f"Audio inventory not found: {inventory_path}")
         inventory = pd.read_csv(inventory_path, low_memory=False, encoding="utf-8-sig")
         selected = read_ids_file(args.ids_file) if args.ids_file else None
+        if args.reconcile_all:
+            metadata = pd.read_csv(Path(config["status_dir"]) / "dawnchorus_metadata_clean.csv", dtype=str)
+            key = "dawn_chorus_id" if "dawn_chorus_id" in metadata else "id"
+            current_ids = set(metadata[key].map(normalise_id))
+            inventory = inventory[inventory["dawn_chorus_id"].map(normalise_id).isin(current_ids)]
+            selected = None
         registry_path = output_path(config, "model_registry_json")
         if not registry_path.is_file():
             raise FileNotFoundError(

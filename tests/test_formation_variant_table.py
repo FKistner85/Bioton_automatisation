@@ -72,6 +72,8 @@ def test_normalized_variant_table() -> None:
             pd.DataFrame(
                 {
                     "id": [1, 2],
+                    "lat": [49.0, 50.0],
+                    "lon": [8.0, 9.0],
                     "grid_id": ["g1", "g2"],
                     "inside_lrt_polygon": [True, False],
                     "lrt_polygon_count": [1, 0],

@@ -1,5 +1,8 @@
 # Zeitkonflikte und LRT-Zellen
 
+> Historischer Stand: Befunde und Zahlen gelten fuer den damaligen Audit/Lauf. Aktuelle Betriebsanweisungen stehen in der Haupt-README und Readmes/pipeline_phases.md.
+
+
 Prüfung vom 16.09.2026, aktuelle Hauptvariante **no_K_post2017**.
 
 **Keine der 47 Aufnahmen mit widersprüchlichen Quellenzeiten liegt in einer 100-m-Zelle mit LRT-Flächen dieser Variante.**

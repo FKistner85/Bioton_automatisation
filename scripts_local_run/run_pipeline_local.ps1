@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("add_new_ids", "from_scratch", "functionality_test")]
+    [ValidateSet("add_new_ids", "from_scratch", "bioacoustics", "functionality_test")]
     [string]$Mode = "add_new_ids",
     [string]$BasePython = "C:\Users\Frede\anaconda3\envs\BioTon\python.exe",
     [string]$Settings = "",
@@ -35,7 +35,7 @@ if (-not [IO.Path]::IsPathRooted($EnvironmentRoot)) {
 $CorePython = Join-Path $EnvironmentRoot "core\Scripts\python.exe"
 $BacpipePython = Join-Path $EnvironmentRoot "bacpipe\Scripts\python.exe"
 if (-not $SkipEnvironmentSetup) {
-    if ($Mode -eq "functionality_test") {
+    if ($Mode -ne "bioacoustics") {
         & (Join-Path $LocalRoot "setup_local_env.ps1") `
             -BasePython $BasePython -Settings $Settings -SkipBacpipe
     }
@@ -46,7 +46,7 @@ if (-not $SkipEnvironmentSetup) {
     if ($LASTEXITCODE -ne 0) { throw "Lokales Environment-Setup fehlgeschlagen." }
 }
 if (-not (Test-Path -LiteralPath $CorePython)) { throw "Core Python fehlt: $CorePython" }
-if (($Mode -ne "functionality_test") -and (-not (Test-Path -LiteralPath $BacpipePython))) {
+if (($Mode -eq "bioacoustics") -and (-not (Test-Path -LiteralPath $BacpipePython))) {
     throw "Bacpipe Python fehlt: $BacpipePython"
 }
 
@@ -69,7 +69,7 @@ if (($Mode -eq "add_new_ids") -and (-not $SkipHorekaBootstrap) -and $BootstrapEn
 }
 
 $Device = "cpu"
-if (($Mode -ne "functionality_test") -and (-not $CpuOnly)) {
+if (($Mode -eq "bioacoustics") -and (-not $CpuOnly)) {
     $Detected = (& $BacpipePython -c "import torch; print('cuda' if torch.cuda.is_available() else 'cpu')" | Select-Object -Last 1)
     if ($Detected) { $Device = $Detected.Trim() }
 }
@@ -85,7 +85,7 @@ $PrepareArgs = @(
     "--repo-root", $RepoRoot,
     "--device", $Device
 )
-if ($Mode -eq "functionality_test") { $PrepareArgs += "--skip-cache-copy" }
+if ($Mode -ne "bioacoustics") { $PrepareArgs += "--skip-cache-copy" }
 & $CorePython @PrepareArgs
 if ($LASTEXITCODE -ne 0) { throw "Lokale Konfiguration konnte nicht erzeugt werden." }
 

@@ -32,7 +32,7 @@ BIOACOUSTICS_WORKERS=4 HOSTRADA_WORKERS=2 HOSTRADA_RASTER_MAX_CONCURRENT=2
 BIOACOUSTICS_PARTITION=cpuonly PARTITION=cpuonly BIOACOUSTICS_CPUS=4
 HOSTRADA_RASTER_CPUS=8 HOSTRADA_RASTER_MEMORY=32G BIOACOUSTICS_MEMORY=24G
 RUN_ID=test LOGDIR=/logs LOG_STAMP=now TIME_OVERRIDE=''
-account_args=() bio_resource_args=()
+account_args=() bio_resource_args=() constraint_args=()
 sbatch() { printf '%s\\n' "$@"; }
 """
         calls = """
@@ -56,6 +56,10 @@ submit_hostrada_raster_array 12:00:00 afterany:456 73 --force
         result = subprocess.run([executable, "-c", setup + functions + "\nSLURM_DRY_RUN=0\nsubmit_hostrada_raster_array 12:00:00 '' 1"], text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--array=0-0%2", result.stdout)
+        self.assertNotIn("--constraint", result.stdout)
+        result = subprocess.run([executable, "-c", setup + functions + '\nSLURM_DRY_RUN=0\nconstraint_args=(--constraint=target-storage)\nsubmit_hostrada_raster_array 12:00:00 "" 1'], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--constraint=target-storage", result.stdout)
 
     def test_coverage(self):
         for tasks, workers in [(384, 4), (73, 2), (1, 4), (11, 3)]:

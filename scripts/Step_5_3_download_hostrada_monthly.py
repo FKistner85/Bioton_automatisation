@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import csv
 import json
 import re
@@ -137,7 +138,8 @@ def main() -> int:
         settings = load_config(args.config)["hostrada_monthly_download"]
         output_dir = Path(settings["output_dir"])
         start_year = int(settings.get("start_year", 2017))
-        workers = int(settings.get("workers", 4))
+        workers = max(1, min(int(settings.get("workers", 4)),
+                             int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 1))))
         chunk_size = int(settings.get("request_chunk_bytes", 1024 * 1024))
         timeout = int(settings.get("http_timeout_seconds", 300))
         variables: dict[str, Any] = settings["variables"]

@@ -3,7 +3,7 @@
 Der Service-Account `bio-o-ton@bio-o-ton-gee.iam.gserviceaccount.com` kann die Sentinel-Stufe ohne Browser-Login oder 2FA ausführen. Der private JSON-Schlüssel gehört **nicht** in Git – auch nicht vorübergehend –, weil Google öffentlich erkannte Schlüssel automatisch deaktivieren kann.
 
 Auf Horeka liegen alle vier Dateien im lokalen, aber durch `.gitignore`
-ausgeschlossenen Ordner `.secrets/` der Git-Arbeitskopie `scripts_horeka`.
+ausgeschlossenen Ordner `.secrets/` der aktiven Git-Arbeitskopie.
 Der Ordner ist damit Teil der lokalen Projektstruktur, wird jedoch niemals nach
 GitHub übertragen. Der GEE-Schlüssel berechnet die Scores. Der
 Earth-Engine-Nutzer-Token startet die Legacy-Drive-Exporttasks mit dem
@@ -11,7 +11,7 @@ Speicherkontingent von `biooton.kit@gmail.com`. Der separate Read-only-Drive-
 Token liest die fertigen TIFFs und spiegelt sie nach LSDF:
 
 ```bash
-SECRETS_DIR=/lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka/.secrets
+SECRETS_DIR="$(pwd)/.secrets"
 install -d -m 700 "${SECRETS_DIR}"
 install -m 600 bio-o-ton-gee-service-account.json \
   "${SECRETS_DIR}/bio-o-ton-gee-service-account.json"
@@ -23,7 +23,7 @@ install -m 600 earthengine-export-token-bio-o-ton.json \
   "${SECRETS_DIR}/earthengine-export-token-bio-o-ton.json"
 ```
 
-`config.horeka.json` verweist bereits auf diese vier geschützten LSDF-Pfade. Optional lassen sie sich pro Job überschreiben:
+`config.horeka.json` verwendet relative `.secrets/`-Pfade im aktiven Checkout. Die Befehle deshalb aus dessen Root ausfuehren. Optional lassen sie sich pro Job überschreiben:
 
 ```bash
 export BIOOTON_GEE_SERVICE_ACCOUNT_KEY=/geschuetzter/pfad/service-account.json

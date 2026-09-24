@@ -30,6 +30,7 @@ import pandas as pd
 
 from common import atomic_write_csv
 from recording_time import TIME_POLICY_VERSION, resolve_recording_time
+from input_consistency import guard_source_population
 
 
 REQUIRED_COLUMNS = ["id", "lat", "lng", "datetime", "localtimes"]
@@ -376,6 +377,8 @@ def main() -> int:
             "source_fingerprint",
         ))
         deleted_ids = previous_ids - current_ids
+        clean_ids = set(pd.to_numeric(existing_clean.get('id', pd.Series(dtype=float)), errors='coerce').dropna().astype(int))
+        guard_source_population(current_ids, previous_ids | clean_ids, config.get('metadata_extraction', {}))
 
         if args.force:
             source_targets = current_ids | previous_ids

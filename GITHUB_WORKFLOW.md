@@ -1,83 +1,47 @@
-# GitHub Workflow
+# GitHub-Workflow
 
-## Zielstruktur
+Die aktuelle Arbeitskopie liegt auf Horeka unter
+`/home/hk-project-pai00063/jk3038/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline_git`.
+Der Pfad kann je nach Mount auch unter LSDF erreichbar sein. Befehle im Root des
+bestehenden Checkouts ausfuehren; keine vorhandenen Ordner umbenennen oder neu initialisieren.
 
-Die bestehende Horeka-Struktur bleibt unveraendert:
-
-```text
-Data_automatisation_skripts/
-  bio_o_ton_pipeline/
-    scripts_horeka/              <- Git-Arbeitskopie
-  outputs/                       <- generierte Produkte, nicht versioniert
-PointData/                       <- Originaldownloads und Quelldaten, nicht versioniert
-```
-
-Das Git-Repository hat sinnvollerweise `scripts_horeka` als Repository-Wurzel.
-Damit liegen Code, Konfiguration, Schemas, Tests und Readmes zusammen; grosse
-Outputs, Zugangsdaten und Modell-Checkpoints verbleiben ausserhalb von Git.
-
-## Einmalig lokal
-
-```powershell
-cd C:\Users\Frede\OneDrive\Documents\piepe_new\scripts_horeka
-git init
-git add .
-git commit -m "Initial Bio-O-Ton pipeline"
-git branch -M main
-git remote add origin <GITHUB-REPOSITORY-URL>
-git push -u origin main
-```
-
-Vor `git add` pruefen, dass `.secrets/`, `.venv` und
-`bacpipe/model_checkpoints` nicht erfasst werden. Die bereitgestellte
-`.gitignore` deckt diese Faelle ab. `.secrets/` liegt bewusst innerhalb der
-lokalen Arbeitskopie, bleibt aber vollstaendig ausserhalb der Versionierung.
-
-## Einmalig auf Horeka
-
-Statt Dateien manuell hochzuladen, wird die Arbeitskopie einmal als Git-Clone
-eingerichtet. Bereits vorhandene Umgebungen und die neue `outputs`-Struktur
-bleiben erhalten.
+## Aktualisieren
 
 ```bash
-cd /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline
-mv scripts_horeka scripts_horeka_backup_$(date +%Y%m%d)
-git clone <GITHUB-REPOSITORY-URL> scripts_horeka
-```
-
-Danach muss der nicht versionierte Ordner `.secrets/` mit seinen vier JSON-
-Dateien aus dem Backup oder von der lokalen Arbeitskopie direkt nach
-`scripts_horeka/.secrets/` kopiert werden. Die virtuellen Umgebungen werden mit
-`bash bootstrap_env.sh` bzw. `bash bootstrap_bacpipe_env.sh` erstellt.
-
-## Regelmaessiges Update auf Horeka
-
-```bash
-cd /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka
 bash update_horeka_from_git.sh main
 ```
 
-Alternativ aktualisiert und startet der hybride Controller in einem Befehl:
+Das Skript aktualisiert per Fast-Forward und stoppt bei lokalen Aenderungen.
+Ein normaler Submit fuehrt keinen automatischen Pull aus. `run_horeka.sh --update`
+fordert das Update ausdruecklich an. Aktiven produktiven Code nicht waehrend eines
+Laufs austauschen: die beim Submit gespeicherte Befehlszeile verweist weiterhin
+auf Dateien im Checkout, deren Inhalt sich sonst aendern kann.
+
+## Getrennte Laeufe
+
+Nach Update und Tests zuerst den Kern starten:
 
 ```bash
-bash run_horeka.sh add_new_ids --update --branch main
+bash slurm_add_new_ids.sh
 ```
 
-Ein normales `sbatch` oder `bash run_horeka.sh add_new_ids` fuehrt keinen
-automatischen Git-Pull aus. Das ist absichtlich explizit, damit ein Lauf nicht
-unbemerkt mit einem anderen Commit startet.
+Nach dessen Abschluss Bioakustik separat starten:
 
-Das Skript nutzt ausschliesslich `git fetch` und `git pull --ff-only`. Bei
-lokalen, nicht commiteten Codeaenderungen stoppt es absichtlich, damit keine
-unbeabsichtigten Ueberschreibungen passieren. Vor einem Pipeline-Run zuerst
-den Commit-Hash mit `git log -1 --oneline` dokumentieren.
+```bash
+bash slurm_bioacoustics.sh
+```
 
-## Empfohlene Arbeitsregel
+Alternativ dienen `bash run_horeka.sh add_new_ids` und
+`bash run_horeka.sh bioacoustics` als tmux-/Hybrid-Startwege.
 
-1. Lokal entwickeln und `bash run_tests.sh` ausfuehren.
-2. Aenderungen als kleinen, beschreibenden Commit auf `main` oder einen
-   Feature-Branch pushen.
-3. Auf Horeka mit `update_horeka_from_git.sh` aktualisieren.
-4. Erst danach Slurm-Jobs einreichen. Bereits eingereichte Jobs behalten ihre
-   beim Submit gespeicherte Befehlszeile; bei strukturellen Orchestrator-
-   Aenderungen daher abbrechen und neu einreichen.
+## Lokale Arbeit
+
+Aenderungen und Tests zuerst lokal pruefen. Vor einem Commit `git diff` und die
+Dateiliste kontrollieren. Secrets, Modellgewichte, Umgebungen und produktive
+Outputs gehoeren nicht in Git; `.gitignore` schliesst sie aus.
+Remote: `https://github.com/FKistner85/Bioton_automatisation.git`.
+Ein bestehendes Repository benoetigt weder `git init` noch einen neuen Remote.
+
+Die relativen `.secrets/`- und `bacpipe/model_checkpoints/`-Pfade beziehen sich auf
+den aktiven Checkout. Auf einem anderen Cluster Umgebungen neu aufbauen und die
+Datenpfade explizit pruefen; siehe [Horeka-2-Vorbereitung](Readmes/pipeline_phases.md).

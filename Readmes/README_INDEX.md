@@ -1,6 +1,6 @@
 # Bio-O-Ton Documentation Index
 
-Start with the [root README](../README.md) for the master-table overview, recommended commands, complete workflow, operating model, and recovery guidance. The [master-table reference](../MASTER_TABLE_README.md) defines all 99 output columns and readiness rules.
+Start with the [root README](../README.md) for the master-table overview, recommended commands, complete workflow, operating model, and recovery guidance. The [master-table reference](../MASTER_TABLE_README.md) defines all 104 output columns and readiness rules.
 
 ## English step documentation
 
@@ -26,3 +26,15 @@ Start with the [root README](../README.md) for the master-table overview, recomm
 | Step 9 | [Visual pipeline reports](step_9_visual_reports/README_EN.md) |
 
 Matching `README_DE.md` files are retained next to the English documents for German-language operational use.
+
+## Current operation and diagnostics
+
+- [Two separately initiated phases and Horeka-2 preparation](pipeline_phases.md)
+- [Bounded Slurm workers](slurm_worker_limits.md)
+- Every step README now contains source-linked diagnostic codes, meanings,
+  explicit exceptions and process-return conditions. Data issues, process exits
+  and scheduler states are separate categories.
+- Refresh references with `python tools/generate_step_readmes.py`; validate them
+  with `python tools/documentation_reference.py --check` from the repository root.
+- [Documentation review and scope](DOCUMENTATION_REVIEW.md)
+- The ci-tec quick reference remains deliberately short: [README](../README_CI_TEC.md).

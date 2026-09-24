@@ -8,7 +8,7 @@ veraendert oder loescht keine LSDF-Quelldaten.
 1. Sicherstellen, dass keine alte Pipeline mehr laeuft.
 2. Eine verwaiste Pipeline-Sperre erst nach der Jobkontrolle freigeben.
 3. Den Git-Stand aktualisieren und den Commit-Hash notieren.
-4. Hauptumgebung und Bacpipe-Umgebung pruefen beziehungsweise neu aufbauen.
+4. Hauptumgebung pruefen; Bacpipe nur fuer die separate Bioakustikphase benoetigt.
 5. Zuerst den zehnminuetigen Funktionstest starten.
 
 ## Technische Recovery-Regeln
@@ -31,19 +31,19 @@ veraendert oder loescht keine LSDF-Quelldaten.
 
 ## Empfohlene Ausfuehrungsreihenfolge
 
-Beim ersten Git-basierten Deployment den bisherigen Ordner als Backup
-umbenennen, das Repository neu nach `scripts_horeka` klonen und den nicht
-versionierten Ordner `.secrets/` mit allen vier JSON-Dateien aus dem Backup
-wieder nach `scripts_horeka/.secrets/` uebernehmen. Alte virtuelle Umgebungen
-und alte Modell-Checkpoints werden nicht kopiert. Bei spaeteren Deployments
-reicht das Update-Skript; Git laesst den ignorierten `.secrets/`-Ordner dabei
-unveraendert.
+Im bestehenden Checkout arbeiten; Datenordner und Secrets nicht umbenennen.
+Code nur aktualisieren, wenn keine alte Pipeline mehr auf diesen Checkout zugreift.
+Die Bacpipe-Umgebung wird erst fuer die separate Bioakustikphase benoetigt.
 
 ```bash
-cd /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/bio_o_ton_pipeline/scripts_horeka
 bash update_horeka_from_git.sh main
+```
+
+```bash
 bash bootstrap_env.sh
-bash bootstrap_bacpipe_env.sh
+```
+
+```bash
 bash slurm_functionality_test.sh
 ```
 
@@ -57,6 +57,12 @@ bash slurm_add_new_ids.sh
 Fuer diesen Lauf keinen globalen 10- oder 30-Minuten-Override setzen. Die
 einzelnen Steps besitzen aufgabenspezifische Laufzeiten und Checkpoints.
 
+Nach Abschluss des Kernlaufs bei Bedarf separat:
+
+```bash
+bash slurm_bioacoustics.sh
+```
+
 ## Abnahmekriterien
 
 - Funktionstest: `COMPLETED`, ExitCode `0:0`.
@@ -65,7 +71,6 @@ einzelnen Steps besitzen aufgabenspezifische Laufzeiten und Checkpoints.
   10-m-Parquet.
 - Step 5_4 erkennt mindestens ein vollstaendiges Variable/Jahr-Paar; der
   Verify-Job meldet keine fehlenden erwarteten Tiles.
-- Step 6_0 meldet alle als `required` konfigurierten Modelle mit
-  `initialisation: ok`. Optionale Modelle duerfen als Warnung erscheinen.
+- Nur Bioakustikphase: Step 6_0 initialisiert alle durch die Konfiguration verlangten Modelle. Mit `require_all_models_complete=true` sind derzeit alle sechs Modelle auch fuer den Verify-Gate erforderlich.
 - Die finale Validierung trennt `technical_status` und `release_status`.
   Eine fachliche Datenfreigabe bleibt ein manueller Teamentscheid.

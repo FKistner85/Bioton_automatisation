@@ -2,9 +2,11 @@
 
 Bio-O-Ton is a restartable data-processing pipeline for Dawn Chorus recordings. It combines cleaned recording metadata, habitat-formation products at 100 m and 10 m, media inventories and downloads, Sentinel-2 data, HOSTRADA weather, bioacoustic model results, validation, and visual reports. Production runs use LSDF storage and Slurm on HoreKa; a Windows orchestrator is available for controlled local execution.
 
-This document reflects the implementation and default configuration checked on **2026-08-26**. Paths and operational defaults come from [`config.horeka.json`](config.horeka.json), the executable step registry is [`pipeline_steps.json`](pipeline_steps.json), and the final table is written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py).
+This document reflects the implementation checked on **2026-09-24**. Paths and operational defaults come from [`config.horeka.json`](config.horeka.json), the executable step registry is [`pipeline_steps.json`](pipeline_steps.json), and the final table is written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The [master reconciliation and restart checks](Readmes/master_reconciliation.md) explain independent spatial coverage checks, all-variant processing and protection against a truncated source. The final workflow uses `tools/finalize_master.py` to reconcile recording and variant status together.
 
 For ci-tec, use the short [README_CI_TEC.pdf](README_CI_TEC.pdf) ([text version](README_CI_TEC.md)). The [time review](Readmes/time_review/README.md) documents the German-time correction and the LRT check of all 47 source conflicts.
+
+The complete [README_Paket.pdf](README_Paket.pdf) combines the maintained manuals and the per-step diagnostic reference, including the ci-tec agreement checklist.
 
 ## Master table at a glance
 
@@ -17,9 +19,11 @@ The main result is one row per unique `dawn_chorus_id` in:
 └── Bio_O_Ton_Master_summary.json
 ```
 
-The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-09-16-mastertable-v5`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
+The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-09-17-mastertable-v6`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
 
-The compact dictionary below covers **all 99 columns written by Step 7_0**. Related fields are grouped to keep the overview readable; every group links to its full definition.
+The five proximity-review fields are defined in the [master reference](MASTER_TABLE_README.md#proximity-review-fields).
+
+The compact dictionary below covers **the main column groups written by Step 7_0**. Related fields are grouped to keep the overview readable; every group links to its full definition.
 
 | Column(s) | Short description | Details |
 |---|---|---|
@@ -76,6 +80,10 @@ bash run_horeka.sh add_new_ids
 
 It starts a detached `tmux` session on the HoreKa login node, creates the run plan and pipeline lock, submits only planned compute work to Slurm, waits for the submitted jobs, and then runs final validation and HTML report generation locally with one CPU before releasing the lock.
 
+Bioacoustics is now a separate run: after the core run finishes, start
+`bash run_horeka.sh bioacoustics` (or `bash slurm_bioacoustics.sh` for direct Slurm
+submission). Details: [two phases and Horeka-2 preparation](Readmes/pipeline_phases.md).
+
 Monitor it with:
 
 ```bash
@@ -84,7 +92,8 @@ tmux attach -t <session-name>
 squeue -u "$USER"
 ```
 
-Before the first data run, create both environments:
+Before the first data run, create the core environment. Create the Bacpipe
+environment when you first run the separate bioacoustics phase:
 
 ```bash
 bash bootstrap_env.sh
@@ -97,7 +106,8 @@ The core bootstrap prefers `micromamba`, `mamba`, or `conda` and falls back to `
 
 | Mode | Command | Meaning |
 |---|---|---|
-| Incremental production | `bash run_horeka.sh add_new_ids` | Processes new, changed, and previously problematic IDs and invalidated global products. This is the normal run. |
+| Incremental production | `bash run_horeka.sh add_new_ids` | Core only: metadata, spatial products, downloads, master and validation. No Step 6 jobs. |
+| Separate bioacoustics | `bash run_horeka.sh bioacoustics` | Start after the core run: all Step 6 stages, checkpoint reuse and bioacoustic master fields. |
 | Logical full rebuild | `bash run_horeka.sh from_scratch` | Recomputes current IDs and core global steps with `--force`; original source files and downloads are not deleted. Incomplete full-run generations resume from successful step markers. |
 | Functionality test | `bash run_horeka.sh functionality_test` | Runs fast import, config, schema, syntax, and regression checks locally through the controller. |
 | Formation comparison | `bash run_horeka.sh formation_compare` | Submits the formation-product comparison as a Slurm job. |
@@ -123,7 +133,7 @@ run_horeka.sh
      -> acquire pipeline lock
      -> tools/plan_pipeline_run.py
      -> submit_bio_o_ton_horeka.sh
-        -> planned Slurm DAG (Steps 1-7)
+        -> planned Slurm DAG (core: Steps 1-5; bioacoustics: Step 6)
         -> final Step 7_0 master-table snapshot
      -> wait for all submitted Slurm jobs
      -> tools/final_validation_report.py
@@ -161,7 +171,7 @@ The [English documentation index](Readmes/README_INDEX.md) provides the same ste
 
 ## Incremental planning and invalidation
 
-Every data workflow receives one `workflow_run_id`. The planner compares the Dawn Chorus source, per-domain fingerprints, current step state, inventory baselines, configured global inputs, and the previous master table. It writes:
+Every phase receives its own `workflow_run_id`. The core planner compares the Dawn Chorus source, per-domain fingerprints, current step state, inventory baselines, configured global inputs, and the previous master table. It writes:
 
 ```text
 outputs/step_0_control/run_plans/<workflow_run_id>/run_plan.json
@@ -179,7 +189,7 @@ Key invalidation behavior:
 | Change or condition | Work scheduled |
 |---|---|
 | New ID or changed time/GPS | Metadata, point assignment, point weather, and coordinate-dependent products for that ID. |
-| Changed audio URL/fingerprint | Audio retry state is reset; download, post-inventory, and bioacoustic work are reconsidered. |
+| Changed audio URL/fingerprint | Audio retry state is reset; download and post-inventory are reconsidered. The separately initiated bioacoustics phase reconciles current audio work keys. |
 | Changed photo URL/fingerprint | Photo retry state is reset and the photo path is reconsidered. |
 | Changed LRT source | Cleaning and all dependent 100 m, point-assignment, aggregation, and 10 m formation products. |
 | Changed grid source | Grid-dependent formation products and point assignment. |
@@ -305,17 +315,20 @@ Step 6 performs:
  -> 6.6 completeness and quality control
 ```
 
-The default is 16 shards per model, at most four concurrent inference tasks, 16 CPUs and 48 GB per task. Override resources only after checking model memory and LSDF I/O, for example:
+The default is 64 logical shards per model, distributed over at most four Slurm workers, with 4 CPUs and 24 GB per worker. Each worker runs several logical tasks sequentially. Override resources only after checking model memory and LSDF I/O, for example:
 
 ```bash
-BIOOTON_BIOACOUSTICS_CPUS=16 \
-BIOOTON_BIOACOUSTICS_MEMORY=48G \
-bash run_horeka.sh add_new_ids
+BIOOTON_BIOACOUSTICS_CPUS=4 \
+BIOOTON_BIOACOUSTICS_MEMORY=24G \
+bash run_horeka.sh bioacoustics
 ```
 
 See the [Step-6 reference](Readmes/step_6_bioacoustics/README_EN.md) for models, schemas, checkpoints, and interpretation limits.
 
 ## Status, validation, release, and reports
+
+Validation reports identify the checked `phase`: core excludes bioacoustic requirements; bioacoustics checks Step 6 and its prepared prerequisites. A direct validation command without `BIOOTON_RUN_PLAN` checks the legacy full scope.
+
 
 Every wrapped step writes a manifest to:
 
@@ -387,7 +400,7 @@ BIOOTON_PIPELINE_TIME_OVERRIDE=00:30:00 bash slurm_add_new_ids.sh
 
 ## Local Windows workflow
 
-The local orchestrator can run `add_new_ids`, `from_scratch`, or `functionality_test` on Windows while mounting LSDF, generating a path-adjusted configuration, optionally bootstrapping existing HoreKa outputs, and publishing successful outputs back to LSDF.
+The local orchestrator can run `add_new_ids`, `from_scratch`, `bioacoustics`, or `functionality_test` on Windows while mounting LSDF, generating a path-adjusted configuration, optionally bootstrapping existing HoreKa outputs, and publishing successful outputs back to LSDF. Bioacoustics must now be started separately after the core run; see [two phases and cluster migration](Readmes/pipeline_phases.md).
 
 1. Copy/edit `scripts_local_run/local.settings.example.json` as `scripts_local_run/local.settings.json`.
 2. Verify the LSDF host/user, mount drive, local workspace/environment directories, CPU limits, and publication settings.

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${PIPELINE_DIR}/cluster_profile.sh"
 MODE="${1:-add_new_ids}"
 shift || true
 
@@ -18,6 +19,7 @@ Usage: bash run_horeka.sh <mode> [options]
 Modes:
   functionality_test
   add_new_ids
+  bioacoustics
   from_scratch
   formation_compare
 
@@ -31,7 +33,7 @@ EOF
 }
 
 case "${MODE}" in
-  functionality_test|add_new_ids|from_scratch|formation_compare) ;;
+  functionality_test|add_new_ids|from_scratch|bioacoustics|formation_compare) ;;
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 2 ;;
 esac
@@ -86,6 +88,19 @@ printf -v controller_command \
   'cd %q && BIOOTON_TMUX_SESSION=%q PYTHON=%q bash %q %q --foreground %s' \
   "${PIPELINE_DIR}" "${SESSION}" "${PYTHON}" \
   "${PIPELINE_DIR}/run_horeka.sh" "${MODE}" "${local_test_arg}"
+
+# Existing tmux servers may have an old environment. Forward explicit settings
+# (including the profile path) to the new controller with shell-safe quoting.
+forwarded_environment=""
+while IFS= read -r setting; do
+  case "${setting}" in
+    BIOOTON_*|CONFIG|PYTHON)
+      printf -v quoted_setting '%q=%q ' "${setting}" "${!setting}"
+      forwarded_environment+="${quoted_setting}"
+      ;;
+  esac
+done < <(compgen -e)
+controller_command="${forwarded_environment}bash -c $(printf '%q' "${controller_command}")"
 
 tmux new-session -d -s "${SESSION}" "${controller_command}"
 echo "Started Bio-O-Ton controller in tmux session: ${SESSION}"

@@ -1,5 +1,8 @@
 # Audit: Grundprinzipien der Codebase
 
+> Historischer Stand: Befunde und Zahlen gelten fuer den damaligen Audit/Lauf. Aktuelle Betriebsanweisungen stehen in der Haupt-README und Readmes/pipeline_phases.md.
+
+
 Stand: 2026-07-23
 
 Gepruefter Bereich: `outputs/scripts_horeka`

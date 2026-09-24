@@ -62,10 +62,9 @@ def main():
         for script, extra in [
             ("scripts/Step_1_metadata_extraction.py", ["--config", str(args.config), "--force"]),
             ("scripts/Step_7_0_update_master_table.py", ["--config", str(args.config), "--preserve-existing-nonformation-domains"]),
-            ("tools/export_ci_tec_master.py", ["--input", str(master)]),
         ]:
             subprocess.run([sys.executable, str(ROOT / script), *extra], cwd=ROOT, check=True)
-        summary = audit(source, baseline, args.report_dir, master, short)
+        summary = audit(source, baseline, args.report_dir, master)
         summary["verified_lsdf_audit"] = str(args.verified_audit.resolve())
         summary["lsdf_source"] = verified["source"]
         summary["lsdf_and_local_source_sha256_equal"] = True

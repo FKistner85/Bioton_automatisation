@@ -1,6 +1,6 @@
 # Bio-O-Ton Master Table Reference
 
-This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-09-16-mastertable-v5` and contains 99 columns.
+This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-09-17-mastertable-v6` and contains 104 columns.
 
 ## Products and row model
 
@@ -50,7 +50,7 @@ The master table deliberately condenses these sources. File-level, segment-level
 
 | Column | Definition |
 |---|---|
-| `mastertable_schema_version` | Master-table row version. Current constant: `2026-09-16-mastertable-v5`. |
+| `mastertable_schema_version` | Master-table row version. Current constant: `2026-09-17-mastertable-v6`. |
 | `workflow_run_id` | Shared workflow ID that most recently updated the row. Outside an orchestrated run, the writer's fallback run ID is used. |
 | `dawn_chorus_id` | Unique numeric Dawn Chorus recording ID. It is normalized to a digit string and is the table's primary key. |
 | `source_fingerprint` | SHA-256 fingerprint from Step 1 over the source fields relevant to the ID. It supports changed-record detection. |
@@ -79,7 +79,8 @@ The Step-1 log records `timestamp_status`, `timestamp_issue_codes`, the UTC
 reference and the difference in seconds. These source-consistency warnings are
 separate from the master's syntactic `metadata_status` check. Source offsets
 inconsistent with Germany never override an explicitly supplied local clock.
-The ci-tec export contains only `datetime_local` as its recording-time column.
+ci-tec uses `datetime_local` in the shared full master as its recording-time
+column. A separate compact export is no longer generated automatically.
 
 ### Status fields
 
@@ -247,6 +248,30 @@ When errors originate in free-text detail/retry logs, Step 7.0 normalizes them t
 | `manual_reviewed_utc` | Manual review time preserved across automatic updates. |
 
 ## Incremental update behavior
+
+The statements below describe core-phase updates. With a run plan whose `phase`
+is `bioacoustics`, Step 7.0 reads the existing master and changes only the
+bioacoustic fields and `ready_for_bioacoustic_analysis`. Metadata, times, grid/LRT
+assignments, other domains, manual fields and the existing row schema version
+are retained. It does not upgrade an older master to v6; a core update does that.
+
+## Proximity review fields
+
+These five v6 fields are advisory. They never delete recordings or change readiness.
+
+| Column | Meaning |
+|---|---|
+| `proximity_check_status` | `checked` when coordinates and an aware UTC timestamp are usable; otherwise `missing_or_invalid_space_time`. |
+| `duplicate_candidate` | At least one other recording is within 10 m and 300 seconds by default. Unknown if space/time is invalid. |
+| `duplicate_neighbor_count` | Number of such direct neighbours, excluding the recording itself. |
+| `spatiotemporal_cluster_id` | Connected-component label for links within 50 m and 1800 seconds by default; blank for an isolated recording. Labels can change when members change. |
+| `spatiotemporal_cluster_size` | Number of members including the recording itself; one for an isolated valid recording, unknown for invalid space/time. |
+
+Distances are spherical and time differences use UTC, including across DST changes.
+Thresholds come from `proximity_review`. A connected component does not imply that
+every pair of members satisfies the distance/time limits.
+
+## Core update details
 
 The orchestrator serializes master updates. With `--ids-file`, Step 7.0 rebuilds only listed IDs, replaces those rows, and preserves every unaffected row. A run without `--ids-file` rebuilds the complete current ID set. Global grid, variant, or raster changes intentionally use a full update.
 

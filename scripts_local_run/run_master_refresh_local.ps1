@@ -136,8 +136,7 @@ try {
     if (-not (Test-Path -LiteralPath $MasterCsv)) { throw "Mastertabelle wurde nicht erzeugt: $MasterCsv" }
     Write-Host "Mastertabelle: $MasterCsv"
 
-    & $CorePython (Join-Path $RepoRoot "tools\export_ci_tec_master.py") --input $MasterCsv
-    if ($LASTEXITCODE -ne 0) { throw "ci-tec-Kurzexport konnte nicht erzeugt werden." }
+    # ci-tec uses the complete master. Do not create a second table to synchronize.
 
     if ($PublishToLsdf) {
         & $CorePython (Join-Path $LocalRoot "publish_local_outputs.py") `

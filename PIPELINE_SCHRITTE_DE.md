@@ -11,8 +11,8 @@ Generierte Analyse-, Inventar-, Status- und QC-Dateien:
 /lsdf/kit/ipf/projects/Bio-O-Ton/Data_automatisation_skripts/outputs/<step>
 ```
 
-Ausnahmen sind die finalen Mastertable-Dateien direkt im Pipeline-Ordner und
-die fachlichen Downloads:
+Die finalen Mastertable-Dateien liegen direkt unter `Data_automatisation_skripts/outputs/`.
+Fachliche Downloads liegen unter:
 
 ```text
 Audio      -> PointData/SoundRecordings
@@ -20,6 +20,13 @@ Fotos      -> PointData/Images_SoundRecordings
 Sentinel-2 -> PointData/S2
 Punktwetter-> PointData/Weather/Hostrada
 ```
+
+## Zwei separat gestartete Phasen
+
+`bash slurm_add_new_ids.sh` verarbeitet den Kern (Steps 1-5, Master, Validierung).
+Erst nach dessen Abschluss startet `bash slurm_bioacoustics.sh` die Steps 6.0-6.6
+und aktualisiert nur Bioakustik-Masterfelder. `from_scratch` baut den Kern neu auf.
+Siehe [Betrieb und Horeka 2](Readmes/pipeline_phases.md).
 
 ## Pipeline-Steuerung
 
@@ -538,6 +545,8 @@ Drive -> Step 4.1 -> Step 4.0
 Punktwetter -> Step 5.1 -> Step 5.2 -> Step 5.1 post
 DWD Monatsdaten -> Step 5.3 -> Step 5.4 -> Step 5.5
 
-valides Audio -> Step 6_0/6_1 -> Step 6_2 -> Step 6_3/6_4/6_5/6_6
-Step 1/2/3/4/5/6 -> serielle Step-7-Teilupdates -> Abschlussvalidierung -> Lock-Freigabe
+Kern: Step 1/2/3/4/5 -> Master -> Validierung -> Lock-Freigabe
+Separater Start: valides Audio -> Step 6_0/6_1 -> Step 6_2 -> Step 6_3/6_4/6_5/6_6
+Bioakustik -> Bioakustik-Masterfelder -> Validierung -> Lock-Freigabe
+Direkter Slurm-Start: serielle Teilupdates; Hybrid-Start: finales Master-Update
 ```

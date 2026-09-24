@@ -1,0 +1,4182 @@
+{
+  "pipeline_control": [
+    {
+      "kind": "status",
+      "value": "in_progress",
+      "source": "tools/plan_pipeline_run.py",
+      "line": 469,
+      "function": "full_rebuild_context",
+      "condition": "not resume"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Bioacoustics is disabled in this configuration.",
+      "source": "tools/plan_pipeline_run.py",
+      "line": 522,
+      "function": "plan_bioacoustics",
+      "condition": "not config.get('bioacoustics', {}).get('enabled', True)"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Run the core pipeline first; missing prerequisite: {path}",
+      "source": "tools/plan_pipeline_run.py",
+      "line": 528,
+      "function": "plan_bioacoustics",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Prepared metadata and master IDs differ; finish the core pipeline first.",
+      "source": "tools/plan_pipeline_run.py",
+      "line": 534,
+      "function": "plan_bioacoustics",
+      "condition": "ids != master_ids"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/plan_pipeline_run.py",
+      "line": 564,
+      "function": "main",
+      "condition": "args.mode == 'bioacoustics'"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/plan_pipeline_run.py",
+      "line": 884,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "3",
+      "source": "tools/pipeline_lock.py",
+      "line": 50,
+      "function": "acquire",
+      "condition": "except FileExistsError"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/pipeline_lock.py",
+      "line": 62,
+      "function": "acquire",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/pipeline_lock.py",
+      "line": 68,
+      "function": "release",
+      "condition": "not path.exists()"
+    },
+    {
+      "kind": "exit",
+      "value": "4",
+      "source": "tools/pipeline_lock.py",
+      "line": 76,
+      "function": "release",
+      "condition": "not force and owner_run and (owner_run != run_id)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/pipeline_lock.py",
+      "line": 79,
+      "function": "release",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/pipeline_lock.py",
+      "line": 95,
+      "function": "main",
+      "condition": "args.command == 'status'"
+    },
+    {
+      "kind": "exit",
+      "value": "2",
+      "source": "tools/pipeline_lock.py",
+      "line": 98,
+      "function": "main",
+      "condition": "not args.run_id and (not args.force)"
+    },
+    {
+      "kind": "exit",
+      "value": "2",
+      "source": "tools/run_with_manifest.py",
+      "line": 76,
+      "function": "main",
+      "condition": "not command"
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "tools/run_with_manifest.py",
+      "line": 117,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "tools/run_with_manifest.py",
+      "line": 117,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "starting",
+      "source": "tools/horeka_controller.py",
+      "line": 180,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "submitted.returncode or 1",
+      "source": "tools/horeka_controller.py",
+      "line": 233,
+      "function": "main",
+      "condition": "submitted.returncode != 0 or not submission_path.is_file()"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/horeka_controller.py",
+      "line": 256,
+      "function": "main",
+      "condition": "args.local_test"
+    },
+    {
+      "kind": "exit",
+      "value": "130",
+      "source": "tools/horeka_controller.py",
+      "line": 313,
+      "function": "main",
+      "condition": "except KeyboardInterrupt"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Require positive counts and 0 <= worker-index < worker-count",
+      "source": "tools/run_array_worker.py",
+      "line": 13,
+      "function": "task_indices",
+      "condition": "worker_count < 1 or task_count < 1 or (not 0 <= worker_index < worker_count)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: A child command is required",
+      "source": "tools/run_array_worker.py",
+      "line": 20,
+      "function": "run_worker",
+      "condition": "not command"
+    },
+    {
+      "kind": "exit",
+      "value": "128 + interrupted",
+      "source": "tools/run_array_worker.py",
+      "line": 54,
+      "function": "run_worker",
+      "condition": "interrupted"
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "tools/run_array_worker.py",
+      "line": 57,
+      "function": "run_worker",
+      "condition": "failed"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/run_array_worker.py",
+      "line": 58,
+      "function": "run_worker",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Unknown pipeline phase: {phase}",
+      "source": "scripts/pipeline_phase.py",
+      "line": 16,
+      "function": "execution_phase",
+      "condition": "phase not in {'core', 'bioacoustics', 'all'}"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: POINT_ASSIGNMENT_INCOMPLETE: {len(gaps)} recording IDs missing, duplicated or at different coordinates in {path}. Run Step 2.2 first; the existing master has not been replaced.",
+      "source": "scripts/input_consistency.py",
+      "line": 54,
+      "function": "require_point_coverage",
+      "condition": "gaps"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: SOURCE_POPULATION_REDUCED: source has {len(current)} IDs; {len(removed)} of {len(previous)} existing IDs would disappear. Restore the complete original source. For an intentional reduction set metadata_extraction.allow_large_source_reduction=true explicitly.",
+      "source": "scripts/input_consistency.py",
+      "line": 73,
+      "function": "guard_source_population",
+      "condition": "previous and len(removed) > max(10, len(previous) * 0.2) and (not settings.get('allow_large_source_reduction', False))"
+    },
+    {
+      "kind": "exit",
+      "value": "run_stage_all(root, Path(sys.executable), variants, args.stage, force=args.force, ids_file=args.ids_file, max_workers=1)",
+      "source": "tools/run_spatial_stage.py",
+      "line": 22,
+      "function": "main",
+      "condition": "config.get('lrt_variants', {}).get('input_dir')"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/finalize_master.py",
+      "line": 23,
+      "function": "main",
+      "condition": ""
+    }
+  ],
+  "step_1_metadata": [
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 52,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "status",
+      "value": "within_broad_germany_bounds",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 115,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "outside_broad_germany_bounds",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 116,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "invalid_wgs84_coordinates",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 117,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Missing required Dawn Chorus column: id",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 155,
+      "function": "read_source",
+      "condition": "'id' not in source.columns"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Missing required Dawn Chorus country column: {country_column}",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 157,
+      "function": "read_source",
+      "condition": "country_column not in source.columns"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: IDs file not found: {path}",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 256,
+      "function": "read_ids_file",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: No dawn_chorus_id/id column in {path}",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 265,
+      "function": "read_ids_file",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: This pipeline requires country Germany and timezone Europe/Berlin",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 332,
+      "function": "main",
+      "condition": "timezone != DEFAULT_TIMEZONE or country_value != 'Germany'"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Dawn Chorus CSV not found: {input_csv}",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 344,
+      "function": "main",
+      "condition": "not input_csv.is_file()"
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 445,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_1_metadata_extraction.py",
+      "line": 483,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Germany recordings require timezone Europe/Berlin",
+      "source": "scripts/recording_time.py",
+      "line": 48,
+      "function": "resolve_recording_time",
+      "condition": "timezone != GERMAN_TIMEZONE"
+    },
+    {
+      "kind": "code",
+      "value": "datetime_timezone_missing_assumed_utc",
+      "source": "scripts/recording_time.py",
+      "line": 56,
+      "function": "resolve_recording_time",
+      "condition": "reference is not None and reference.tzinfo is None"
+    },
+    {
+      "kind": "code",
+      "value": "localtimes_unparseable",
+      "source": "scripts/recording_time.py",
+      "line": 64,
+      "function": "resolve_recording_time",
+      "condition": "local is None"
+    },
+    {
+      "kind": "code",
+      "value": "nonexistent_localtime",
+      "source": "scripts/recording_time.py",
+      "line": 74,
+      "function": "resolve_recording_time",
+      "condition": "not candidates"
+    },
+    {
+      "kind": "code",
+      "value": "ambiguous_localtime_unresolved",
+      "source": "scripts/recording_time.py",
+      "line": 91,
+      "function": "resolve_recording_time",
+      "condition": "not (len(matching_reference) == 1)"
+    },
+    {
+      "kind": "code",
+      "value": "localtimes_offset_mismatch",
+      "source": "scripts/recording_time.py",
+      "line": 93,
+      "function": "resolve_recording_time",
+      "condition": "chosen is not None and local.tzinfo is not None and (local.utcoffset() != chosen.utcoffset())"
+    },
+    {
+      "kind": "code",
+      "value": "utc_reference_unavailable",
+      "source": "scripts/recording_time.py",
+      "line": 95,
+      "function": "resolve_recording_time",
+      "condition": "reference is None"
+    },
+    {
+      "kind": "code",
+      "value": "datetime_missing_or_unparseable",
+      "source": "scripts/recording_time.py",
+      "line": 99,
+      "function": "resolve_recording_time",
+      "condition": "reference is None"
+    },
+    {
+      "kind": "code",
+      "value": "utc_local_conflict",
+      "source": "scripts/recording_time.py",
+      "line": 110,
+      "function": "resolve_recording_time",
+      "condition": "local_raw and difference"
+    },
+    {
+      "kind": "status",
+      "value": "invalid",
+      "source": "scripts/recording_time.py",
+      "line": 111,
+      "function": "resolve_recording_time",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "warning",
+      "source": "scripts/recording_time.py",
+      "line": 111,
+      "function": "resolve_recording_time",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "validated",
+      "source": "scripts/recording_time.py",
+      "line": 111,
+      "function": "resolve_recording_time",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: POINT_ASSIGNMENT_INCOMPLETE: {len(gaps)} recording IDs missing, duplicated or at different coordinates in {path}. Run Step 2.2 first; the existing master has not been replaced.",
+      "source": "scripts/input_consistency.py",
+      "line": 54,
+      "function": "require_point_coverage",
+      "condition": "gaps"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: SOURCE_POPULATION_REDUCED: source has {len(current)} IDs; {len(removed)} of {len(previous)} existing IDs would disappear. Restore the complete original source. For an intentional reduction set metadata_extraction.allow_large_source_reduction=true explicitly.",
+      "source": "scripts/input_consistency.py",
+      "line": 73,
+      "function": "guard_source_population",
+      "condition": "previous and len(removed) > max(10, len(previous) * 0.2) and (not settings.get('allow_large_source_reduction', False))"
+    }
+  ],
+  "step_2_0_lrt_cleaning": [
+    {
+      "kind": "status",
+      "value": "conservation_status",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 34,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "Conservation_status",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 34,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "CONSERVATION_STATUS",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 34,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "conservationstatus",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 34,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "ConservationStatus",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 34,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 52,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'lrt_cleaning' section in config.json.",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 59,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: 'lrt_cleaning.source_gpkgs' must be a non-empty list.",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 69,
+      "function": "load_config",
+      "condition": "not isinstance(section['source_gpkgs'], list) or not section['source_gpkgs']"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Input file not found: {path}",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 76,
+      "function": "file_fingerprint",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Required column '{canonical}' not found in {source}. Available columns: {list(gdf.columns)}",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 133,
+      "function": "harmonise_columns",
+      "condition": "found is None"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: No layers found in {gpkg_path}",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 163,
+      "function": "read_all_lrt_layers",
+      "condition": "not layers"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Layer has no CRS: {gpkg_path.name}:{layer_name}",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 186,
+      "function": "read_all_lrt_layers",
+      "condition": "layer.crs is None"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: No usable LRT layers found in {gpkg_path}",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 203,
+      "function": "read_all_lrt_layers",
+      "condition": "not prepared"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: No formation group was processed successfully.",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 369,
+      "function": "resolve_all_formations",
+      "condition": "not results"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 469,
+      "function": "main",
+      "condition": "should_skip(output_gpkg, state_file, expected_state, args.force)"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Atomic GPKG validation failed: expected {len(output)} rows, found {written_rows}.",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 536,
+      "function": "main",
+      "condition": "written_rows != len(output)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 549,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_0_clean_lrts.py",
+      "line": 553,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_2_1_100m_formation_status": [
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Temporary GeoPackage is empty: {temporary}",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 67,
+      "function": "atomic_write_gpkg",
+      "condition": "not temporary.is_file() or temporary.stat().st_size == 0"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 73,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'lrt_grid_merge' section in config.json.",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 80,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Input file not found: {path}",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 95,
+      "function": "file_fingerprint",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Grid ID column '{grid_id_column}' not found. Available columns: {list(grid.columns)}",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 161,
+      "function": "read_inputs",
+      "condition": "grid_id_column not in grid.columns"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Grid and LRT data must both have a CRS.",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 182,
+      "function": "read_inputs",
+      "condition": "grid.crs is None or lrt.crs is None"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Step 2_1 worker was not initialised.",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 211,
+      "function": "_intersect_chunk",
+      "condition": "_WORKER_GRID is None or _WORKER_LRT is None or _WORKER_GRID_ID is None"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: No intersections found between grid and LRT.",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 446,
+      "function": "intersect_in_chunks",
+      "condition": "not parts"
+    },
+    {
+      "kind": "status",
+      "value": "majority_formation_status",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 584,
+      "function": "build_summary",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Could not derive 100 m coordinates from grid_id. Examples: {bad}",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 772,
+      "function": "write_notebook_grid_products",
+      "condition": "ids.isna().any(axis=None)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 1196,
+      "function": "main",
+      "condition": "should_skip(output_paths, state_file, expected_state, args.force)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 1271,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_1_merge_lrts_and_grid.py",
+      "line": 1275,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_2_2_point_assignment": [
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 56,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'point_lrt_assignment' section in config.json.",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 63,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Input file not found: {path}",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 91,
+      "function": "file_fingerprint",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Grid ID column '{grid_id_column}' not found. Available columns: {list(grid.columns)}",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 189,
+      "function": "load_grid_with_majority",
+      "condition": "grid_id_column not in grid.columns"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: The INSPIRE grid contains no cells.",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 203,
+      "function": "load_grid_with_majority",
+      "condition": "grid.empty"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: The cleaned LRT layer has no CRS.",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 239,
+      "function": "load_lrt",
+      "condition": "lrt.crs is None"
+    },
+    {
+      "kind": "status",
+      "value": "processed",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 505,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "missing_coordinates",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 506,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "outside_majority_grid",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 510,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "inside_majority_grid_outside_lrt",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 515,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "inside_lrt_polygon",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 520,
+      "function": "build_outputs",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: No dawn_chorus_id/id column in {path}",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 545,
+      "function": "read_ids_file",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 694,
+      "function": "main",
+      "condition": "not target_ids"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 786,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_2_assign_points_to_lrt_grid.py",
+      "line": 790,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: POINT_ASSIGNMENT_INCOMPLETE: {len(gaps)} recording IDs missing, duplicated or at different coordinates in {path}. Run Step 2.2 first; the existing master has not been replaced.",
+      "source": "scripts/input_consistency.py",
+      "line": 54,
+      "function": "require_point_coverage",
+      "condition": "gaps"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: SOURCE_POPULATION_REDUCED: source has {len(current)} IDs; {len(removed)} of {len(previous)} existing IDs would disappear. Restore the complete original source. For an intentional reduction set metadata_extraction.allow_large_source_reduction=true explicitly.",
+      "source": "scripts/input_consistency.py",
+      "line": 73,
+      "function": "guard_source_population",
+      "condition": "previous and len(removed) > max(10, len(previous) * 0.2) and (not settings.get('allow_large_source_reduction', False))"
+    }
+  ],
+  "step_2_3_grid_aggregation": [
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'lrt_grid_aggregation' section.",
+      "source": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "line": 32,
+      "function": "load_config",
+      "condition": "not isinstance(config.get('lrt_grid_aggregation'), dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'lrt_grid_merge' section.",
+      "source": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "line": 34,
+      "function": "load_config",
+      "condition": "not isinstance(config.get('lrt_grid_merge'), dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Worker source was not initialised.",
+      "source": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "line": 141,
+      "function": "build_resolution",
+      "condition": "_BASE is None"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "line": 402,
+      "function": "main",
+      "condition": "previous == expected_state"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "line": 436,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_3_generate_remaining_grid_products.py",
+      "line": 440,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_2_4_10m_formation_status": [
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 43,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'susi_10m_products' section in config.",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 47,
+      "function": "load_config",
+      "condition": "'susi_10m_products' not in config"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Input file not found: {path}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 53,
+      "function": "file_fingerprint",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Invalid 100 m grid_id: {grid_id}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 101,
+      "function": "parse_100m_grid_id",
+      "condition": "match is None"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Temporary final parquet is empty: {temporary}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 307,
+      "function": "merge_parquet_parts",
+      "condition": "not temporary.is_file() or temporary.stat().st_size == 0"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Step 2_4 worker was not initialised.",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 467,
+      "function": "process_chunk_worker",
+      "condition": "_WORKER_LRT is None or _WORKER_SETTINGS is None"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: 10 m grid selection CSV not found: {path}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 503,
+      "function": "read_selected_grid_ids",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: 10 m grid selection CSV needs a 'grid_100m_id' or 'grid_id' column.",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 510,
+      "function": "read_selected_grid_ids",
+      "condition": "column is None"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: 10 m grid selection CSV contains no usable grid IDs.",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 516,
+      "function": "read_selected_grid_ids",
+      "condition": "not selected"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Missing source parquet: {source}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 545,
+      "function": "main",
+      "condition": "not source.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Missing LRT GPKG: {lrt_gpkg}",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 547,
+      "function": "main",
+      "condition": "not lrt_gpkg.is_file()"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 593,
+      "function": "main",
+      "condition": "same_inputs and previous_state.get('status') == 'complete' and final_parquet.is_file() and (final_parquet.stat().st_size > 0) and (not args.force)"
+    },
+    {
+      "kind": "status",
+      "value": "in_progress",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 614,
+      "function": "main",
+      "condition": "reset_required"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: No selected 100 m grid IDs occur in the Step 2.1 product.",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 636,
+      "function": "main",
+      "condition": "not grid_ids"
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 707,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 738,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_4_generate_10m_formation_status_products.py",
+      "line": 748,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_2_variants": [
+    {
+      "kind": "exception",
+      "value": "ValueError: Cannot derive a variant suffix from {path.name}",
+      "source": "tools/step2_variants.py",
+      "line": 60,
+      "function": "variant_suffix",
+      "condition": "not suffix"
+    },
+    {
+      "kind": "exception",
+      "value": "TypeError: 'lrt_variants' must be a JSON object.",
+      "source": "tools/step2_variants.py",
+      "line": 67,
+      "function": "discover_variants",
+      "condition": "not isinstance(settings, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "NotADirectoryError: LRT variant input directory not found: {input_dir}",
+      "source": "tools/step2_variants.py",
+      "line": 73,
+      "function": "discover_variants",
+      "condition": "not input_dir.is_dir()"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: No LRT variant GeoPackages match {input_dir / pattern}",
+      "source": "tools/step2_variants.py",
+      "line": 79,
+      "function": "discover_variants",
+      "condition": "not sources"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Duplicate LRT variant suffix: {suffix}",
+      "source": "tools/step2_variants.py",
+      "line": 86,
+      "function": "discover_variants",
+      "condition": "key in seen"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: 'lrt_variants.primary_suffix' must not be empty.",
+      "source": "tools/step2_variants.py",
+      "line": 169,
+      "function": "prepare",
+      "condition": "not primary"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Configured primary LRT variant is missing: {primary}. Available: {', '.join(sorted(available))}",
+      "source": "tools/step2_variants.py",
+      "line": 171,
+      "function": "prepare",
+      "condition": "primary not in available"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/step2_variants.py",
+      "line": 309,
+      "function": "main",
+      "condition": "args.task_count"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/step2_variants.py",
+      "line": 311,
+      "function": "main",
+      "condition": "args.prepare_only"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: --task-index must be between 0 and {len(variants) - 1}",
+      "source": "tools/step2_variants.py",
+      "line": 316,
+      "function": "main",
+      "condition": "not 0 <= args.task_index < len(variants)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: --stage is required with --task-index",
+      "source": "tools/step2_variants.py",
+      "line": 318,
+      "function": "main",
+      "condition": "args.stage is None"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Select --stage, --all-stages, --prepare-only or --task-count",
+      "source": "tools/step2_variants.py",
+      "line": 330,
+      "function": "main",
+      "condition": "not stages"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/step2_variants.py",
+      "line": 343,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing public_lrt_cleaning section in config.",
+      "source": "scripts/Step_2_5_clean_public_lrts.py",
+      "line": 34,
+      "function": "load_config",
+      "condition": "'public_lrt_cleaning' not in config"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_5_clean_public_lrts.py",
+      "line": 127,
+      "function": "main",
+      "condition": "should_skip(output_gpkg, state_file, expected_state, args.force)"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: No public LRT polygons remained after cleaning.",
+      "source": "scripts/Step_2_5_clean_public_lrts.py",
+      "line": 159,
+      "function": "main",
+      "condition": "not results"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_5_clean_public_lrts.py",
+      "line": 188,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_5_clean_public_lrts.py",
+      "line": 191,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing public_lrt_grid_merge section in config.",
+      "source": "scripts/Step_2_6_merge_public_lrts_and_grid.py",
+      "line": 32,
+      "function": "load_config",
+      "condition": "'public_lrt_grid_merge' not in config"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_6_merge_public_lrts_and_grid.py",
+      "line": 120,
+      "function": "main",
+      "condition": "should_skip(output_paths, state_file, expected_state, args.force)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_2_6_merge_public_lrts_and_grid.py",
+      "line": 176,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_2_6_merge_public_lrts_and_grid.py",
+      "line": 179,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Metadata missing columns: {sorted(missing)}",
+      "source": "scripts/Step_7_1_update_formation_variant_table.py",
+      "line": 170,
+      "function": "load_metadata",
+      "condition": "missing"
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_7_1_update_formation_variant_table.py",
+      "line": 294,
+      "function": "build_variant_rows",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "partial",
+      "source": "scripts/Step_7_1_update_formation_variant_table.py",
+      "line": 294,
+      "function": "build_variant_rows",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_7_1_update_formation_variant_table.py",
+      "line": 373,
+      "function": "main",
+      "condition": "not rebuilt and output_csv.is_file() and output_parquet.is_file()"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_7_1_update_formation_variant_table.py",
+      "line": 462,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_7_1_update_formation_variant_table.py",
+      "line": 465,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_3_media": [
+    {
+      "kind": "code",
+      "value": "WinError 53",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 90,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 64",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 90,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 121",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 90,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 995",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 90,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 1203",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 90,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {path}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 115,
+      "function": "load_config",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "TypeError: 'audio_inventory' must be a JSON object.",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 123,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "NotADirectoryError: Audio source directory not found: {source_dir}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 131,
+      "function": "discover",
+      "condition": "not source_dir.is_dir()"
+    },
+    {
+      "kind": "exception",
+      "value": "ConnectionError: LSDF transport failed while listing {path}: {exc}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 150,
+      "function": "build_file_list",
+      "condition": "is_transport_error(exc)"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Dawn Chorus metadata CSV not found: {metadata_csv}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 170,
+      "function": "expected_download_ids",
+      "condition": "not metadata_csv.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing metadata columns in {metadata_csv}: {sorted(missing)}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 177,
+      "function": "expected_download_ids",
+      "condition": "missing"
+    },
+    {
+      "kind": "code",
+      "value": "no_audio_stream_found",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 216,
+      "function": "inspect_audio",
+      "condition": "not audio_streams"
+    },
+    {
+      "kind": "code",
+      "value": "multiple_audio_streams:{len(audio_streams)}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 236,
+      "function": "inspect_audio",
+      "condition": "len(audio_streams) > 1"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_or_missing_sample_rate",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 273,
+      "function": "inspect_audio",
+      "condition": "sample_rate_value is None or sample_rate_value <= 0"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_or_missing_channel_count",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 276,
+      "function": "inspect_audio",
+      "condition": "channels_value is None or channels_value <= 0"
+    },
+    {
+      "kind": "code",
+      "value": "no_audio_frames_decoded",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 301,
+      "function": "inspect_audio",
+      "condition": "decoded_frames == 0"
+    },
+    {
+      "kind": "code",
+      "value": "duration_unavailable",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 316,
+      "function": "inspect_audio",
+      "condition": "duration is None"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_duration:{duration}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 319,
+      "function": "inspect_audio",
+      "condition": "duration <= 0"
+    },
+    {
+      "kind": "code",
+      "value": "pyav_decode_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 325,
+      "function": "inspect_audio",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "filename_does_not_match_<id>_audio_pattern",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 359,
+      "function": "validate_original_file",
+      "condition": "not match"
+    },
+    {
+      "kind": "code",
+      "value": "source_stat_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 367,
+      "function": "validate_original_file",
+      "condition": "except OSError"
+    },
+    {
+      "kind": "code",
+      "value": "empty_file",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 397,
+      "function": "validate_original_file",
+      "condition": "stat.st_size == 0"
+    },
+    {
+      "kind": "code",
+      "value": "duration_not_{target}s:observed={duration}s,allowed={target - tolerance}-{target + tolerance}s",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 414,
+      "function": "validate_original_file",
+      "condition": "duration is not None and duration > 0 and (not duration_ok)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: target_duration_seconds must be greater than zero.",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 634,
+      "function": "main",
+      "condition": "target <= 0"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: duration_tolerance_seconds must not be negative.",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 639,
+      "function": "main",
+      "condition": "tolerance < 0"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 684,
+      "function": "main",
+      "condition": "args.list_only"
+    },
+    {
+      "kind": "exception",
+      "value": "ConnectionError: Audio inventory stopped because the LSDF transport failed ({len(transport_rows)} files in the current validation block). Sample: {sample}",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 786,
+      "function": "main",
+      "condition": "transport_rows"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 966,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_3_0_a_audio_inventory.py",
+      "line": 973,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "WinError 53",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 46,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 64",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 46,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 121",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 46,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 995",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 46,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "WinError 1203",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 46,
+      "function": "module",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {path}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 58,
+      "function": "load_config",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "TypeError: 'photo_inventory' must be a JSON object.",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 63,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "NotADirectoryError: Photo source directory not found: {source_dir}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 69,
+      "function": "discover",
+      "condition": "not source_dir.is_dir()"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Dawn Chorus metadata CSV not found: {metadata_csv}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 96,
+      "function": "expected_download_ids",
+      "condition": "not metadata_csv.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing metadata columns in {metadata_csv}: {sorted(missing)}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 103,
+      "function": "expected_download_ids",
+      "condition": "missing"
+    },
+    {
+      "kind": "exception",
+      "value": "NotADirectoryError: Photo {label} directory not found: {raw}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 122,
+      "function": "resolve_photo_directory",
+      "condition": "not create_if_missing"
+    },
+    {
+      "kind": "code",
+      "value": "filename_does_not_match_<id>_photo_pattern",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 139,
+      "function": "validate_and_copy",
+      "condition": "not match"
+    },
+    {
+      "kind": "code",
+      "value": "copy_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 158,
+      "function": "validate_and_copy",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "copy_size_mismatch",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 165,
+      "function": "validate_and_copy",
+      "condition": "not copy_verified"
+    },
+    {
+      "kind": "code",
+      "value": "copy_verification_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 167,
+      "function": "validate_and_copy",
+      "condition": "except OSError"
+    },
+    {
+      "kind": "code",
+      "value": "destination_missing_after_copy",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 169,
+      "function": "validate_and_copy",
+      "condition": "not (destination.is_file())"
+    },
+    {
+      "kind": "code",
+      "value": "image_verify_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 189,
+      "function": "validate_and_copy",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "pixel_load_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 197,
+      "function": "validate_and_copy",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_dimensions:{width}x{height}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 200,
+      "function": "validate_and_copy",
+      "condition": "width and height and (int(width) <= 0 or int(height) <= 0)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 331,
+      "function": "main",
+      "condition": "args.list_only"
+    },
+    {
+      "kind": "exception",
+      "value": "ConnectionError: Photo inventory stopped because the LSDF transport failed. Affected rows: {len(transport_rows)}; sample: {transport_rows[0].get('issues', '')}",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 375,
+      "function": "main",
+      "condition": "transport_rows"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 423,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_3_0_b_photo_inventory.py",
+      "line": 426,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "TypeError: 'audio_download' must be an object.",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 97,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "code",
+      "value": "no_audio_stream_found",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 170,
+      "function": "inspect_audio",
+      "condition": "not streams"
+    },
+    {
+      "kind": "code",
+      "value": "multiple_audio_streams:{len(streams)}",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 187,
+      "function": "inspect_audio",
+      "condition": "len(streams) > 1"
+    },
+    {
+      "kind": "code",
+      "value": "duration_unavailable",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 230,
+      "function": "inspect_audio",
+      "condition": "not (container.duration is not None)"
+    },
+    {
+      "kind": "code",
+      "value": "no_audio_frames_decoded",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 243,
+      "function": "inspect_audio",
+      "condition": "decoded_frames == 0"
+    },
+    {
+      "kind": "code",
+      "value": "pyav_decode_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 257,
+      "function": "inspect_audio",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "OSError: Downloaded file is empty.",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 321,
+      "function": "download_atomic",
+      "condition": "temporary.stat().st_size == 0"
+    },
+    {
+      "kind": "code",
+      "value": "HTTPError:{exc.code}:{exc.reason}",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 328,
+      "function": "download_atomic",
+      "condition": "except urllib.error.HTTPError"
+    },
+    {
+      "kind": "code",
+      "value": "{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 335,
+      "function": "download_atomic",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "duration_not_{target}s:observed={duration}s,allowed={target - tolerance}-{target + tolerance}s",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 354,
+      "function": "validate",
+      "condition": "duration is not None and (not duration_ok)"
+    },
+    {
+      "kind": "code",
+      "value": "missing_audio_url",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 444,
+      "function": "process_download_task",
+      "condition": "not url"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 901,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_3_1_a_audio_download.py",
+      "line": 908,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "OSError: Downloaded file is empty.",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 122,
+      "function": "download_atomic",
+      "condition": "temporary.stat().st_size == 0"
+    },
+    {
+      "kind": "code",
+      "value": "HTTPError:{exc.code}:{exc.reason}",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 127,
+      "function": "download_atomic",
+      "condition": "except urllib.error.HTTPError"
+    },
+    {
+      "kind": "code",
+      "value": "{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 130,
+      "function": "download_atomic",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "image_verify_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 149,
+      "function": "validate",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "pixel_load_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 157,
+      "function": "validate",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "missing_photo_url",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 203,
+      "function": "process_download_task",
+      "condition": "not url"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 430,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_3_1_b_photo_download.py",
+      "line": 433,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "tools/step3_path_preflight.py",
+      "line": 153,
+      "function": "main",
+      "condition": "failures or not image_source_usable or (not image_output_usable)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/step3_path_preflight.py",
+      "line": 156,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "tools/step3_path_preflight.py",
+      "line": 159,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_4_sentinel2": [
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {path}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 104,
+      "function": "load_config",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "TypeError: 'sentinel2_inventory' must be a JSON object.",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 112,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "NotADirectoryError: Sentinel-2 source directory not found: {source_dir}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 123,
+      "function": "discover_tifs",
+      "condition": "not source_dir.is_dir()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Missing Dawn Chorus ID column in Sentinel-2 score CSV. Tried {[candidate for candidate in candidates if candidate]}. Available columns: {columns}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 166,
+      "function": "resolve_score_id_column",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Sentinel-2 score CSV not found: {score_csv}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 184,
+      "function": "load_scores",
+      "condition": "not score_csv.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Missing required columns in Sentinel-2 score CSV: {sorted(missing_columns)}. Available columns: {df.columns.tolist()}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 198,
+      "function": "load_scores",
+      "condition": "missing_columns"
+    },
+    {
+      "kind": "code",
+      "value": "score_rows_with_invalid_id:{invalid_id_count}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 222,
+      "function": "load_scores",
+      "condition": "invalid_id_count"
+    },
+    {
+      "kind": "code",
+      "value": "duplicate_score_rows:{row_count}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 275,
+      "function": "load_scores",
+      "condition": "row_count > 1"
+    },
+    {
+      "kind": "code",
+      "value": "non_numeric_or_missing_scores:{missing_numeric_count}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 280,
+      "function": "load_scores",
+      "condition": "missing_numeric_count"
+    },
+    {
+      "kind": "code",
+      "value": "scores_outside_0_1:{invalid_range_count}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 285,
+      "function": "load_scores",
+      "condition": "invalid_range_count"
+    },
+    {
+      "kind": "code",
+      "value": "quality_score_missing",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 290,
+      "function": "load_scores",
+      "condition": "not score_present"
+    },
+    {
+      "kind": "code",
+      "value": "no_valid_quality_score",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 293,
+      "function": "load_scores",
+      "condition": "not score_valid"
+    },
+    {
+      "kind": "code",
+      "value": "unexpected_raster_driver:{dataset.driver}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 358,
+      "function": "inspect_raster",
+      "condition": "dataset.driver != 'GTiff'"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_dimensions:{dataset.width}x{dataset.height}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 363,
+      "function": "inspect_raster",
+      "condition": "dataset.width <= 0 or dataset.height <= 0"
+    },
+    {
+      "kind": "code",
+      "value": "no_raster_bands",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 368,
+      "function": "inspect_raster",
+      "condition": "dataset.count <= 0"
+    },
+    {
+      "kind": "code",
+      "value": "missing_crs",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 371,
+      "function": "inspect_raster",
+      "condition": "dataset.crs is None"
+    },
+    {
+      "kind": "code",
+      "value": "identity_geotransform",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 374,
+      "function": "inspect_raster",
+      "condition": "dataset.transform == Affine.identity()"
+    },
+    {
+      "kind": "code",
+      "value": "non_finite_bounds",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 387,
+      "function": "inspect_raster",
+      "condition": "not all((math.isfinite(value) for value in (raster_bounds.left, raster_bounds.bottom, raster_bounds.right, raster_bounds.top)))"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_bounds",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 393,
+      "function": "inspect_raster",
+      "condition": "raster_bounds.left >= raster_bounds.right or raster_bounds.bottom >= raster_bounds.top"
+    },
+    {
+      "kind": "code",
+      "value": "raster_read_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 448,
+      "function": "inspect_raster",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "all_pixels_nodata",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 470,
+      "function": "inspect_raster",
+      "condition": "all_pixels_nodata"
+    },
+    {
+      "kind": "code",
+      "value": "contains_nan_values:{nan_values}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 473,
+      "function": "inspect_raster",
+      "condition": "nan_values"
+    },
+    {
+      "kind": "code",
+      "value": "contains_infinite_values:{infinite_values}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 478,
+      "function": "inspect_raster",
+      "condition": "infinite_values"
+    },
+    {
+      "kind": "code",
+      "value": "constant_raster:value={global_min}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 483,
+      "function": "inspect_raster",
+      "condition": "constant_raster"
+    },
+    {
+      "kind": "code",
+      "value": "filename_does_not_contain_id_before_tif_extension",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 524,
+      "function": "validate_original_file",
+      "condition": "not id_extraction_ok"
+    },
+    {
+      "kind": "code",
+      "value": "source_stat_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 532,
+      "function": "validate_original_file",
+      "condition": "except OSError"
+    },
+    {
+      "kind": "code",
+      "value": "empty_file",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 574,
+      "function": "validate_original_file",
+      "condition": "stat.st_size == 0"
+    },
+    {
+      "kind": "code",
+      "value": "duplicate_tif_files_for_id:{len(id_rows)}",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 948,
+      "function": "main",
+      "condition": "len(id_rows) > 1"
+    },
+    {
+      "kind": "code",
+      "value": "quality_score_missing",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 969,
+      "function": "main",
+      "condition": "score is None"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 1235,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 1242,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing sentinel2_download section in config.",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 48,
+      "function": "load_config",
+      "condition": "'sentinel2_download' not in config"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: No ID column found in Sentinel-2 metadata CSV: {metadata_csv}",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 133,
+      "function": "load_wanted_ids",
+      "condition": "id_column is None"
+    },
+    {
+      "kind": "exception",
+      "value": "TimeoutError: Completed GEE exports not visible in Drive folder {folder_id}: {sample}",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 192,
+      "function": "wait_for_drive_ids",
+      "condition": "time.monotonic() >= deadline"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 370,
+      "function": "main",
+      "condition": "acquisition_mode in {'auto', 'gee_direct'}"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Google Drive credentials/token missing or interactive auth disabled",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 442,
+      "function": "main",
+      "condition": "service is None"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 489,
+      "function": "main",
+      "condition": "args.score_only"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: --score-only requires sentinel2_download.gee_drive_export_enabled=true",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 500,
+      "function": "main",
+      "condition": "args.score_only"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 670,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_4_1_Sentinel2_download.py",
+      "line": 680,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing sentinel2_cleaning section in config.",
+      "source": "scripts/Step_4_2_clean_sentinel2.py",
+      "line": 20,
+      "function": "load_config",
+      "condition": "'sentinel2_cleaning' not in config"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_4_2_clean_sentinel2.py",
+      "line": 86,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_4_2_clean_sentinel2.py",
+      "line": 89,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: No Dawn Chorus ID column found in {path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 78,
+      "function": "read_metadata",
+      "condition": "id_column is None"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Metadata must contain lat and lon/lng columns: {path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 80,
+      "function": "read_metadata",
+      "condition": "'lat' not in frame or not ('lon' in frame or 'lng' in frame)"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Metadata must contain datetime or datetime_utc: {path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 86,
+      "function": "read_metadata",
+      "condition": "datetime_column is None"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Score file must contain an ID column and score: {path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 153,
+      "function": "read_scores",
+      "condition": "column is None or 'score' not in frame"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Incoming score rows must contain DC_id",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 198,
+      "function": "upsert_scores",
+      "condition": "'DC_id' not in update"
+    },
+    {
+      "kind": "exception",
+      "value": "requests.HTTPError: Earth Engine HTTP {response.status_code}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 332,
+      "function": "_download_image",
+      "condition": "response.status_code in {429, 500, 502, 503, 504}"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: GEE download failed for {target.name}: {last_error}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 342,
+      "function": "_download_image",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: GEE service-account key not found: {key_path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 379,
+      "function": "_gee_credentials",
+      "condition": "not key_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: No GEE service-account key configured and stored Earth Engine credentials are unavailable",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 390,
+      "function": "_gee_credentials",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: No user OAuth token configured for legacy Earth Engine Drive exports",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 402,
+      "function": "_gee_export_user_credentials",
+      "condition": "not token_value"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: GEE export OAuth token not found: {token_path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 407,
+      "function": "_gee_export_user_credentials",
+      "condition": "not token_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: Cannot read GEE export OAuth token: {token_path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 414,
+      "function": "_gee_export_user_credentials",
+      "condition": "except (OSError, json.JSONDecodeError)"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: Invalid GEE export OAuth token: {token_path}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 416,
+      "function": "_gee_export_user_credentials",
+      "condition": "not isinstance(token_payload, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: GEE export OAuth token lacks required scopes: {missing}",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 440,
+      "function": "_gee_export_user_credentials",
+      "condition": "granted and (not required_scopes.issubset(granted))"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: GEE export OAuth token has no refresh token",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 443,
+      "function": "_gee_export_user_credentials",
+      "condition": "not credentials.refresh_token"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Earth Engine score response has no DC_id column",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 491,
+      "function": "_score_and_persist",
+      "condition": "'DC_id' not in scored_chunk"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: earthengine-api is not installed",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 584,
+      "function": "run_gee_drive_exports",
+      "condition": "except ImportError"
+    },
+    {
+      "kind": "status",
+      "value": "skipped_existing_immutable",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 666,
+      "function": "run_gee_drive_exports",
+      "condition": "dc_id in immutable_ids"
+    },
+    {
+      "kind": "status",
+      "value": "completed_existing_task",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 683,
+      "function": "run_gee_drive_exports",
+      "condition": "state == 'COMPLETED'"
+    },
+    {
+      "kind": "status",
+      "value": "ready",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 721,
+      "function": "run_gee_drive_exports",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "TimeoutError: Timed out waiting for legacy Sentinel-2 Drive exports (queued={len(queue)}, active={len(running)})",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 733,
+      "function": "run_gee_drive_exports",
+      "condition": "time.monotonic() >= export_deadline"
+    },
+    {
+      "kind": "status",
+      "value": "score_only",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 748,
+      "function": "run_gee_drive_exports",
+      "condition": "score_only"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: {failed} legacy Sentinel-2 Drive export task(s) failed",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 757,
+      "function": "run_gee_drive_exports",
+      "condition": "failed"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: Direct GEE raster download is disabled until parity with the legacy export is verified",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 773,
+      "function": "run_gee",
+      "condition": "not bool(settings.get('gee_direct_download_verified', False))"
+    },
+    {
+      "kind": "exception",
+      "value": "GeeUnavailable: earthengine-api is not installed",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 779,
+      "function": "run_gee",
+      "condition": "except ImportError"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Earth Engine score response has no DC_id column",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 796,
+      "function": "run_gee",
+      "condition": "'DC_id' not in scored_chunk"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Earth Engine score response has no DC_id column",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 806,
+      "function": "run_gee",
+      "condition": "'DC_id' not in scored"
+    },
+    {
+      "kind": "status",
+      "value": "score_only",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 815,
+      "function": "run_gee",
+      "condition": "bool(getattr(args, 'score_only', False))"
+    },
+    {
+      "kind": "status",
+      "value": "skipped_existing",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 837,
+      "function": "run_gee",
+      "condition": "ok"
+    },
+    {
+      "kind": "status",
+      "value": "downloaded",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 847,
+      "function": "run_gee",
+      "condition": "ok"
+    },
+    {
+      "kind": "status",
+      "value": "validation_failed",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 850,
+      "function": "run_gee",
+      "condition": "not (ok)"
+    },
+    {
+      "kind": "status",
+      "value": "download_failed",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 854,
+      "function": "run_gee",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: {failed} Sentinel-2 GEE tile downloads failed",
+      "source": "scripts/sentinel2_gee.py",
+      "line": 857,
+      "function": "run_gee",
+      "condition": "failed"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: {label} missing: {path}",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 16,
+      "function": "load_json",
+      "condition": "not path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: {label} is not valid JSON: {path}",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 20,
+      "function": "load_json",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: {label} must contain a JSON object: {path}",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 22,
+      "function": "load_json",
+      "condition": "not isinstance(value, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Missing Sentinel credential setting: {setting}",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 35,
+      "function": "configured_path",
+      "condition": "not value"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 55,
+      "function": "main",
+      "condition": "not bool(settings.get('gee_drive_export_enabled', False))"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: GEE service-account key has the wrong structure",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 84,
+      "function": "main",
+      "condition": "service_key.get('type') != 'service_account' or not service_key.get('client_email')"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: GEE user export token has no refresh_token",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 88,
+      "function": "main",
+      "condition": "not export_token.get('refresh_token')"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: GEE user export token lacks Earth Engine or Drive scope",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 95,
+      "function": "main",
+      "condition": "export_scopes and (not required_export_scopes.issubset(export_scopes))"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Drive OAuth client has the wrong structure",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 101,
+      "function": "main",
+      "condition": "not any((key in drive_credentials for key in ('installed', 'web')))"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Drive read-only token has no refresh_token",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 104,
+      "function": "main",
+      "condition": "not drive_token.get('refresh_token')"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/sentinel_credentials_preflight.py",
+      "line": 112,
+      "function": "main",
+      "condition": ""
+    }
+  ],
+  "step_5_2_weather": [
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 76,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'weather_inventory' section in config.",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 80,
+      "function": "load_config",
+      "condition": "not isinstance(config.get('weather_inventory'), dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Metadata ID column '{id_column}' not found in {metadata_csv}.",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 133,
+      "function": "read_metadata_ids",
+      "condition": "id_column not in metadata.columns"
+    },
+    {
+      "kind": "code",
+      "value": "filename_does_not_match_weather_id_pattern",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 205,
+      "function": "inspect_weather_csv",
+      "condition": "not dawn_id"
+    },
+    {
+      "kind": "code",
+      "value": "invalid_metadata_datetime",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 216,
+      "function": "inspect_weather_csv",
+      "condition": "except (TypeError, ValueError)"
+    },
+    {
+      "kind": "code",
+      "value": "empty_file",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 245,
+      "function": "inspect_weather_csv",
+      "condition": "stat.st_size == 0"
+    },
+    {
+      "kind": "code",
+      "value": "unexpected_row_count",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 270,
+      "function": "inspect_weather_csv",
+      "condition": "row_count != expected_rows"
+    },
+    {
+      "kind": "code",
+      "value": "missing_required_column",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 277,
+      "function": "inspect_weather_csv",
+      "condition": "missing_required_columns"
+    },
+    {
+      "kind": "code",
+      "value": "missing_value",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 286,
+      "function": "inspect_weather_csv",
+      "condition": "observed_max_nan_fraction > max_nan_fraction"
+    },
+    {
+      "kind": "code",
+      "value": "unparseable_datetime",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 294,
+      "function": "inspect_weather_csv",
+      "condition": "not datetime_parse_ok"
+    },
+    {
+      "kind": "code",
+      "value": "duplicate_datetime",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 302,
+      "function": "inspect_weather_csv",
+      "condition": "(counts > allowed_counts).any()"
+    },
+    {
+      "kind": "code",
+      "value": "unexpected_time_interval",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 316,
+      "function": "inspect_weather_csv",
+      "condition": "not datetime_interval_ok"
+    },
+    {
+      "kind": "code",
+      "value": "unexpected_time_window",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 330,
+      "function": "inspect_weather_csv",
+      "condition": "not expected_time_window_ok"
+    },
+    {
+      "kind": "code",
+      "value": "missing_datetime_column",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 334,
+      "function": "inspect_weather_csv",
+      "condition": "not ('datetime' in frame.columns)"
+    },
+    {
+      "kind": "code",
+      "value": "implausible_value",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 338,
+      "function": "inspect_weather_csv",
+      "condition": "not value_ranges_ok"
+    },
+    {
+      "kind": "code",
+      "value": "read_error:{type(exc).__name__}",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 341,
+      "function": "inspect_weather_csv",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "missing_file",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 373,
+      "function": "missing_row",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "NotADirectoryError: Weather directory not found: {directory}",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 512,
+      "function": "main",
+      "condition": "not directory.is_dir()"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 570,
+      "function": "main",
+      "condition": "args.list_only"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 674,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_5_1_Weather_inventory.py",
+      "line": 677,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Config file not found: {config_path}",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 98,
+      "function": "load_config",
+      "condition": "not config_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing 'weather_download' section in config.json.",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 104,
+      "function": "load_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "status",
+      "value": "out_of_bounds",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 422,
+      "function": "process_recording",
+      "condition": "bounds_checked and (not bounds_ok)"
+    },
+    {
+      "kind": "status",
+      "value": "upstream_unavailable",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 481,
+      "function": "process_recording",
+      "condition": "unavailable_source_months"
+    },
+    {
+      "kind": "status",
+      "value": "ok",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 482,
+      "function": "process_recording",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 485,
+      "function": "process_recording",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Step 5_2 worker was not initialised.",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 532,
+      "function": "process_recording_worker",
+      "condition": "_worker_transformer is None or _worker_preceding_days is None or _worker_input_timezone is None or (_worker_cache_dir is None) or (_worker_download_settings is None)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Input CSV missing required column(s): {missing}.",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 579,
+      "function": "load_input_recordings",
+      "condition": "missing"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: --task-count must be at least 1.",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 812,
+      "function": "main",
+      "condition": "args.task_count < 1"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: --task-index must satisfy 0 <= index < task-count.",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 814,
+      "function": "main",
+      "condition": "args.task_index < 0 or args.task_index >= args.task_count"
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 847,
+      "function": "main",
+      "condition": "missing"
+    },
+    {
+      "kind": "exit",
+      "value": "2",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 854,
+      "function": "main",
+      "condition": "unavailable"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 855,
+      "function": "main",
+      "condition": "args.verify_shards"
+    },
+    {
+      "kind": "exit",
+      "value": "1 if processed_failed or (bool(section.get('fail_on_upstream_unavailable', False)) and processed_upstream_unavailable) else 0",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 1269,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_5_2_download_weather_data.py",
+      "line": 1288,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_5_3_hostrada_monthly": [
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing hostrada_monthly_download section in config.",
+      "source": "scripts/Step_5_3_download_hostrada_monthly.py",
+      "line": 24,
+      "function": "load_config",
+      "condition": "'hostrada_monthly_download' not in config"
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "scripts/Step_5_3_download_hostrada_monthly.py",
+      "line": 105,
+      "function": "download_task",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_5_3_download_hostrada_monthly.py",
+      "line": 106,
+      "function": "download_task",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exit",
+      "value": "1 if failed else 0",
+      "source": "scripts/Step_5_3_download_hostrada_monthly.py",
+      "line": 202,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_5_3_download_hostrada_monthly.py",
+      "line": 205,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_5_4_hostrada_rasters": [
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing hostrada_raster_products section in config.",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 48,
+      "function": "load_config",
+      "condition": "'hostrada_raster_products' not in config"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Unsafe tile status directory: {status_dir}",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 137,
+      "function": "prepare_force_resume",
+      "condition": "resolved_output not in resolved_status.parents"
+    },
+    {
+      "kind": "status",
+      "value": "in_progress",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 142,
+      "function": "prepare_force_resume",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 171,
+      "function": "finish_force_resume",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Missing HOSTRADA file: {path}",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 223,
+      "function": "build_year",
+      "condition": "not path.exists()"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 388,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_5_4_prepare_hostrada_rasters.py",
+      "line": 398,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/run_hostrada_raster_all.py",
+      "line": 112,
+      "function": "main",
+      "condition": "args.task_count"
+    },
+    {
+      "kind": "exit",
+      "value": "1 if incomplete else 0",
+      "source": "tools/run_hostrada_raster_all.py",
+      "line": 120,
+      "function": "main",
+      "condition": "args.verify_array"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Task index {args.task_index} outside 0..{len(jobs) - 1}",
+      "source": "tools/run_hostrada_raster_all.py",
+      "line": 131,
+      "function": "main",
+      "condition": "args.task_index < 0 or args.task_index >= len(jobs)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/run_hostrada_raster_all.py",
+      "line": 140,
+      "function": "main",
+      "condition": "not task_is_complete(input_dir, variable, year)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/run_hostrada_raster_all.py",
+      "line": 171,
+      "function": "main",
+      "condition": ""
+    }
+  ],
+  "step_5_5_hostrada_raster_qc": [
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing hostrada_raster_quality_check section in config.",
+      "source": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "line": 26,
+      "function": "load_config",
+      "condition": "'hostrada_raster_quality_check' not in config"
+    },
+    {
+      "kind": "status",
+      "value": "ONLY_NODATA",
+      "source": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "line": 104,
+      "function": "check_file",
+      "condition": "valid.size == 0"
+    },
+    {
+      "kind": "status",
+      "value": "OK",
+      "source": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "line": 107,
+      "function": "check_file",
+      "condition": "not (valid.size == 0)"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: No TIFF files found in {input_dir}",
+      "source": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "line": 204,
+      "function": "main",
+      "condition": "not tif_files"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "line": 297,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_5_5_check_hostrada_raster_products.py",
+      "line": 300,
+      "function": "main",
+      "condition": "except Exception"
+    }
+  ],
+  "step_6_bioacoustics": [
+    {
+      "kind": "code",
+      "value": "bacpipe_import_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 117,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "bacpipe_version_mismatch:expected={expected_version}:actual={bacpipe_version}",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 121,
+      "function": "main",
+      "condition": "expected_version and bacpipe_version and (bacpipe_version != expected_version)"
+    },
+    {
+      "kind": "code",
+      "value": "torch_import_failed:{type(exc).__name__}:{exc}",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 137,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "model_checkpoint_dir_not_accessible:{checkpoint_dir}",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 144,
+      "function": "main",
+      "condition": "not os.access(checkpoint_dir, os.R_OK | os.W_OK | os.X_OK)"
+    },
+    {
+      "kind": "code",
+      "value": "bacpipe_ensure_models_exist_unavailable",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 165,
+      "function": "main",
+      "condition": "not callable(ensure_models)"
+    },
+    {
+      "kind": "exception",
+      "value": "AttributeError: bacpipe.ensure_models_exist is unavailable",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 177,
+      "function": "main",
+      "condition": "not callable(ensure_models)"
+    },
+    {
+      "kind": "status",
+      "value": "started",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 195,
+      "function": "main",
+      "condition": "checkpoint_error_is_repairable(exc)"
+    },
+    {
+      "kind": "status",
+      "value": "repaired",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 213,
+      "function": "main",
+      "condition": "checkpoint_error_is_repairable(exc)"
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 222,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "{type(repair_exc).__name__}:{repair_exc}",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 223,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "required_model_initialisation_failed:{name}",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 232,
+      "function": "main",
+      "condition": "model['required'] or require_all_models"
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 243,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "has_warnings",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 243,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "validated",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 243,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1 if issues else 0",
+      "source": "scripts/Step_6_0_bioacoustic_model_preflight.py",
+      "line": 276,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "rejected",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 85,
+      "function": "build_worklist",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "inventory_issue",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 86,
+      "function": "build_worklist",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "rejected",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 102,
+      "function": "build_worklist",
+      "condition": "not duplicate_audio.empty"
+    },
+    {
+      "kind": "code",
+      "value": "duplicate_valid_audio_for_id",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 103,
+      "function": "build_worklist",
+      "condition": "not duplicate_audio.empty"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Audio inventory not found: {inventory_path}",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 151,
+      "function": "main",
+      "condition": "not inventory_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Bioacoustic model registry not found: {registry_path}",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 162,
+      "function": "main",
+      "condition": "not registry_path.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Bioacoustic model preflight registry has failed status.",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 167,
+      "function": "main",
+      "condition": "registry.get('status') == 'failed'"
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 222,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 237,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_6_1_prepare_bioacoustic_worklist.py",
+      "line": 240,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exit",
+      "value": "2",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 83,
+      "function": "verify_shards",
+      "condition": "not worklist_path.is_file()"
+    },
+    {
+      "kind": "code",
+      "value": "missing_state",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 116,
+      "function": "verify_shards",
+      "condition": "not state"
+    },
+    {
+      "kind": "code",
+      "value": "state={state.get('status', 'unknown')}",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 121,
+      "function": "verify_shards",
+      "condition": "state.get('status') != 'complete'"
+    },
+    {
+      "kind": "code",
+      "value": "failed_ids={len(state_failed)}",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 125,
+      "function": "verify_shards",
+      "condition": "state_failed"
+    },
+    {
+      "kind": "code",
+      "value": "task_error",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 127,
+      "function": "verify_shards",
+      "condition": "state.get('task_error')"
+    },
+    {
+      "kind": "code",
+      "value": "shard_count_mismatch",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 129,
+      "function": "verify_shards",
+      "condition": "int(state.get('shard_count', -1)) != shard_count"
+    },
+    {
+      "kind": "code",
+      "value": "missing_rows={shard_missing}",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 146,
+      "function": "verify_shards",
+      "condition": "shard_missing"
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 150,
+      "function": "verify_shards",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "incomplete",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 150,
+      "function": "verify_shards",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 184,
+      "function": "verify_shards",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "2",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 205,
+      "function": "verify_shards",
+      "condition": "blocking_models"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 207,
+      "function": "verify_shards",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Unexpected empty embedding shape: {array.shape}",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 245,
+      "function": "embedding_rows",
+      "condition": "array.ndim != 2 or not array.size"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 433,
+      "function": "main",
+      "condition": "model_index >= len(models)"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 501,
+      "function": "main",
+      "condition": "pending.empty"
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 507,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exit",
+      "value": "2",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 528,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Classifier model returned no interpretable class-score output.",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 624,
+      "function": "main",
+      "condition": "bool(work.get('classifier_available')) and (not native_rows)"
+    },
+    {
+      "kind": "exit",
+      "value": "3",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 661,
+      "function": "main",
+      "condition": "stop_requested"
+    },
+    {
+      "kind": "exit",
+      "value": "0 if not failed_by_id else 2",
+      "source": "scripts/Step_6_2_generate_bioacoustic_embeddings.py",
+      "line": 676,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "raw_model_prediction",
+      "source": "scripts/Step_6_3_normalise_species_predictions.py",
+      "line": 68,
+      "function": "normalise_model",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_6_3_normalise_species_predictions.py",
+      "line": 105,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_3_normalise_species_predictions.py",
+      "line": 115,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_6_3_normalise_species_predictions.py",
+      "line": 118,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Taxonomy allowlist missing columns: {sorted(missing)}",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 77,
+      "function": "read_allowlist",
+      "condition": "missing"
+    },
+    {
+      "kind": "status",
+      "value": "not_evaluated",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 120,
+      "function": "apply_filter",
+      "condition": "allowlist.empty"
+    },
+    {
+      "kind": "status",
+      "value": "accepted",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 147,
+      "function": "apply_filter",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "flagged",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 148,
+      "function": "apply_filter",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "not_evaluated",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 153,
+      "function": "apply_filter",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 197,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 214,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_6_4_filter_germany_taxonomy.py",
+      "line": 217,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_6_5_aggregate_bioacoustic_results.py",
+      "line": 121,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_5_aggregate_bioacoustic_results.py",
+      "line": 132,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_6_5_aggregate_bioacoustic_results.py",
+      "line": 135,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "required_models_incomplete",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 91,
+      "function": "build_qc",
+      "condition": "missing_required"
+    },
+    {
+      "kind": "code",
+      "value": "model_inference_failed",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 93,
+      "function": "build_qc",
+      "condition": "failed"
+    },
+    {
+      "kind": "status",
+      "value": "validated",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 94,
+      "function": "build_qc",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "partial",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 94,
+      "function": "build_qc",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "failed",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 94,
+      "function": "build_qc",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "complete",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 149,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 161,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_6_6_bioacoustic_quality_control.py",
+      "line": 164,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing required 'bioacoustics' configuration section.",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 63,
+      "function": "bio_config",
+      "condition": "not isinstance(section, dict)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Each bioacoustic model needs a non-empty name.",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 75,
+      "function": "configured_models",
+      "condition": "not name"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Bioacoustic model names must be unique.",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 85,
+      "function": "configured_models",
+      "condition": "len(names) != len(set(names))"
+    },
+    {
+      "kind": "exception",
+      "value": "KeyError: Missing bioacoustics.{key} in configuration.",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 93,
+      "function": "output_path",
+      "condition": "not value"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: bioacoustics.model_checkpoint_dir must not be empty.",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 104,
+      "function": "model_checkpoint_dir",
+      "condition": "not raw"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Bacpipe 1.3.1 requires model_checkpoint_dir to end in 'bacpipe/model_checkpoints'; got: {checkpoint_dir}",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 118,
+      "function": "bacpipe_working_directory",
+      "condition": "checkpoint_dir.name.lower() != 'model_checkpoints' or checkpoint_dir.parent.name.lower() != 'bacpipe'"
+    },
+    {
+      "kind": "exception",
+      "value": "RuntimeError: Could not set bacpipe {attribute}={value}: {exc}",
+      "source": "scripts/bioacoustics_common.py",
+      "line": 180,
+      "function": "configure_bacpipe_runtime",
+      "condition": "except Exception"
+    }
+  ],
+  "step_7_0_master_table": [
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Step 1 clean metadata is missing or empty: {status_dir / 'dawnchorus_metadata_clean.csv'}",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 306,
+      "function": "build_base_table",
+      "condition": "clean.empty"
+    },
+    {
+      "kind": "code",
+      "value": "recording_date_changed_recheck_required",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 460,
+      "function": "add_preserved_nonformation_domains",
+      "condition": "'date_local' in previous.columns"
+    },
+    {
+      "kind": "code",
+      "value": "inventory_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 517,
+      "function": "add_media_status",
+      "condition": "compact.empty"
+    },
+    {
+      "kind": "status",
+      "value": "not_started",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 613,
+      "function": "add_bioacoustic_status",
+      "condition": "compact.empty"
+    },
+    {
+      "kind": "code",
+      "value": "bioacoustic_qc_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 615,
+      "function": "add_bioacoustic_status",
+      "condition": "compact.empty"
+    },
+    {
+      "kind": "code",
+      "value": "bioacoustic_result_missing",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 651,
+      "function": "add_bioacoustic_status",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Run the core pipeline first: an existing master is required.",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 681,
+      "function": "write_bioacoustic_master",
+      "condition": "previous.empty"
+    },
+    {
+      "kind": "code",
+      "value": "inventory_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 709,
+      "function": "add_sentinel_status",
+      "condition": "compact.empty"
+    },
+    {
+      "kind": "code",
+      "value": "missing_file",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 752,
+      "function": "add_sentinel_status",
+      "condition": "not row['sentinel_exists']"
+    },
+    {
+      "kind": "code",
+      "value": "inventory_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 791,
+      "function": "add_weather_point_status",
+      "condition": "compact.empty"
+    },
+    {
+      "kind": "code",
+      "value": "missing_file",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 831,
+      "function": "add_weather_point_status",
+      "condition": ""
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Expected HOSTRADA raster resolution_m=100 for the master table, got {resolution}.",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 854,
+      "function": "add_weather_raster_status",
+      "condition": "resolution != 100"
+    },
+    {
+      "kind": "code",
+      "value": "missing_raster",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 864,
+      "function": "add_weather_raster_status",
+      "condition": "not exists"
+    },
+    {
+      "kind": "code",
+      "value": "all_nodata",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 871,
+      "function": "add_weather_raster_status",
+      "condition": "'status' in qc.columns and qc['status'].astype(str).str.upper().eq('ONLY_NODATA').any()"
+    },
+    {
+      "kind": "code",
+      "value": "unexpected_shape",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 873,
+      "function": "add_weather_raster_status",
+      "condition": "'square' in qc.columns and (~bool_series(qc['square'])).any()"
+    },
+    {
+      "kind": "code",
+      "value": "raster_structure_warning",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 876,
+      "function": "add_weather_raster_status",
+      "condition": "column in qc.columns and pd.to_numeric(qc[column], errors='coerce').fillna(0).gt(0).any()"
+    },
+    {
+      "kind": "code",
+      "value": "raster_qc_read_error_{type(exc).__name__}",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 879,
+      "function": "add_weather_raster_status",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "code",
+      "value": "qc_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 881,
+      "function": "add_weather_raster_status",
+      "condition": "exists"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: The INSPIRE grid has no CRS.",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 953,
+      "function": "complete_100m_grid_ids",
+      "condition": "not info['crs']"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: FORMATION_10M_UNREADABLE: {path}",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1132,
+      "function": "read_10m_rows",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "status",
+      "value": "majority_formation_status_10m",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1164,
+      "function": "add_10m_formation",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "validated",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1288,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "has_issues",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1289,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "missing",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1295,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "timestamp_missing_or_invalid",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1364,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "not bool(valid_timestamp.loc[row.name])"
+    },
+    {
+      "kind": "code",
+      "value": "coordinates_missing_or_invalid",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1366,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "not bool(valid_coordinates.loc[row.name])"
+    },
+    {
+      "kind": "code",
+      "value": "{prefix}_missing",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1371,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "not exists"
+    },
+    {
+      "kind": "code",
+      "value": "{prefix}_issue",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1373,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "has_issues"
+    },
+    {
+      "kind": "code",
+      "value": "grid_100m_missing_majority_formation",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1375,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "not bool(row.get('grid_100m_has_majority_formation', False))"
+    },
+    {
+      "kind": "code",
+      "value": "grid_10m_missing_majority_formation",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1377,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "not bool(row.get('grid_10m_has_majority_formation', False))"
+    },
+    {
+      "kind": "status",
+      "value": "partial",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1381,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "not_started",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1397,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "manual_review_required",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1398,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "approved",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1401,
+      "function": "add_agreement_and_ready_flags",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1572,
+      "function": "main",
+      "condition": "execution_phase() == 'bioacoustics'"
+    },
+    {
+      "kind": "exception",
+      "value": "FileNotFoundError: Master update ID file not found: {args.ids_file}",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1577,
+      "function": "main",
+      "condition": "not args.ids_file.is_file()"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: FORMATION_10M_MISSING: {ten_path}; existing master retained.",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1591,
+      "function": "main",
+      "condition": "ten_path and (not Path(ten_path).is_file())"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1596,
+      "function": "main",
+      "condition": "except ValueError"
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1702,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "1",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1705,
+      "function": "main",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Proximity thresholds must be finite and positive",
+      "source": "scripts/spatiotemporal_duplicates.py",
+      "line": 27,
+      "function": "proximity_flags",
+      "condition": "not all((math.isfinite(v) and v > 0 for v in (radius, seconds, cluster_radius, cluster_seconds)))"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Cluster thresholds must include duplicate thresholds",
+      "source": "scripts/spatiotemporal_duplicates.py",
+      "line": 29,
+      "function": "proximity_flags",
+      "condition": "radius > cluster_radius or seconds > cluster_seconds"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Cluster radius cannot exceed half Earth's circumference",
+      "source": "scripts/spatiotemporal_duplicates.py",
+      "line": 31,
+      "function": "proximity_flags",
+      "condition": "cluster_radius > math.pi * EARTH_RADIUS_M"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: Proximity input must contain unique recording IDs",
+      "source": "scripts/spatiotemporal_duplicates.py",
+      "line": 34,
+      "function": "proximity_flags",
+      "condition": "len(set(ids)) != len(ids)"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: POINT_ASSIGNMENT_INCOMPLETE: {len(gaps)} recording IDs missing, duplicated or at different coordinates in {path}. Run Step 2.2 first; the existing master has not been replaced.",
+      "source": "scripts/input_consistency.py",
+      "line": 54,
+      "function": "require_point_coverage",
+      "condition": "gaps"
+    },
+    {
+      "kind": "exception",
+      "value": "ValueError: SOURCE_POPULATION_REDUCED: source has {len(current)} IDs; {len(removed)} of {len(previous)} existing IDs would disappear. Restore the complete original source. For an intentional reduction set metadata_extraction.allow_large_source_reduction=true explicitly.",
+      "source": "scripts/input_consistency.py",
+      "line": 73,
+      "function": "guard_source_population",
+      "condition": "previous and len(removed) > max(10, len(previous) * 0.2) and (not settings.get('allow_large_source_reduction', False))"
+    }
+  ],
+  "validation_and_comparison": [
+    {
+      "kind": "status",
+      "value": "ok",
+      "source": "tools/final_validation_report.py",
+      "line": 35,
+      "function": "check_path",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "missing",
+      "source": "tools/final_validation_report.py",
+      "line": 37,
+      "function": "check_path",
+      "condition": "required and (not exists)"
+    },
+    {
+      "kind": "status",
+      "value": "empty",
+      "source": "tools/final_validation_report.py",
+      "line": 39,
+      "function": "check_path",
+      "condition": "required and (not nonempty)"
+    },
+    {
+      "kind": "status",
+      "value": "optional_missing",
+      "source": "tools/final_validation_report.py",
+      "line": 41,
+      "function": "check_path",
+      "condition": "not required and (not exists)"
+    },
+    {
+      "kind": "code",
+      "value": "master_table_missing_or_empty",
+      "source": "tools/final_validation_report.py",
+      "line": 249,
+      "function": "master_readiness",
+      "condition": "not result['exists']"
+    },
+    {
+      "kind": "code",
+      "value": "master_table_read_error:{type(exc).__name__}",
+      "source": "tools/final_validation_report.py",
+      "line": 256,
+      "function": "master_readiness",
+      "condition": "except Exception"
+    },
+    {
+      "kind": "status",
+      "value": "missing_column",
+      "source": "tools/final_validation_report.py",
+      "line": 289,
+      "function": "master_readiness",
+      "condition": "column not in table.columns"
+    },
+    {
+      "kind": "code",
+      "value": "master_missing_column:{column}",
+      "source": "tools/final_validation_report.py",
+      "line": 295,
+      "function": "master_readiness",
+      "condition": "strict_readiness"
+    },
+    {
+      "kind": "status",
+      "value": "ok",
+      "source": "tools/final_validation_report.py",
+      "line": 301,
+      "function": "master_readiness",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "not_ready",
+      "source": "tools/final_validation_report.py",
+      "line": 301,
+      "function": "master_readiness",
+      "condition": ""
+    },
+    {
+      "kind": "code",
+      "value": "{column}_not_ready:{not_ready}",
+      "source": "tools/final_validation_report.py",
+      "line": 307,
+      "function": "master_readiness",
+      "condition": "not_ready and strict_readiness"
+    },
+    {
+      "kind": "status",
+      "value": "validated",
+      "source": "tools/final_validation_report.py",
+      "line": 435,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "has_issues",
+      "source": "tools/final_validation_report.py",
+      "line": 442,
+      "function": "main",
+      "condition": "critical or failed_manifest_steps or missing_planned_manifests or readiness['critical']"
+    },
+    {
+      "kind": "status",
+      "value": "ready",
+      "source": "tools/final_validation_report.py",
+      "line": 446,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "manual_review_required",
+      "source": "tools/final_validation_report.py",
+      "line": 446,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "approved",
+      "source": "tools/final_validation_report.py",
+      "line": 449,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "status",
+      "value": "not_started",
+      "source": "tools/final_validation_report.py",
+      "line": 449,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0 if technical_status == 'validated' else 2",
+      "source": "tools/final_validation_report.py",
+      "line": 495,
+      "function": "main",
+      "condition": ""
+    },
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/compare_formation_status_products.py",
+      "line": 509,
+      "function": "main",
+      "condition": ""
+    }
+  ],
+  "step_9_visual_reports": [
+    {
+      "kind": "exit",
+      "value": "0",
+      "source": "tools/generate_pipeline_visual_reports.py",
+      "line": 259,
+      "function": "main",
+      "condition": ""
+    }
+  ]
+}

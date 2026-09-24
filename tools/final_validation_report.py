@@ -21,6 +21,7 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from common import atomic_write_json, load_config, manifest_root, output_is_nonempty, processed_root_from_config
+from pipeline_phase import execution_phase
 
 
 def now_stamp() -> str:
@@ -52,6 +53,7 @@ def check_path(label: str, path: str | Path, required: bool = True) -> dict[str,
 
 def expected_outputs(config: dict[str, Any]) -> list[dict[str, Any]]:
     checks: list[dict[str, Any]] = []
+    phase = execution_phase()
 
     if config.get("status_dir"):
         checks.append(check_path("Step 1 metadata status/output directory", config["status_dir"]))
@@ -130,6 +132,10 @@ def expected_outputs(config: dict[str, Any]) -> list[dict[str, Any]]:
         ],
     }
     for section_name, fields in sections.items():
+        if phase == "core" and section_name == "bioacoustics":
+            continue
+        if phase == "bioacoustics" and section_name not in {"bioacoustics", "audio_inventory", "master_table"}:
+            continue
         section = config.get(section_name, {})
         required = True
         if section_name in {
@@ -149,6 +155,8 @@ def expected_outputs(config: dict[str, Any]) -> list[dict[str, Any]]:
             if key in section:
                 checks.append(check_path(label, section[key], required=required))
 
+    if phase == "bioacoustics":
+        return checks
     susi_outputs = config.get("lrt_grid_merge", {}).get("susi_compatible_outputs", {})
     if susi_outputs.get("enabled") and susi_outputs.get("output_dir"):
         out_dir = Path(susi_outputs["output_dir"])
@@ -270,6 +278,11 @@ def master_readiness(config: dict[str, Any]) -> dict[str, Any]:
         ),
     ]
     for setting, column in requirements:
+        phase = execution_phase()
+        if phase == "core" and setting == "require_bioacoustic_analysis":
+            continue
+        if phase == "bioacoustics" and setting != "require_bioacoustic_analysis":
+            continue
         if not settings.get(setting, False):
             continue
         if column not in table.columns:
@@ -305,6 +318,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Daten-Readiness: `{report['data_readiness_status']}`",
         f"- Freigabestatus: `{report['release_status']}`",
         f"- Workflow-Run: `{report['workflow_run_id']}`",
+        f"- Gepruefte Phase: `{report.get('phase', 'all')}`",
         f"- Kritische Probleme: `{report['critical_count']}`",
         f"- Warnungen: `{report['warning_count']}`",
         "",
@@ -449,6 +463,7 @@ def main() -> int:
 
     report = {
         "schema_version": "2026-07-31-final-validation-v3",
+        "phase": execution_phase(),
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "workflow_run_id": workflow_run_id,
         "config_path": str(args.config),

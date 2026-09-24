@@ -3,6 +3,7 @@ set -euo pipefail
 
 MODE="${1:-add_new_ids}"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${PIPELINE_DIR}/cluster_profile.sh"
 PYTHON="${PYTHON:-${PIPELINE_DIR}/.venv/bin/python}"
 BACPIPE_PYTHON="${BIOOTON_BACPIPE_PYTHON:-${PIPELINE_DIR}/.venv_bacpipe/bin/python}"
 CONFIG="${CONFIG:-${PIPELINE_DIR}/config.horeka.json}"
@@ -27,6 +28,8 @@ STEP41_CPUS="${BIOOTON_STEP41_CPUS:-1}"
 STEP41_TIME="${BIOOTON_STEP41_TIME:-}"
 STEP51_CPUS="${BIOOTON_STEP51_CPUS:-16}"
 STEP52_CPUS="${BIOOTON_STEP52_CPUS:-16}"
+STEP53_CPUS="${BIOOTON_STEP53_CPUS:-4}"
+STEP55_CPUS="${BIOOTON_STEP55_CPUS:-4}"
 WEATHER_SHARD_LIMIT="${BIOOTON_WEATHER_SHARD_COUNT:-}"
 WEATHER_MAX_CONCURRENT="${BIOOTON_WEATHER_MAX_CONCURRENT_TASKS:-}"
 HOSTRADA_RASTER_CPUS="${BIOOTON_STEP54_CPUS:-8}"
@@ -45,8 +48,9 @@ Usage: bash submit_bio_o_ton_horeka.sh <mode>
 
 Modes:
   functionality_test  Fast imports, config, schema, syntax and regression tests
-  add_new_ids         Incremental run for new/changed/problematic IDs
-  from_scratch        Full logical rebuild without deleting original downloads
+  add_new_ids         Incremental core run (metadata, spatial data, downloads)
+  from_scratch        Full core rebuild without deleting original downloads
+  bioacoustics        Separate Step 6 run on prepared audio, reusing checkpoints
   formation_compare   Compare generated formation products with reference data
 
 Useful environment variables:
@@ -77,7 +81,7 @@ EOF
 }
 
 case "${MODE}" in
-  functionality_test|add_new_ids|from_scratch|formation_compare|susi_compare) ;;
+  functionality_test|add_new_ids|from_scratch|bioacoustics|formation_compare|susi_compare) ;;
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 2 ;;
 esac
@@ -116,10 +120,10 @@ for worker_setting in BIOACOUSTICS_WORKERS HOSTRADA_WORKERS HOSTRADA_RASTER_MAX_
 done
 mkdir -p "${LOGDIR}"
 BIOACOUSTICS_ENABLED="$("${PYTHON}" -c "import json; print('1' if json.load(open('${CONFIG}', encoding='utf-8')).get('bioacoustics', {}).get('enabled', True) else '0')")"
-if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ && ! -x "${BACPIPE_PYTHON}" ]]; then
+if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" == "bioacoustics" && ! -x "${BACPIPE_PYTHON}" ]]; then
   BACPIPE_PYTHON="$(bash "${PIPELINE_DIR}/bootstrap_bacpipe_env.sh" | tail -n 1)"
 fi
-if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" =~ ^(add_new_ids|from_scratch)$ ]]; then
+if [[ "${SLURM_DRY_RUN}" != "1" && "${BIOACOUSTICS_ENABLED}" == "1" && "${MODE}" == "bioacoustics" ]]; then
   [[ -x "${BACPIPE_PYTHON}" ]] || { echo "Missing Bacpipe Python executable." >&2; exit 1; }
 fi
 
@@ -136,6 +140,8 @@ if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
 fi
 
 account_args=()
+constraint_args=()
+[[ -n "${BIOOTON_CONSTRAINT-LSDF}" ]] && constraint_args=(--constraint="${BIOOTON_CONSTRAINT-LSDF}")
 [[ -n "${ACCOUNT}" ]] && account_args=(--account="${ACCOUNT}")
 bio_resource_args=()
 [[ -n "${BIOACOUSTICS_GRES}" ]] && bio_resource_args=(--gres="${BIOACOUSTICS_GRES}")
@@ -146,6 +152,16 @@ apply_override() {
   else
     echo "$1"
   fi
+}
+
+apply_job_time() {
+  local key="BIOOTON_TIME_${1^^}"
+  local value="${!key:-$2}"
+  value="$(apply_override "${value}")"
+  [[ "${value}" =~ ^([0-9]+-)?[0-9]+:[0-5][0-9]:[0-5][0-9]$ ]] || {
+    echo "Invalid Slurm time for $1: ${value}" >&2; return 2;
+  }
+  echo "${value}"
 }
 
 submit_python() {
@@ -164,12 +180,12 @@ submit_python() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time "${job_name}" "${walltime}")"
 
   sbatch --parsable \
     --job-name="${job_name}" \
     --partition="${PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${cpus}" \
@@ -197,12 +213,12 @@ submit_bash() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time "${job_name}" "${walltime}")"
 
   sbatch --parsable \
     --job-name="${job_name}" \
     --partition="${PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${cpus}" \
@@ -231,12 +247,12 @@ submit_external_python() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time "${job_name}" "${walltime}")"
 
   sbatch --parsable \
     --job-name="${job_name}" \
     --partition="${PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${cpus}" \
@@ -269,12 +285,12 @@ submit_bacpipe_array() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time "${job_name}" "${walltime}")"
 
   sbatch --parsable \
     --job-name="${job_name}" \
     --partition="${BIOACOUSTICS_PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${BIOACOUSTICS_CPUS}" \
@@ -306,12 +322,12 @@ submit_bacpipe_job() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time "${job_name}" "${walltime}")"
 
   sbatch --parsable \
     --job-name="${job_name}" \
     --partition="${BIOACOUSTICS_PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${BIOACOUSTICS_CPUS}" \
@@ -342,12 +358,12 @@ submit_weather_array() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time bio_step52 "${walltime}")"
 
   sbatch --parsable \
     --job-name="bio_step52" \
     --partition="${PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${STEP52_CPUS}" \
@@ -379,12 +395,12 @@ submit_hostrada_raster_array() {
   fi
   local dep_args=()
   [[ -n "${dependency}" ]] && dep_args=(--dependency="${dependency}")
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time bio_step54 "${walltime}")"
 
   sbatch --parsable \
     --job-name="bio_step54" \
     --partition="${PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task="${HOSTRADA_RASTER_CPUS}" \
@@ -430,7 +446,7 @@ dry_run_submit() {
   local memory="$6"
   local dependency="$7"
   shift 7
-  walltime="$(apply_override "${walltime}")"
+  walltime="$(apply_job_time "${job_name%%\[*}" "${walltime}")"
 
   printf 'HIER WUERDE SLURM STARTEN: job=%s step=%s partition=%s cpus=%s mem=%s time=%s dependency=%s\n' \
     "${job_name}" "${step_name}" "${partition}" "${cpus}" "${memory}" "${walltime}" "${dependency:-none}" >&2
@@ -636,7 +652,7 @@ submit_master_update() {
     jmaster_chain="hybrid_pending"
     return
   fi
-  jmaster_chain="$(submit_python "bio_master_${stage}" "step_7_0_master_${stage}" "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${upstream_job}" "${jmaster_chain}")" scripts/Step_7_0_update_master_table.py "${master_args[@]}")"
+  jmaster_chain="$(submit_python "bio_master_${stage}" "step_7_0_master_${stage}" "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${upstream_job}" "${jmaster_chain}")" scripts/Step_7_0_update_master_table.py --allow-deferred-spatial "${master_args[@]}")"
 }
 
 j1="skipped_plan"
@@ -647,28 +663,28 @@ fi
 
 j20="skipped_plan"
 if [[ "$(plan_run step_2_0_lrt_cleaning)" == "1" ]]; then
-  j20="$(submit_python bio_step20 step_2_0_lrt_cleaning "${STEP2_CPUS}" "${t_step20}" "" scripts/Step_2_0_clean_lrts.py "${force_args[@]}")"
+  j20="$(submit_python bio_step20 step_2_0_lrt_cleaning "${STEP2_CPUS}" "${t_step20}" "" tools/run_spatial_stage.py --stage 2_0 "${force_args[@]}")"
 fi
 
 j21="skipped_plan"
 if [[ "$(plan_run step_2_1_100m_formation)" == "1" ]]; then
-  j21="$(submit_python bio_step21 step_2_1_100m_formation "${STEP2_CPUS}" "${t_step21}" "$(afterany_jobs "${j20}")" scripts/Step_2_1_merge_lrts_and_grid.py "${force_args[@]}")"
+  j21="$(submit_python bio_step21 step_2_1_100m_formation "${STEP2_CPUS}" "${t_step21}" "$(afterany_jobs "${j20}")" tools/run_spatial_stage.py --stage 2_1 "${force_args[@]}")"
 fi
 
 j22="skipped_plan"
 if [[ "$(plan_run step_2_2_point_assignment)" == "1" ]]; then
-  j22="$(submit_python bio_step22 step_2_2_point_assignment 1 "${t_step22}" "$(afterany_jobs "${j1}" "${j21}")" scripts/Step_2_2_assign_points_to_lrt_grid.py "${force_args[@]}" --ids-file "${point_ids}")"
+  j22="$(submit_python bio_step22 step_2_2_point_assignment 1 "${t_step22}" "$(afterany_jobs "${j1}" "${j21}")" tools/run_spatial_stage.py --stage 2_2 "${force_args[@]}" --ids-file "${point_ids}")"
   submit_master_update point_assignment "${j22}" "${point_ids}"
 fi
 
 j23="skipped_plan"
 if [[ "$(plan_run step_2_3_grid_aggregation)" == "1" ]]; then
-  j23="$(submit_python bio_step23 step_2_3_grid_aggregation 3 "${t_step23}" "$(afterany_jobs "${j21}")" scripts/Step_2_3_generate_remaining_grid_products.py "${force_args[@]}")"
+  j23="$(submit_python bio_step23 step_2_3_grid_aggregation 3 "${t_step23}" "$(afterany_jobs "${j21}")" tools/run_spatial_stage.py --stage 2_3 "${force_args[@]}")"
 fi
 
 j24="skipped_plan"
 if [[ "$(plan_run step_2_4_10m_formation)" == "1" ]]; then
-  j24="$(submit_python bio_step24 step_2_4_10m_formation "${STEP24_CPUS}" "${t_step24}" "$(afterany_jobs "${j21}")" scripts/Step_2_4_generate_10m_formation_status_products.py "${force_args[@]}")"
+  j24="$(submit_python bio_step24 step_2_4_10m_formation "${STEP24_CPUS}" "${t_step24}" "$(afterany_jobs "${j21}")" tools/run_spatial_stage.py --stage 2_4 "${force_args[@]}")"
   submit_master_update formation_products "${j24}"
 fi
 
@@ -731,7 +747,7 @@ fi
 
 j53="skipped_plan"
 if [[ "$(plan_run step_5_3_hostrada_monthly)" == "1" ]]; then
-  j53="$(submit_python bio_step53 step_5_3_hostrada_monthly "${STEP52_CPUS}" "${t_step53}" "" scripts/Step_5_3_download_hostrada_monthly.py)"
+  j53="$(submit_python bio_step53 step_5_3_hostrada_monthly "${STEP53_CPUS}" "${t_step53}" "" scripts/Step_5_3_download_hostrada_monthly.py)"
 fi
 j54="skipped_plan"
 j54verify="skipped_plan"
@@ -746,7 +762,7 @@ if [[ "$(plan_run step_5_4_hostrada_rasters)" == "1" ]]; then
 fi
 j55="skipped_plan"
 if [[ "$(plan_run step_5_5_hostrada_raster_qc)" == "1" ]]; then
-  j55="$(submit_python bio_step55 step_5_5_hostrada_raster_qc "${STEP51_CPUS}" "${t_step55}" "$(afterany_jobs "${j54verify}")" scripts/Step_5_5_check_hostrada_raster_products.py)"
+  j55="$(submit_python bio_step55 step_5_5_hostrada_raster_qc "${STEP55_CPUS}" "${t_step55}" "$(afterany_jobs "${j54verify}")" scripts/Step_5_5_check_hostrada_raster_products.py)"
   submit_master_update hostrada_raster "${j55}"
 fi
 
@@ -760,7 +776,7 @@ fi
 
 j61="skipped_plan"
 if [[ "$(plan_run step_6_1_bioacoustic_worklist)" == "1" ]]; then
-  j61="$(submit_python bio_step61 step_6_1_bioacoustic_worklist 1 "${t_step61}" "$(afterok_jobs "${j30apost}" "${j1}" "${j60}")" scripts/Step_6_1_prepare_bioacoustic_worklist.py "${force_args[@]}" --ids-file "${bioacoustic_ids}")"
+  j61="$(submit_python bio_step61 step_6_1_bioacoustic_worklist 1 "${t_step61}" "$(afterok_jobs "${j30apost}" "${j1}" "${j60}")" scripts/Step_6_1_prepare_bioacoustic_worklist.py --reconcile-all)"
 fi
 
 bio_model_count="$("${PYTHON}" -c "import json; c=json.load(open('${CONFIG}', encoding='utf-8')); print(len(c['bioacoustics']['models']))")"
@@ -773,7 +789,7 @@ j62verify="skipped_plan"
 if [[ "$(plan_run step_6_2_bioacoustic_embeddings)" == "1" ]]; then
   # Step 6_1 already requires the model preflight, so j60 is transitive here.
   j62="$(submit_bacpipe_array bio_step62 step_6_2_bioacoustic_embeddings_array_task "${t_step62}" "$(afterok_jobs "${j61}")" scripts/Step_6_2_generate_bioacoustic_embeddings.py "${bio_task_count}" "${bio_max_concurrent}" "${force_args[@]}")"
-  j62verify="$(submit_python bio_step62v step_6_2_bioacoustic_embeddings 2 "00:15:00" "$(afterany_jobs "${j62}")" scripts/Step_6_2_generate_bioacoustic_embeddings.py --verify-shards)"
+  j62verify="$(submit_python bio_step62v step_6_2_bioacoustic_embeddings 1 "00:15:00" "$(afterany_jobs "${j62}")" scripts/Step_6_2_generate_bioacoustic_embeddings.py --verify-shards)"
 fi
 
 j63="skipped_plan"
@@ -798,12 +814,9 @@ if [[ "$(plan_run step_6_6_bioacoustic_qc)" == "1" ]]; then
 fi
 
 if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
-  jmaster="$(submit_python bio_master_final step_7_0_master_table "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${hybrid_master_deps[@]}")" scripts/Step_7_0_update_master_table.py)"
+  jmaster="$(submit_python bio_master_final step_7_0_master_table "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${hybrid_master_deps[@]}")" tools/finalize_master.py)"
 else
-  if [[ -z "${jmaster_chain}" ]]; then
-    submit_master_update initial ""
-  fi
-  jmaster="${jmaster_chain}"
+  jmaster="$(submit_python bio_master_final step_7_0_master_table "${MASTER_CPUS}" "${t_master}" "$(afterany_jobs "${jmaster_chain}" "${j22}" "${j24}")" tools/finalize_master.py)"
 fi
 
 if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
@@ -832,11 +845,15 @@ fi
 jvalid="$(submit_python bio_validate final_validation 1 "00:15:00" "$(afterany_jobs "${jmaster}")" tools/final_validation_report.py)"
 jvisual="$(submit_python bio_visual step_9_visual_reports 1 "00:10:00" "$(afterany_jobs "${jvalid}")" tools/generate_pipeline_visual_reports.py)"
 
+if [[ "${SLURM_DRY_RUN}" == "1" ]]; then
+  junlock="$(dry_run_submit bio_unlock pipeline_unlock "${PARTITION}" 1 00:05:00 default "$(afterany_jobs "${jvisual}")" pipeline_lock.py)"
+  "${PYTHON}" "${PIPELINE_DIR}/tools/pipeline_lock.py" --config "${CONFIG}" release --run-id "${RUN_ID}"
+else
 junlock="$(
   sbatch --parsable \
     --job-name="bio_unlock" \
     --partition="${PARTITION}" \
-    --constraint=LSDF \
+    "${constraint_args[@]}" \
     --nodes=1 \
     --ntasks=1 \
     --cpus-per-task=1 \
@@ -847,6 +864,8 @@ junlock="$(
     --dependency="$(afterany_jobs "${jvisual}")" \
     --wrap="set -euo pipefail; '${PYTHON}' '${PIPELINE_DIR}/tools/pipeline_lock.py' --config '${CONFIG}' release --run-id '${RUN_ID}'"
 )"
+
+fi
 
 trap - ERR INT TERM
 

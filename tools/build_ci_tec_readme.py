@@ -6,7 +6,7 @@ import re
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,7 +21,7 @@ def main():
     navy = colors.HexColor("#19384A")
     styles = {
         "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=21, leading=25, textColor=navy, spaceAfter=7),
-        "h": ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=navy, spaceBefore=9, spaceAfter=5),
+        "h": ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=navy, spaceBefore=9, spaceAfter=5, keepWithNext=True),
         "body": ParagraphStyle("body", fontName="Helvetica", fontSize=9, leading=12, spaceAfter=6),
         "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=8.5, leading=11),
         "head": ParagraphStyle("head", fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=colors.white),
@@ -43,7 +43,7 @@ def main():
             for i, row in enumerate(group[1:], 1):
                 data[i][0] = Paragraph(inline(row[0]).replace(", ", ",<br/>"), styles["cell"])
                 data[i][1] = Paragraph(inline(row[1]), styles["cell"])
-            table = Table(data, colWidths=[211, 300], hAlign="LEFT")
+            table = Table(data, colWidths=[211, 300], hAlign="LEFT", repeatRows=1)
             table.setStyle(TableStyle([
                 ("BACKGROUND", (0,0), (-1,0), navy), ("VALIGN", (0,0), (-1,-1), "TOP"),
                 ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.HexColor("#EFF5F7"), colors.white]),
@@ -53,6 +53,8 @@ def main():
             story += [table, Spacer(1, 7)]
             continue
         if line:
+            if line.startswith('## Abstimmung mit ci-tec'):
+                story.append(PageBreak())
             kind = "title" if line.startswith("# ") else "h" if line.startswith("## ") else "body"
             text = re.sub(r"^#{1,2} ", "", line)
             story.append(Paragraph(inline(text), styles[kind]))

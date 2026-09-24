@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bio-o-ton.local/schemas/master-table-row-v5.json",
+  "$id": "https://bio-o-ton.local/schemas/master-table-row-v6.json",
   "schema_name": "bio_o_ton_master_table_row",
-  "schema_version": "2026-09-16-mastertable-v5",
+  "schema_version": "2026-09-17-mastertable-v6",
   "type": "object",
   "required": [
     "mastertable_schema_version",
@@ -24,7 +24,7 @@
     "release_status"
   ],
   "properties": {
-    "mastertable_schema_version": {"const": "2026-09-16-mastertable-v5"},
+    "mastertable_schema_version": {"const": "2026-09-17-mastertable-v6"},
     "workflow_run_id": {"type": "string", "minLength": 1},
     "dawn_chorus_id": {"type": "string", "pattern": "^[0-9]+$"},
     "source_fingerprint": {"type": ["string", "null"]},
@@ -110,7 +110,12 @@
     "release_status": {"$ref": "#/$defs/status"},
     "manual_review_comment": {"type": ["string", "null"]},
     "manual_reviewed_by": {"type": ["string", "null"]},
-    "manual_reviewed_utc": {"type": ["string", "null"]}
+    "manual_reviewed_utc": {"type": ["string", "null"]},
+    "duplicate_candidate": {"type": ["boolean", "null"]},
+    "duplicate_neighbor_count": {"type": ["integer", "null"], "minimum": 0},
+    "proximity_check_status": {"type": "string"},
+    "spatiotemporal_cluster_id": {"type": "string"},
+    "spatiotemporal_cluster_size": {"type": ["integer", "null"], "minimum": 1}
   },
   "$defs": {
     "centiPercent": {"type": ["integer", "null"], "minimum": 0, "maximum": 10000},

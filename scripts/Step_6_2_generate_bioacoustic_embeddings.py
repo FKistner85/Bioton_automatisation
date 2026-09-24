@@ -469,8 +469,10 @@ def main() -> int:
         for key, value in state.get("completed_work_keys", {}).items()
     }
     completed_ids = set(completed_work_keys)
+    active_ids = set(task_rows["dawn_chorus_id"].astype(str))
     failed_by_id = {
         str(key): str(value) for key, value in state.get("failed_by_id", {}).items()
+        if str(key) in active_ids
     }
     batch_index = int(state.get("batch_count", 0))
     completed_mask = task_rows.apply(
