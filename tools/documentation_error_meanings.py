@@ -24,7 +24,7 @@ duplicate_datetime|Mehr Zeitstempelduplikate als im lokalen DST-Fenster zulaessi
 duplicate_score_rows|Mehrere Score-Zeilen fuer dieselbe ID.|Multiple score rows for the same ID.
 duplicate_tif_files_for_id|Mehrere TIFF-Dateien sind derselben Aufnahme zugeordnet.|Multiple TIFF files are assigned to the same recording.
 duplicate_valid_audio_for_id|Weitere valide Audiodatei fuer dieselbe ID; nur die ausgewaehlte Datei kommt in die Worklist.|Extra valid audio for an ID; only the selected file enters the worklist.
-duration_not_|Audiodauer liegt ausserhalb Zielwert plus/minus Toleranz; Werte stehen im Code.|Audio duration is outside target plus/minus tolerance; values are included.
+duration_not_|Audiodauer weicht vom Ziel ab; nur Hinweis, setzt allein keine Audio-Issue-Flag. Analysefilter separat waehlen.|Audio duration differs from target; informational only and alone does not set an audio issue flag. Apply analysis filters separately.
 duration_unavailable|Audiodauer konnte nicht bestimmt werden.|Audio duration could not be determined.
 empty_file|Vorhandene Datei hat null Bytes.|Existing file has zero bytes.
 failed_ids=|Shard-State enthaelt fehlgeschlagene IDs.|Shard state contains failed IDs.
@@ -59,7 +59,8 @@ missing_raster|Keine erwarteten HOSTRADA-Raster vorhanden.|Expected HOSTRADA ras
 missing_required_column|Mindestens eine konfigurierte Pflichtspalte fehlt.|At least one configured required column is missing.
 missing_rows=|Erwartete Work-Keys sind im Shard nicht abgeschlossen.|Expected work keys are not completed in the shard.
 missing_state|Erwartete Shard-State-Datei fehlt oder ist nicht nutzbar.|Expected shard state file is missing or unusable.
-missing_value|Werte fehlen; massgeblich ist die jeweilige Pruefung bzw. NaN-Toleranz.|Values are missing; the specific check or NaN tolerance determines failure.
+missing_value|Wetterwerte fehlen; Hinweis bleibt im Code, setzt allein keine Issue-Flag. Benoetigte Variablen/Stunden pruefen.|Weather values are missing; the code is informational and alone does not set an issue flag. Check required variables/hours.
+time_source_not_localtimes|Zeitquelle ist datetime, unbekannt oder fehlt; time_has_issues=True, kombinierte Clean-Flags=False.|Time source is datetime, unknown or absent; time_has_issues=True and combined clean readiness flags=False.
 model_checkpoint_dir_not_accessible|Checkpoint-Verzeichnis hat nicht die benoetigten Zugriffsrechte.|Checkpoint directory lacks required access permissions.
 model_inference_failed|Mindestens ein Modell meldet einen Inferenzfehler fuer die ID.|At least one model reports an inference failure for the ID.
 multiple_audio_streams|Datei enthaelt mehrere Audiostreams.|File contains multiple audio streams.
@@ -74,6 +75,7 @@ pixel_load_failed|Bildheader lesbar, aber Pixel konnten nicht geladen werden.|Im
 pyav_decode_failed|PyAV konnte Audio nicht vollstaendig decodieren.|PyAV could not decode the audio successfully.
 qc_not_run|Raster vorhanden, aber QC-Ergebnis fehlt.|Raster exists but QC result is missing.
 quality_score_missing|Fuer die Aufnahme liegt kein Score vor.|No score is available for the recording.
+too_cloudy_sentinel_not_available|Sentinel-Score ist genau 0: zu bewoelkt, Sentinel-Daten nicht nutzbar; eine Datei kann trotzdem vorhanden sein.|Sentinel score is exactly 0: too cloudy, Sentinel data unavailable for use; a file may still exist.
 raster_qc_read_error_|Raster-QC-Datei konnte nicht gelesen werden.|Raster QC file could not be read.
 raster_read_failed|Raster konnte nicht geoeffnet oder gelesen werden.|Raster could not be opened or read.
 raster_structure_warning|QC meldet konstante oder reine NoData-Zeilen/-Spalten.|QC reports constant or all-NoData rows/columns.

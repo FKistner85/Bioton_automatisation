@@ -11,7 +11,19 @@ powershell -ExecutionPolicy Bypass -File .\run_pipeline_local.ps1 -Mode bioacous
 
 Dieser Lauf nutzt die vorbereiteten Metadaten und das Audioinventar, gleicht alle
 aktuellen IDs ab und verwendet vorhandene Inferenz-Checkpoints. Das Master-Update
-aendert nur Bioakustikfelder. [Details und Horeka 2](../Readmes/pipeline_phases.md).
+aendert Bioakustikfelder und migriert die Master-Zeitflag sowie kombinierte
+Readiness auf Schema v7. [Details und Horeka 2](../Readmes/pipeline_phases.md).
+
+## Master-Schema gemaess PDF vom 09.10.2026
+
+Lokale und Horeka-Laeufe verwenden denselben Step-7.0-Code. `time_has_issues`
+ist nur bei `timestamp_source=localtimes` False; Fallback, unbekannte oder fehlende
+Zeitquelle ergeben True. Inkrementelle Laeufe migrieren auch unveraenderte Zeilen.
+`duration_seconds` stammt aus dem Audio-QC; reine Wetter-`missing_value`-Codes
+bleiben als Hinweis erhalten und setzen allein keine Issue-Flag.
+Ein regulaerer Kernlauf oder der fokussierte Metadaten-Refresh erstellt die neue
+Mastertabelle. Bestehende LSDF-Produkte werden durch eine Codeaenderung allein
+nicht aktualisiert. [Pruefbericht](../Readmes/master_schema_pdf_audit_20261009.md).
 
 Dieser Ordner startet dieselben fachlichen Python-Skripte wie die Cluster-
 Pipeline. Slurm wird lokal nicht emuliert. `local_orchestrator.py` bildet den

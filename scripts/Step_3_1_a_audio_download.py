@@ -19,6 +19,8 @@ It intentionally does not reset successful downloads or retry counters.
 
 from __future__ import annotations
 
+from audio_issue_policy import duration_notes_only, has_blocking_audio_issues
+
 import argparse
 import csv
 import json
@@ -387,7 +389,7 @@ def validate(
             inspection["sample_rate"]
         ),
         "channels": str(inspection["channels"]),
-        "has_issues": bool(issues),
+        "has_issues": has_blocking_audio_issues(issues),
         "issues": " | ".join(issues),
     }
 
@@ -399,6 +401,8 @@ def rebuild_compact(
     by_id: dict[str, bool] = {}
 
     for row in detail_rows.values():
+        if duration_notes_only(row.get("issues", "")):
+            row["has_issues"] = False
         dawn_id = str(
             row.get("dawn_chorus_id", "")
         ).strip()
@@ -644,10 +648,11 @@ def main() -> int:
                 str(
                     row.get("dawn_chorus_id", "")
                 ).strip()
-                and str(
+                and (str(
                     row.get("has_issues", "")
                 ).lower()
                 == "false"
+                or duration_notes_only(row.get("issues", "")))
             )
         }
 

@@ -97,7 +97,11 @@ class PhaseTests(unittest.TestCase):
         with patch.object(master, "append_status_events", return_value=0):
             master.write_bioacoustic_master(self.config, self.root / "master.csv", self.root / "master.parquet", self.root / "summary.json", "now")
         result = pd.read_csv(self.root / "master.csv", dtype={"dawn_chorus_id": str})
-        pd.testing.assert_frame_equal(original, result[original.columns])
+        pd.testing.assert_frame_equal(original.drop(columns="mastertable_schema_version"),
+                                      result[original.columns].drop(columns="mastertable_schema_version"))
+        self.assertEqual(result.mastertable_schema_version.tolist(), [master.SCHEMA_VERSION] * 2)
+        self.assertEqual(result.time_has_issues.tolist(), [True, True])
+        self.assertIn("duration_seconds", result)
         self.assertEqual(result.ready_for_bioacoustic_analysis.tolist(), [True, False])
 
     def test_completed_inference_is_reused_and_deleted_failures_do_not_block(self):

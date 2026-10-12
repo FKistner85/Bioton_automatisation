@@ -24,6 +24,8 @@ Outputs:
 
 from __future__ import annotations
 
+from audio_issue_policy import duration_notes_only, has_blocking_audio_issues
+
 import argparse
 import csv
 import json
@@ -446,7 +448,7 @@ def validate_original_file(
         "decoded_samples": int(
             inspection["decoded_samples"]
         ),
-        "has_issues": bool(issues),
+        "has_issues": has_blocking_audio_issues(issues),
         "transport_error": bool(inspection.get("transport_error", False)),
         "issues": " | ".join(issues),
     }
@@ -802,6 +804,10 @@ def main() -> int:
             retained[key]
             for key in sorted(retained)
         ]
+
+        for row in rows:
+            if duration_notes_only(row.get("issues", "")):
+                row["has_issues"] = False
 
         write_csv(
             detailed_csv,

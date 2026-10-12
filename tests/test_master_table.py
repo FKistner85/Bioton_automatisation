@@ -160,7 +160,7 @@ def test_master_table_minimal_build() -> None:
 
         weather_status = pd.read_csv(weather_inventory)
         weather_status["weather_has_issues"] = True
-        weather_status["issue_codes"] = "missing_value"
+        weather_status["issue_codes"] = "unexpected_row_count"
         weather_status.to_csv(weather_inventory, index=False)
         old_argv = sys.argv
         try:

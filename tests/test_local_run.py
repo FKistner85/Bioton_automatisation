@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import sys
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -392,6 +393,17 @@ def test_live_local_lock_is_preserved(tmp_path: Path) -> None:
     assert lock.exists()
 
 
+def test_process_probe_distinguishes_live_and_exited_child(_tmp_path: Path) -> None:
+    import subprocess
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        assert ORCHESTRATOR_MODULE.process_is_running(child.pid)
+    finally:
+        child.terminate()
+        child.wait(timeout=10)
+    assert not ORCHESTRATOR_MODULE.process_is_running(child.pid)
+
+
 def test_local_dependencies_require_success_by_default(_tmp_path: Path) -> None:
     pipeline = ORCHESTRATOR_MODULE.Pipeline.__new__(ORCHESTRATOR_MODULE.Pipeline)
     pipeline.steps = {}
@@ -416,6 +428,7 @@ if __name__ == "__main__":
         test_transport_error_log_detection,
         test_stale_foreign_local_lock_is_released,
         test_live_local_lock_is_preserved,
+        test_process_probe_distinguishes_live_and_exited_child,
         test_local_dependencies_require_success_by_default,
     ):
         with tempfile.TemporaryDirectory() as directory:

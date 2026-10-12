@@ -106,6 +106,7 @@ def test_extraction_to_master_keeps_clock_and_utc():
         result = master.build_base_table({"status_dir": str(root)}, root / "master.csv", "now")
         assert result["datetime_local"].tolist() == ["2025-01-15 07:00:00", "2025-07-15 08:00:00", "2025-10-26 02:30:00", "2025-10-26 02:30:00"]
         assert result["datetime_utc"].tolist() == source["datetime"].tolist()
+        assert result["time_has_issues"].tolist() == [True, True, False, False]
     planned = planner.build_fingerprints(source.assign(dawn_chorus_id=source.id.astype(str)))
     pd.testing.assert_frame_equal(step1.build_fingerprints(source), planned)
     import hashlib

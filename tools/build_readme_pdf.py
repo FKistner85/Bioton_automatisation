@@ -34,6 +34,7 @@ def source_files():
     leading = ["README.md", "README_CI_TEC.md", "MASTER_TABLE_README.md",
                "Readmes/README_INDEX.md", "Readmes/pipeline_phases.md",
                "Readmes/slurm_worker_limits.md", "Readmes/master_reconciliation.md", "Readmes/DOCUMENTATION_REVIEW.md",
+               "Readmes/master_schema_pdf_audit_20261009.md",
                "PIPELINE_SCHRITTE_DE.md", "scripts_local_run/README.md",
                "HOREKA_RECOVERY_RUNBOOK_DE.md", "HOREKA_GEE_SECRET_SETUP_DE.md",
                "GITHUB_WORKFLOW.md", "NOMENCLATURE_MIGRATION.md"]
@@ -173,7 +174,7 @@ def page_header(canvas, doc):
     canvas.setFont("Doc", 7)
     canvas.setFillColor(colors.HexColor("#556570"))
     canvas.drawString(44, A4[1] - 27, "BIO-O-TON  /  README-HANDBUCH")
-    canvas.drawRightString(A4[0] - 44, A4[1] - 27, "Code- und Dokumentationsstand 24.09.2026")
+    canvas.drawRightString(A4[0] - 44, A4[1] - 27, "Dokumentation: 12.10.2026")
     canvas.line(44, A4[1] - 33, A4[0] - 44, A4[1] - 33)
     canvas.drawString(44, 25, "Quellen: Markdown-Dateien des Pipeline-Pakets")
     canvas.drawRightString(A4[0] - 44, 25, str(doc.page))
@@ -187,9 +188,9 @@ def main():
     story = [Spacer(1, 65), Paragraph("Bio-O-Ton", sty["chapter"]),
              Paragraph("Pipeline-Handbuch und Fehlerreferenz", sty["chapter"]),
              Spacer(1, 15), Paragraph("READMEs und Betriebsanleitungen / Deutsch und Englisch", sty["h2"]),
-             Paragraph("Stand: 24. September 2026", sty["body"]),
-             Paragraph(f"{len(paths)} Quelldokumente. Separater Kern- und Bioakustiklauf, Master-Schema v6, Schritt-Diagnosen und Vorbereitung fuer Horeka 2.", sty["body"]),
-             Paragraph("Dieses Handbuch beschreibt den Code- und Dokumentationsstand vom 24.09.2026 einschliesslich der Master-Zusammenfuehrung und der ci-tec-Abstimmungsliste. Ausfuehrungs- und Veroeffentlichungsnachweise stehen im jeweiligen Laufbericht; eine Horeka-2-Migration wird hier nicht als ausgefuehrt dargestellt. Historische Audit-Inhalte bleiben als solche gekennzeichnet.", sty["body"]),
+             Paragraph("Dokumentationsstand: 12. Oktober 2026", sty["body"]),
+             Paragraph(f"{len(paths)} Quelldokumente. Separater Kern- und Bioakustiklauf, Master-Schema v7, Schritt-Diagnosen und Vorbereitung fuer Horeka 2.", sty["body"]),
+             Paragraph("Dieses Handbuch enthaelt den Schemaabgleich mit der ci-tec-PDF vom 09.10.2026: Zeitquellen-Flag, gepruefte Audiodauer und informative Dauer-/Wetterhinweise. Clean-Filter werden erst in der Analyse angewendet; alle Masterzeilen bleiben erhalten. Ausfuehrungs- und Veroeffentlichungsnachweise stehen im jeweiligen Laufbericht; eine Horeka-2-Migration wird hier nicht als ausgefuehrt dargestellt. Historische Audit-Inhalte bleiben als solche gekennzeichnet.", sty["body"]),
              PageBreak(), Paragraph("Inhaltsverzeichnis", sty["chapter"])]
     toc = TableOfContents()
     toc.levelStyles = [ParagraphStyle("toc", fontName="Doc", fontSize=8.7, leading=12, spaceBefore=4, leftIndent=0, firstLineIndent=0)]

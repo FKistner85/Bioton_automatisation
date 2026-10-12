@@ -144,6 +144,11 @@ def check_step_readmes(root: Path) -> list[str]:
     for directory in readme_root.iterdir():
         if not directory.is_dir():
             continue
+        # Historical audit folders can have one shared README instead of
+        # translated operational manuals (e.g. time_review).
+        shared = directory / "README.md"
+        if shared.is_file() and shared.stat().st_size > 0:
+            continue
         for name in ["README_DE.md", "README_EN.md"]:
             path = directory / name
             if not path.is_file() or path.stat().st_size == 0:

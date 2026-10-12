@@ -19,7 +19,17 @@ The main result is one row per unique `dawn_chorus_id` in:
 └── Bio_O_Ton_Master_summary.json
 ```
 
-The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-09-17-mastertable-v6`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
+The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-10-09-mastertable-v7`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
+
+The 9 October PDF contract is implemented by the shared Horeka/local writer:
+`time_has_issues` is false only for source `localtimes`; `duration_seconds` is
+retained from audio QC. Weather `missing_value` alone remains an informational
+code. [Schema audit and validation](Readmes/master_schema_pdf_audit_20261009.md).
+
+The master keeps every recording in the source population, including fallback
+times, short audio and flagged products. Clean-data filters are applied later by
+the consumer; the suggested `duration_seconds >= 40` is not a row-selection rule
+in either pipeline.
 
 The five proximity-review fields are defined in the [master reference](MASTER_TABLE_README.md#proximity-review-fields).
 
@@ -472,3 +482,5 @@ run_horeka.sh                   recommended persistent controller entry point
 ```
 
 For Git deployment conventions, see [`GITHUB_WORKFLOW.md`](GITHUB_WORKFLOW.md) (currently German). The repository layout is intentionally stable because production configuration and HoreKa deployment paths depend on it.
+
+Sentinel quality score exactly `0` sets `sentinel_has_issues=True` and the issue code `too_cloudy_sentinel_not_available` (too cloudy; Sentinel data unavailable for use). The numeric score and physical file-presence flag are retained. Positive low scores alone do not trigger this code.

@@ -49,7 +49,7 @@ Missing inputs or configuration sections terminate the step with a non-zero exit
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Error Codes, Status And Exit Codes
 
-Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
+Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
 
 `0` only means process success, not necessarily clean data. Invalid argparse arguments can exit with `2`; uncaught Python exceptions typically exit with `1`. Slurm states such as `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` and `DependencyNeverSatisfied` are scheduler messages, not data-quality codes. Dynamic library/HTTP/filesystem errors retain their original messages in logs.
 
@@ -57,29 +57,30 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `score_rows_with_invalid_id:{invalid_id_count}` | Score file contains rows with invalid IDs. | [Step_4_0_Sentinel2_inventory.py:222](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `duplicate_score_rows:{row_count}` | Multiple score rows for the same ID. | [Step_4_0_Sentinel2_inventory.py:275](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `non_numeric_or_missing_scores:{missing_numeric_count}` | Score values are nonnumeric or missing. | [Step_4_0_Sentinel2_inventory.py:280](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `scores_outside_0_1:{invalid_range_count}` | Numeric Sentinel scores lie outside 0 to 1. | [Step_4_0_Sentinel2_inventory.py:285](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `quality_score_missing` | No score is available for the recording. | [Step_4_0_Sentinel2_inventory.py:290](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `no_valid_quality_score` | No valid Sentinel score among existing rows. | [Step_4_0_Sentinel2_inventory.py:293](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `unexpected_raster_driver:{dataset.driver}` | Raster driver is not GTiff. | [Step_4_0_Sentinel2_inventory.py:358](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `invalid_dimensions:{dataset.width}x{dataset.height}` | Raster/image width or height is invalid. | [Step_4_0_Sentinel2_inventory.py:363](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `no_raster_bands` | Raster contains no bands. | [Step_4_0_Sentinel2_inventory.py:368](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `missing_crs` | Raster has no coordinate reference system. | [Step_4_0_Sentinel2_inventory.py:371](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `identity_geotransform` | Raster has an identity transform; check georeferencing. | [Step_4_0_Sentinel2_inventory.py:374](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `non_finite_bounds` | Raster bounds contain NaN or infinite values. | [Step_4_0_Sentinel2_inventory.py:387](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `invalid_bounds` | Raster bounds do not define a valid extent. | [Step_4_0_Sentinel2_inventory.py:393](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `raster_read_failed:{type(exc).__name__}:{exc}` | Raster could not be opened or read. | [Step_4_0_Sentinel2_inventory.py:448](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `all_pixels_nodata` | All inspected raster pixels are NoData. | [Step_4_0_Sentinel2_inventory.py:470](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `contains_nan_values:{nan_values}` | Raster contains NaN values. | [Step_4_0_Sentinel2_inventory.py:473](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `contains_infinite_values:{infinite_values}` | Raster contains infinite values. | [Step_4_0_Sentinel2_inventory.py:478](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `constant_raster:value={global_min}` | All valid raster values are identical; check plausibility. | [Step_4_0_Sentinel2_inventory.py:483](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `filename_does_not_contain_id_before_tif_extension` | TIFF filename does not supply the expected recording ID. | [Step_4_0_Sentinel2_inventory.py:524](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `source_stat_failed:{type(exc).__name__}:{exc}` | Filesystem stat failed for the source file. | [Step_4_0_Sentinel2_inventory.py:532](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `empty_file` | Existing file has zero bytes. | [Step_4_0_Sentinel2_inventory.py:574](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `duplicate_tif_files_for_id:{len(id_rows)}` | Multiple TIFF files are assigned to the same recording. | [Step_4_0_Sentinel2_inventory.py:948](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `quality_score_missing` | No score is available for the recording. | [Step_4_0_Sentinel2_inventory.py:969](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `score_rows_with_invalid_id:{invalid_id_count}` | Score file contains rows with invalid IDs. | [Step_4_0_Sentinel2_inventory.py:223](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `duplicate_score_rows:{row_count}` | Multiple score rows for the same ID. | [Step_4_0_Sentinel2_inventory.py:276](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `non_numeric_or_missing_scores:{missing_numeric_count}` | Score values are nonnumeric or missing. | [Step_4_0_Sentinel2_inventory.py:281](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `scores_outside_0_1:{invalid_range_count}` | Numeric Sentinel scores lie outside 0 to 1. | [Step_4_0_Sentinel2_inventory.py:286](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `quality_score_missing` | No score is available for the recording. | [Step_4_0_Sentinel2_inventory.py:291](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `no_valid_quality_score` | No valid Sentinel score among existing rows. | [Step_4_0_Sentinel2_inventory.py:294](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `too_cloudy_sentinel_not_available` | Sentinel score is exactly 0: too cloudy, Sentinel data unavailable for use; a file may still exist. | [Step_4_0_Sentinel2_inventory.py:297](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `unexpected_raster_driver:{dataset.driver}` | Raster driver is not GTiff. | [Step_4_0_Sentinel2_inventory.py:362](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `invalid_dimensions:{dataset.width}x{dataset.height}` | Raster/image width or height is invalid. | [Step_4_0_Sentinel2_inventory.py:367](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `no_raster_bands` | Raster contains no bands. | [Step_4_0_Sentinel2_inventory.py:372](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `missing_crs` | Raster has no coordinate reference system. | [Step_4_0_Sentinel2_inventory.py:375](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `identity_geotransform` | Raster has an identity transform; check georeferencing. | [Step_4_0_Sentinel2_inventory.py:378](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `non_finite_bounds` | Raster bounds contain NaN or infinite values. | [Step_4_0_Sentinel2_inventory.py:391](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `invalid_bounds` | Raster bounds do not define a valid extent. | [Step_4_0_Sentinel2_inventory.py:397](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `raster_read_failed:{type(exc).__name__}:{exc}` | Raster could not be opened or read. | [Step_4_0_Sentinel2_inventory.py:452](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `all_pixels_nodata` | All inspected raster pixels are NoData. | [Step_4_0_Sentinel2_inventory.py:474](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `contains_nan_values:{nan_values}` | Raster contains NaN values. | [Step_4_0_Sentinel2_inventory.py:477](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `contains_infinite_values:{infinite_values}` | Raster contains infinite values. | [Step_4_0_Sentinel2_inventory.py:482](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `constant_raster:value={global_min}` | All valid raster values are identical; check plausibility. | [Step_4_0_Sentinel2_inventory.py:487](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `filename_does_not_contain_id_before_tif_extension` | TIFF filename does not supply the expected recording ID. | [Step_4_0_Sentinel2_inventory.py:528](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `source_stat_failed:{type(exc).__name__}:{exc}` | Filesystem stat failed for the source file. | [Step_4_0_Sentinel2_inventory.py:536](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `empty_file` | Existing file has zero bytes. | [Step_4_0_Sentinel2_inventory.py:578](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `duplicate_tif_files_for_id:{len(id_rows)}` | Multiple TIFF files are assigned to the same recording. | [Step_4_0_Sentinel2_inventory.py:952](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `quality_score_missing` | No score is available for the recording. | [Step_4_0_Sentinel2_inventory.py:973](../../scripts/Step_4_0_Sentinel2_inventory.py) |
 
 ### Status Values (Not All Are Errors)
 
@@ -99,12 +100,12 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `FileNotFoundError: Config file not found: {path}` | `not path.is_file()` | [Step_4_0_Sentinel2_inventory.py:104](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `TypeError: 'sentinel2_inventory' must be a JSON object.` | `not isinstance(section, dict)` | [Step_4_0_Sentinel2_inventory.py:112](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `NotADirectoryError: Sentinel-2 source directory not found: {source_dir}` | `not source_dir.is_dir()` | [Step_4_0_Sentinel2_inventory.py:123](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `ValueError: Missing Dawn Chorus ID column in Sentinel-2 score CSV. Tried {[candidate for candidate in candidates if candidate]}. Available columns: {columns}` | `Emitted by resolve_score_id_column` | [Step_4_0_Sentinel2_inventory.py:166](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `FileNotFoundError: Sentinel-2 score CSV not found: {score_csv}` | `not score_csv.is_file()` | [Step_4_0_Sentinel2_inventory.py:184](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `ValueError: Missing required columns in Sentinel-2 score CSV: {sorted(missing_columns)}. Available columns: {df.columns.tolist()}` | `missing_columns` | [Step_4_0_Sentinel2_inventory.py:198](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `FileNotFoundError: Config file not found: {path}` | `not path.is_file()` | [Step_4_0_Sentinel2_inventory.py:105](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `TypeError: 'sentinel2_inventory' must be a JSON object.` | `not isinstance(section, dict)` | [Step_4_0_Sentinel2_inventory.py:113](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `NotADirectoryError: Sentinel-2 source directory not found: {source_dir}` | `not source_dir.is_dir()` | [Step_4_0_Sentinel2_inventory.py:124](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `ValueError: Missing Dawn Chorus ID column in Sentinel-2 score CSV. Tried {[candidate for candidate in candidates if candidate]}. Available columns: {columns}` | `Emitted by resolve_score_id_column` | [Step_4_0_Sentinel2_inventory.py:167](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `FileNotFoundError: Sentinel-2 score CSV not found: {score_csv}` | `not score_csv.is_file()` | [Step_4_0_Sentinel2_inventory.py:185](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `ValueError: Missing required columns in Sentinel-2 score CSV: {sorted(missing_columns)}. Available columns: {df.columns.tolist()}` | `missing_columns` | [Step_4_0_Sentinel2_inventory.py:199](../../scripts/Step_4_0_Sentinel2_inventory.py) |
 | `KeyError: Missing sentinel2_download section in config.` | `'sentinel2_download' not in config` | [Step_4_1_Sentinel2_download.py:48](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `KeyError: No ID column found in Sentinel-2 metadata CSV: {metadata_csv}` | `id_column is None` | [Step_4_1_Sentinel2_download.py:133](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `TimeoutError: Completed GEE exports not visible in Drive folder {folder_id}: {sample}` | `time.monotonic() >= deadline` | [Step_4_1_Sentinel2_download.py:192](../../scripts/Step_4_1_Sentinel2_download.py) |
@@ -149,8 +150,8 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `0` | `Emitted by main` | [Step_4_0_Sentinel2_inventory.py:1235](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `1` | `except Exception` | [Step_4_0_Sentinel2_inventory.py:1242](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `0` | `Emitted by main` | [Step_4_0_Sentinel2_inventory.py:1239](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `1` | `except Exception` | [Step_4_0_Sentinel2_inventory.py:1246](../../scripts/Step_4_0_Sentinel2_inventory.py) |
 | `0` | `acquisition_mode in {'auto', 'gee_direct'}` | [Step_4_1_Sentinel2_download.py:370](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `0` | `args.score_only` | [Step_4_1_Sentinel2_download.py:489](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `0` | `Emitted by main` | [Step_4_1_Sentinel2_download.py:670](../../scripts/Step_4_1_Sentinel2_download.py) |
@@ -163,3 +164,5 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 **Recovery:** Read the step log and manifest for the affected run first, then the detail/retry/QC log for the ID or chunk. Correct the configuration or input and restart the same phase. File existence does not resolve `failed`/`partial` results. Release a pipeline lock only after inspecting its jobs.
 
 <!-- END SOURCE DIAGNOSTICS -->
+
+Sentinel quality score exactly `0` sets `sentinel_has_issues=True` and the issue code `too_cloudy_sentinel_not_available` (too cloudy; Sentinel data unavailable for use). The numeric score and physical file-presence flag are retained. Positive low scores alone do not trigger this code.

@@ -10,7 +10,9 @@ from pathlib import Path
 
 COLUMNS = [
     "dawn_chorus_id", "lon", "lat", "grid_100m_id", "grid_10m_id",
-    "datetime_local", "sound_exists", "sound_has_issues",
+    "datetime_local", "timestamp_source", "time_has_issues", "duration_seconds",
+    "inside_lrt_polygon", "grid_100m_has_majority_formation", "grid_10m_has_majority_formation",
+    "sound_exists", "sound_has_issues",
     "sentinel_exists", "sentinel_has_issues", "weather_point_exists",
     "weather_point_has_issues", "weather_raster_hostrada_100m_exists",
     "weather_raster_hostrada_100m_has_issues",

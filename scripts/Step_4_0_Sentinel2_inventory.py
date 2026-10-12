@@ -19,7 +19,8 @@ Detailed output:
 - additional synthetic rows for scores without a corresponding GeoTIFF
 - detailed raster metadata and issue descriptions
 
-A low quality score does not automatically count as a technical issue.
+A positive low quality score does not automatically count as a technical issue.
+Exactly zero reports too_cloudy_sentinel_not_available.
 Missing, invalid or inconsistent score information does count as an issue.
 """
 
@@ -291,6 +292,9 @@ def load_scores(
 
         elif not score_valid:
             issues.append("no_valid_quality_score")
+
+        if selected_score == 0:
+            issues.append("too_cloudy_sentinel_not_available")
 
         score_info[dawn_id_str] = {
             "score": selected_score,

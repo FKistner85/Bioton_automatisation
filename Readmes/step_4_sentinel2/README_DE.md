@@ -47,7 +47,7 @@ Fehlende Inputs oder Konfigurationsabschnitte beenden den Step mit Exit-Code ung
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Fehlercodes, Status und Exit-Codes
 
-Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes, Statuswerte, explizite Exceptions und Prozess-Exit-Codes. `{...}` sind variable Werte, keine festen Codes. Bedingungen nennen den konkreten Ausloeser im Quellcode; mehrere Codes koennen gleichzeitig auftreten.
+Abgleich mit dem lokalen Code: 2026-10-12. Die Tabellen trennen Daten-/QC-Codes, Statuswerte, explizite Exceptions und Prozess-Exit-Codes. `{...}` sind variable Werte, keine festen Codes. Bedingungen nennen den konkreten Ausloeser im Quellcode; mehrere Codes koennen gleichzeitig auftreten.
 
 `0` bedeutet nur einen erfolgreichen Prozessabschluss, nicht automatisch fehlerfreie Daten. `argparse` kann bei ungueltigen Argumenten mit `2` abbrechen; ungefangene Python-Exceptions typischerweise mit `1`. Slurm-Zustaende wie `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` und `DependencyNeverSatisfied` sind Scheduler-Meldungen, keine fachlichen Fehlercodes. Dynamische Bibliotheks-/HTTP-/Dateisystemfehler stehen mit ihrer Originalmeldung im Log.
 
@@ -55,29 +55,30 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `score_rows_with_invalid_id:{invalid_id_count}` | Scoredatei enthaelt Zeilen ohne gueltige ID. | [Step_4_0_Sentinel2_inventory.py:222](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `duplicate_score_rows:{row_count}` | Mehrere Score-Zeilen fuer dieselbe ID. | [Step_4_0_Sentinel2_inventory.py:275](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `non_numeric_or_missing_scores:{missing_numeric_count}` | Scorewerte sind nicht numerisch oder fehlen. | [Step_4_0_Sentinel2_inventory.py:280](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `scores_outside_0_1:{invalid_range_count}` | Numerische Sentinel-Scores liegen ausserhalb 0 bis 1. | [Step_4_0_Sentinel2_inventory.py:285](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `quality_score_missing` | Fuer die Aufnahme liegt kein Score vor. | [Step_4_0_Sentinel2_inventory.py:290](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `no_valid_quality_score` | Kein gueltiger Sentinel-Score in den vorhandenen Zeilen. | [Step_4_0_Sentinel2_inventory.py:293](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `unexpected_raster_driver:{dataset.driver}` | Rasterformat ist nicht GTiff. | [Step_4_0_Sentinel2_inventory.py:358](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `invalid_dimensions:{dataset.width}x{dataset.height}` | Raster-/Bildbreite oder -hoehe ist ungueltig. | [Step_4_0_Sentinel2_inventory.py:363](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `no_raster_bands` | Raster enthaelt keine Baender. | [Step_4_0_Sentinel2_inventory.py:368](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `missing_crs` | Raster hat kein Koordinatenreferenzsystem. | [Step_4_0_Sentinel2_inventory.py:371](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `identity_geotransform` | Raster besitzt nur die Identitaetstransformation; Georeferenzierung pruefen. | [Step_4_0_Sentinel2_inventory.py:374](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `non_finite_bounds` | Rastergrenzen enthalten NaN oder unendliche Werte. | [Step_4_0_Sentinel2_inventory.py:387](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `invalid_bounds` | Rastergrenzen haben keine gueltige raeumliche Ausdehnung. | [Step_4_0_Sentinel2_inventory.py:393](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `raster_read_failed:{type(exc).__name__}:{exc}` | Raster konnte nicht geoeffnet oder gelesen werden. | [Step_4_0_Sentinel2_inventory.py:448](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `all_pixels_nodata` | Alle geprueften Rasterpixel sind NoData. | [Step_4_0_Sentinel2_inventory.py:470](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `contains_nan_values:{nan_values}` | Raster enthaelt NaN-Werte. | [Step_4_0_Sentinel2_inventory.py:473](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `contains_infinite_values:{infinite_values}` | Raster enthaelt unendliche Werte. | [Step_4_0_Sentinel2_inventory.py:478](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `constant_raster:value={global_min}` | Alle gueltigen Rasterwerte sind identisch; Plausibilitaet pruefen. | [Step_4_0_Sentinel2_inventory.py:483](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `filename_does_not_contain_id_before_tif_extension` | TIFF-Dateiname liefert keine erwartete Aufnahme-ID. | [Step_4_0_Sentinel2_inventory.py:524](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `source_stat_failed:{type(exc).__name__}:{exc}` | Quelldatei konnte nicht per Dateisystem-Stat abgefragt werden. | [Step_4_0_Sentinel2_inventory.py:532](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `empty_file` | Vorhandene Datei hat null Bytes. | [Step_4_0_Sentinel2_inventory.py:574](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `duplicate_tif_files_for_id:{len(id_rows)}` | Mehrere TIFF-Dateien sind derselben Aufnahme zugeordnet. | [Step_4_0_Sentinel2_inventory.py:948](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `quality_score_missing` | Fuer die Aufnahme liegt kein Score vor. | [Step_4_0_Sentinel2_inventory.py:969](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `score_rows_with_invalid_id:{invalid_id_count}` | Scoredatei enthaelt Zeilen ohne gueltige ID. | [Step_4_0_Sentinel2_inventory.py:223](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `duplicate_score_rows:{row_count}` | Mehrere Score-Zeilen fuer dieselbe ID. | [Step_4_0_Sentinel2_inventory.py:276](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `non_numeric_or_missing_scores:{missing_numeric_count}` | Scorewerte sind nicht numerisch oder fehlen. | [Step_4_0_Sentinel2_inventory.py:281](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `scores_outside_0_1:{invalid_range_count}` | Numerische Sentinel-Scores liegen ausserhalb 0 bis 1. | [Step_4_0_Sentinel2_inventory.py:286](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `quality_score_missing` | Fuer die Aufnahme liegt kein Score vor. | [Step_4_0_Sentinel2_inventory.py:291](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `no_valid_quality_score` | Kein gueltiger Sentinel-Score in den vorhandenen Zeilen. | [Step_4_0_Sentinel2_inventory.py:294](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `too_cloudy_sentinel_not_available` | Sentinel-Score ist genau 0: zu bewoelkt, Sentinel-Daten nicht nutzbar; eine Datei kann trotzdem vorhanden sein. | [Step_4_0_Sentinel2_inventory.py:297](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `unexpected_raster_driver:{dataset.driver}` | Rasterformat ist nicht GTiff. | [Step_4_0_Sentinel2_inventory.py:362](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `invalid_dimensions:{dataset.width}x{dataset.height}` | Raster-/Bildbreite oder -hoehe ist ungueltig. | [Step_4_0_Sentinel2_inventory.py:367](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `no_raster_bands` | Raster enthaelt keine Baender. | [Step_4_0_Sentinel2_inventory.py:372](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `missing_crs` | Raster hat kein Koordinatenreferenzsystem. | [Step_4_0_Sentinel2_inventory.py:375](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `identity_geotransform` | Raster besitzt nur die Identitaetstransformation; Georeferenzierung pruefen. | [Step_4_0_Sentinel2_inventory.py:378](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `non_finite_bounds` | Rastergrenzen enthalten NaN oder unendliche Werte. | [Step_4_0_Sentinel2_inventory.py:391](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `invalid_bounds` | Rastergrenzen haben keine gueltige raeumliche Ausdehnung. | [Step_4_0_Sentinel2_inventory.py:397](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `raster_read_failed:{type(exc).__name__}:{exc}` | Raster konnte nicht geoeffnet oder gelesen werden. | [Step_4_0_Sentinel2_inventory.py:452](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `all_pixels_nodata` | Alle geprueften Rasterpixel sind NoData. | [Step_4_0_Sentinel2_inventory.py:474](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `contains_nan_values:{nan_values}` | Raster enthaelt NaN-Werte. | [Step_4_0_Sentinel2_inventory.py:477](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `contains_infinite_values:{infinite_values}` | Raster enthaelt unendliche Werte. | [Step_4_0_Sentinel2_inventory.py:482](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `constant_raster:value={global_min}` | Alle gueltigen Rasterwerte sind identisch; Plausibilitaet pruefen. | [Step_4_0_Sentinel2_inventory.py:487](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `filename_does_not_contain_id_before_tif_extension` | TIFF-Dateiname liefert keine erwartete Aufnahme-ID. | [Step_4_0_Sentinel2_inventory.py:528](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `source_stat_failed:{type(exc).__name__}:{exc}` | Quelldatei konnte nicht per Dateisystem-Stat abgefragt werden. | [Step_4_0_Sentinel2_inventory.py:536](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `empty_file` | Vorhandene Datei hat null Bytes. | [Step_4_0_Sentinel2_inventory.py:578](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `duplicate_tif_files_for_id:{len(id_rows)}` | Mehrere TIFF-Dateien sind derselben Aufnahme zugeordnet. | [Step_4_0_Sentinel2_inventory.py:952](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `quality_score_missing` | Fuer die Aufnahme liegt kein Score vor. | [Step_4_0_Sentinel2_inventory.py:973](../../scripts/Step_4_0_Sentinel2_inventory.py) |
 
 ### Statuswerte (nicht alle sind Fehler)
 
@@ -97,12 +98,12 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `FileNotFoundError: Config file not found: {path}` | `not path.is_file()` | [Step_4_0_Sentinel2_inventory.py:104](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `TypeError: 'sentinel2_inventory' must be a JSON object.` | `not isinstance(section, dict)` | [Step_4_0_Sentinel2_inventory.py:112](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `NotADirectoryError: Sentinel-2 source directory not found: {source_dir}` | `not source_dir.is_dir()` | [Step_4_0_Sentinel2_inventory.py:123](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `ValueError: Missing Dawn Chorus ID column in Sentinel-2 score CSV. Tried {[candidate for candidate in candidates if candidate]}. Available columns: {columns}` | `Ausgabe in resolve_score_id_column` | [Step_4_0_Sentinel2_inventory.py:166](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `FileNotFoundError: Sentinel-2 score CSV not found: {score_csv}` | `not score_csv.is_file()` | [Step_4_0_Sentinel2_inventory.py:184](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `ValueError: Missing required columns in Sentinel-2 score CSV: {sorted(missing_columns)}. Available columns: {df.columns.tolist()}` | `missing_columns` | [Step_4_0_Sentinel2_inventory.py:198](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `FileNotFoundError: Config file not found: {path}` | `not path.is_file()` | [Step_4_0_Sentinel2_inventory.py:105](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `TypeError: 'sentinel2_inventory' must be a JSON object.` | `not isinstance(section, dict)` | [Step_4_0_Sentinel2_inventory.py:113](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `NotADirectoryError: Sentinel-2 source directory not found: {source_dir}` | `not source_dir.is_dir()` | [Step_4_0_Sentinel2_inventory.py:124](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `ValueError: Missing Dawn Chorus ID column in Sentinel-2 score CSV. Tried {[candidate for candidate in candidates if candidate]}. Available columns: {columns}` | `Ausgabe in resolve_score_id_column` | [Step_4_0_Sentinel2_inventory.py:167](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `FileNotFoundError: Sentinel-2 score CSV not found: {score_csv}` | `not score_csv.is_file()` | [Step_4_0_Sentinel2_inventory.py:185](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `ValueError: Missing required columns in Sentinel-2 score CSV: {sorted(missing_columns)}. Available columns: {df.columns.tolist()}` | `missing_columns` | [Step_4_0_Sentinel2_inventory.py:199](../../scripts/Step_4_0_Sentinel2_inventory.py) |
 | `KeyError: Missing sentinel2_download section in config.` | `'sentinel2_download' not in config` | [Step_4_1_Sentinel2_download.py:48](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `KeyError: No ID column found in Sentinel-2 metadata CSV: {metadata_csv}` | `id_column is None` | [Step_4_1_Sentinel2_download.py:133](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `TimeoutError: Completed GEE exports not visible in Drive folder {folder_id}: {sample}` | `time.monotonic() >= deadline` | [Step_4_1_Sentinel2_download.py:192](../../scripts/Step_4_1_Sentinel2_download.py) |
@@ -147,8 +148,8 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `0` | `Ausgabe in main` | [Step_4_0_Sentinel2_inventory.py:1235](../../scripts/Step_4_0_Sentinel2_inventory.py) |
-| `1` | `except Exception` | [Step_4_0_Sentinel2_inventory.py:1242](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `0` | `Ausgabe in main` | [Step_4_0_Sentinel2_inventory.py:1239](../../scripts/Step_4_0_Sentinel2_inventory.py) |
+| `1` | `except Exception` | [Step_4_0_Sentinel2_inventory.py:1246](../../scripts/Step_4_0_Sentinel2_inventory.py) |
 | `0` | `acquisition_mode in {'auto', 'gee_direct'}` | [Step_4_1_Sentinel2_download.py:370](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `0` | `args.score_only` | [Step_4_1_Sentinel2_download.py:489](../../scripts/Step_4_1_Sentinel2_download.py) |
 | `0` | `Ausgabe in main` | [Step_4_1_Sentinel2_download.py:670](../../scripts/Step_4_1_Sentinel2_download.py) |
@@ -161,3 +162,5 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 **Vorgehen:** Zuerst das Step-Log und den Manifest-Eintrag des betreffenden Runs lesen, dann Detail-/Retry-/QC-Logs der betroffenen ID bzw. des Chunks. Konfiguration oder Quelldatei korrigieren und dieselbe Phase erneut starten. `failed`/`partial` nicht allein durch Existenz einer Datei als erledigt behandeln. Eine Pipeline-Sperre erst nach Pruefung der zugehoerigen Jobs freigeben.
 
 <!-- END SOURCE DIAGNOSTICS -->
+
+Sentinel-Score genau `0`: `sentinel_has_issues=True`, Fehlercode `too_cloudy_sentinel_not_available` (zu bewoelkt; Sentinel-Daten nicht nutzbar). Zahlenwert und Dateiverfuegbarkeit bleiben erhalten. Positive niedrige Scores allein loesen diesen Code nicht aus.

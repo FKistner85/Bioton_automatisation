@@ -61,7 +61,7 @@ Missing inputs or configuration sections terminate the step with a non-zero exit
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Error Codes, Status And Exit Codes
 
-Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
+Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
 
 `0` only means process success, not necessarily clean data. Invalid argparse arguments can exit with `2`; uncaught Python exceptions typically exit with `1`. Slurm states such as `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` and `DependencyNeverSatisfied` are scheduler messages, not data-quality codes. Dynamic library/HTTP/filesystem errors retain their original messages in logs.
 
@@ -74,7 +74,7 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 | `empty_file` | Existing file has zero bytes. | [Step_5_1_Weather_inventory.py:245](../../scripts/Step_5_1_Weather_inventory.py) |
 | `unexpected_row_count` | Row count does not match the expected weather window. | [Step_5_1_Weather_inventory.py:270](../../scripts/Step_5_1_Weather_inventory.py) |
 | `missing_required_column` | At least one configured required column is missing. | [Step_5_1_Weather_inventory.py:277](../../scripts/Step_5_1_Weather_inventory.py) |
-| `missing_value` | Values are missing; the specific check or NaN tolerance determines failure. | [Step_5_1_Weather_inventory.py:286](../../scripts/Step_5_1_Weather_inventory.py) |
+| `missing_value` | Weather values are missing; the code is informational and alone does not set an issue flag. Check required variables/hours. | [Step_5_1_Weather_inventory.py:286](../../scripts/Step_5_1_Weather_inventory.py) |
 | `unparseable_datetime` | Timestamps in the data file cannot be parsed. | [Step_5_1_Weather_inventory.py:294](../../scripts/Step_5_1_Weather_inventory.py) |
 | `duplicate_datetime` | More duplicate timestamps than allowed by the local DST window. | [Step_5_1_Weather_inventory.py:302](../../scripts/Step_5_1_Weather_inventory.py) |
 | `unexpected_time_interval` | Timestamps and their multiplicities do not match the complete expected local weather window. Correct DST transitions are allowed; this code alone does not distinguish missing, extra or shifted hours. | [Step_5_1_Weather_inventory.py:316](../../scripts/Step_5_1_Weather_inventory.py) |
@@ -100,7 +100,7 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 | `FileNotFoundError: Config file not found: {config_path}` | `not config_path.is_file()` | [Step_5_1_Weather_inventory.py:76](../../scripts/Step_5_1_Weather_inventory.py) |
 | `KeyError: Missing 'weather_inventory' section in config.` | `not isinstance(config.get('weather_inventory'), dict)` | [Step_5_1_Weather_inventory.py:80](../../scripts/Step_5_1_Weather_inventory.py) |
 | `ValueError: Metadata ID column '{id_column}' not found in {metadata_csv}.` | `id_column not in metadata.columns` | [Step_5_1_Weather_inventory.py:133](../../scripts/Step_5_1_Weather_inventory.py) |
-| `NotADirectoryError: Weather directory not found: {directory}` | `not directory.is_dir()` | [Step_5_1_Weather_inventory.py:512](../../scripts/Step_5_1_Weather_inventory.py) |
+| `NotADirectoryError: Weather directory not found: {directory}` | `not directory.is_dir()` | [Step_5_1_Weather_inventory.py:514](../../scripts/Step_5_1_Weather_inventory.py) |
 | `FileNotFoundError: Config file not found: {config_path}` | `not config_path.is_file()` | [Step_5_2_download_weather_data.py:98](../../scripts/Step_5_2_download_weather_data.py) |
 | `KeyError: Missing 'weather_download' section in config.json.` | `not isinstance(section, dict)` | [Step_5_2_download_weather_data.py:104](../../scripts/Step_5_2_download_weather_data.py) |
 | `RuntimeError: Step 5_2 worker was not initialised.` | `_worker_transformer is None or _worker_preceding_days is None or _worker_input_timezone is None or (_worker_cache_dir is None) or (_worker_download_settings is None)` | [Step_5_2_download_weather_data.py:532](../../scripts/Step_5_2_download_weather_data.py) |
@@ -112,9 +112,9 @@ Checked against local code: 2026-09-23. Tables separate data/QC codes, statuses,
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `0` | `args.list_only` | [Step_5_1_Weather_inventory.py:570](../../scripts/Step_5_1_Weather_inventory.py) |
-| `0` | `Emitted by main` | [Step_5_1_Weather_inventory.py:674](../../scripts/Step_5_1_Weather_inventory.py) |
-| `1` | `except Exception` | [Step_5_1_Weather_inventory.py:677](../../scripts/Step_5_1_Weather_inventory.py) |
+| `0` | `args.list_only` | [Step_5_1_Weather_inventory.py:572](../../scripts/Step_5_1_Weather_inventory.py) |
+| `0` | `Emitted by main` | [Step_5_1_Weather_inventory.py:676](../../scripts/Step_5_1_Weather_inventory.py) |
+| `1` | `except Exception` | [Step_5_1_Weather_inventory.py:679](../../scripts/Step_5_1_Weather_inventory.py) |
 | `1` | `missing` | [Step_5_2_download_weather_data.py:847](../../scripts/Step_5_2_download_weather_data.py) |
 | `2` | `unavailable` | [Step_5_2_download_weather_data.py:854](../../scripts/Step_5_2_download_weather_data.py) |
 | `0` | `args.verify_shards` | [Step_5_2_download_weather_data.py:855](../../scripts/Step_5_2_download_weather_data.py) |

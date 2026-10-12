@@ -1260,7 +1260,7 @@
       "kind": "code",
       "value": "WinError 53",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 90,
+      "line": 92,
       "function": "module",
       "condition": ""
     },
@@ -1268,7 +1268,7 @@
       "kind": "code",
       "value": "WinError 64",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 90,
+      "line": 92,
       "function": "module",
       "condition": ""
     },
@@ -1276,7 +1276,7 @@
       "kind": "code",
       "value": "WinError 121",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 90,
+      "line": 92,
       "function": "module",
       "condition": ""
     },
@@ -1284,7 +1284,7 @@
       "kind": "code",
       "value": "WinError 995",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 90,
+      "line": 92,
       "function": "module",
       "condition": ""
     },
@@ -1292,7 +1292,7 @@
       "kind": "code",
       "value": "WinError 1203",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 90,
+      "line": 92,
       "function": "module",
       "condition": ""
     },
@@ -1300,7 +1300,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Config file not found: {path}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 115,
+      "line": 117,
       "function": "load_config",
       "condition": "not path.is_file()"
     },
@@ -1308,7 +1308,7 @@
       "kind": "exception",
       "value": "TypeError: 'audio_inventory' must be a JSON object.",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 123,
+      "line": 125,
       "function": "load_config",
       "condition": "not isinstance(section, dict)"
     },
@@ -1316,7 +1316,7 @@
       "kind": "exception",
       "value": "NotADirectoryError: Audio source directory not found: {source_dir}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 131,
+      "line": 133,
       "function": "discover",
       "condition": "not source_dir.is_dir()"
     },
@@ -1324,7 +1324,7 @@
       "kind": "exception",
       "value": "ConnectionError: LSDF transport failed while listing {path}: {exc}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 150,
+      "line": 152,
       "function": "build_file_list",
       "condition": "is_transport_error(exc)"
     },
@@ -1332,7 +1332,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Dawn Chorus metadata CSV not found: {metadata_csv}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 170,
+      "line": 172,
       "function": "expected_download_ids",
       "condition": "not metadata_csv.is_file()"
     },
@@ -1340,7 +1340,7 @@
       "kind": "exception",
       "value": "KeyError: Missing metadata columns in {metadata_csv}: {sorted(missing)}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 177,
+      "line": 179,
       "function": "expected_download_ids",
       "condition": "missing"
     },
@@ -1348,7 +1348,7 @@
       "kind": "code",
       "value": "no_audio_stream_found",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 216,
+      "line": 218,
       "function": "inspect_audio",
       "condition": "not audio_streams"
     },
@@ -1356,7 +1356,7 @@
       "kind": "code",
       "value": "multiple_audio_streams:{len(audio_streams)}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 236,
+      "line": 238,
       "function": "inspect_audio",
       "condition": "len(audio_streams) > 1"
     },
@@ -1364,7 +1364,7 @@
       "kind": "code",
       "value": "invalid_or_missing_sample_rate",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 273,
+      "line": 275,
       "function": "inspect_audio",
       "condition": "sample_rate_value is None or sample_rate_value <= 0"
     },
@@ -1372,7 +1372,7 @@
       "kind": "code",
       "value": "invalid_or_missing_channel_count",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 276,
+      "line": 278,
       "function": "inspect_audio",
       "condition": "channels_value is None or channels_value <= 0"
     },
@@ -1380,7 +1380,7 @@
       "kind": "code",
       "value": "no_audio_frames_decoded",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 301,
+      "line": 303,
       "function": "inspect_audio",
       "condition": "decoded_frames == 0"
     },
@@ -1388,7 +1388,7 @@
       "kind": "code",
       "value": "duration_unavailable",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 316,
+      "line": 318,
       "function": "inspect_audio",
       "condition": "duration is None"
     },
@@ -1396,7 +1396,7 @@
       "kind": "code",
       "value": "invalid_duration:{duration}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 319,
+      "line": 321,
       "function": "inspect_audio",
       "condition": "duration <= 0"
     },
@@ -1404,7 +1404,7 @@
       "kind": "code",
       "value": "pyav_decode_failed:{type(exc).__name__}:{exc}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 325,
+      "line": 327,
       "function": "inspect_audio",
       "condition": "except Exception"
     },
@@ -1412,7 +1412,7 @@
       "kind": "code",
       "value": "filename_does_not_match_<id>_audio_pattern",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 359,
+      "line": 361,
       "function": "validate_original_file",
       "condition": "not match"
     },
@@ -1420,7 +1420,7 @@
       "kind": "code",
       "value": "source_stat_failed:{type(exc).__name__}:{exc}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 367,
+      "line": 369,
       "function": "validate_original_file",
       "condition": "except OSError"
     },
@@ -1428,7 +1428,7 @@
       "kind": "code",
       "value": "empty_file",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 397,
+      "line": 399,
       "function": "validate_original_file",
       "condition": "stat.st_size == 0"
     },
@@ -1436,7 +1436,7 @@
       "kind": "code",
       "value": "duration_not_{target}s:observed={duration}s,allowed={target - tolerance}-{target + tolerance}s",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 414,
+      "line": 416,
       "function": "validate_original_file",
       "condition": "duration is not None and duration > 0 and (not duration_ok)"
     },
@@ -1444,7 +1444,7 @@
       "kind": "exception",
       "value": "ValueError: target_duration_seconds must be greater than zero.",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 634,
+      "line": 636,
       "function": "main",
       "condition": "target <= 0"
     },
@@ -1452,7 +1452,7 @@
       "kind": "exception",
       "value": "ValueError: duration_tolerance_seconds must not be negative.",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 639,
+      "line": 641,
       "function": "main",
       "condition": "tolerance < 0"
     },
@@ -1460,7 +1460,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 684,
+      "line": 686,
       "function": "main",
       "condition": "args.list_only"
     },
@@ -1468,7 +1468,7 @@
       "kind": "exception",
       "value": "ConnectionError: Audio inventory stopped because the LSDF transport failed ({len(transport_rows)} files in the current validation block). Sample: {sample}",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 786,
+      "line": 788,
       "function": "main",
       "condition": "transport_rows"
     },
@@ -1476,7 +1476,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 966,
+      "line": 972,
       "function": "main",
       "condition": ""
     },
@@ -1484,7 +1484,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_3_0_a_audio_inventory.py",
-      "line": 973,
+      "line": 979,
       "function": "main",
       "condition": "except Exception"
     },
@@ -1676,7 +1676,7 @@
       "kind": "exception",
       "value": "TypeError: 'audio_download' must be an object.",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 97,
+      "line": 99,
       "function": "load_config",
       "condition": "not isinstance(section, dict)"
     },
@@ -1684,7 +1684,7 @@
       "kind": "code",
       "value": "no_audio_stream_found",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 170,
+      "line": 172,
       "function": "inspect_audio",
       "condition": "not streams"
     },
@@ -1692,7 +1692,7 @@
       "kind": "code",
       "value": "multiple_audio_streams:{len(streams)}",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 187,
+      "line": 189,
       "function": "inspect_audio",
       "condition": "len(streams) > 1"
     },
@@ -1700,7 +1700,7 @@
       "kind": "code",
       "value": "duration_unavailable",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 230,
+      "line": 232,
       "function": "inspect_audio",
       "condition": "not (container.duration is not None)"
     },
@@ -1708,7 +1708,7 @@
       "kind": "code",
       "value": "no_audio_frames_decoded",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 243,
+      "line": 245,
       "function": "inspect_audio",
       "condition": "decoded_frames == 0"
     },
@@ -1716,7 +1716,7 @@
       "kind": "code",
       "value": "pyav_decode_failed:{type(exc).__name__}:{exc}",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 257,
+      "line": 259,
       "function": "inspect_audio",
       "condition": "except Exception"
     },
@@ -1724,7 +1724,7 @@
       "kind": "exception",
       "value": "OSError: Downloaded file is empty.",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 321,
+      "line": 323,
       "function": "download_atomic",
       "condition": "temporary.stat().st_size == 0"
     },
@@ -1732,7 +1732,7 @@
       "kind": "code",
       "value": "HTTPError:{exc.code}:{exc.reason}",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 328,
+      "line": 330,
       "function": "download_atomic",
       "condition": "except urllib.error.HTTPError"
     },
@@ -1740,7 +1740,7 @@
       "kind": "code",
       "value": "{type(exc).__name__}:{exc}",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 335,
+      "line": 337,
       "function": "download_atomic",
       "condition": "except Exception"
     },
@@ -1748,7 +1748,7 @@
       "kind": "code",
       "value": "duration_not_{target}s:observed={duration}s,allowed={target - tolerance}-{target + tolerance}s",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 354,
+      "line": 356,
       "function": "validate",
       "condition": "duration is not None and (not duration_ok)"
     },
@@ -1756,7 +1756,7 @@
       "kind": "code",
       "value": "missing_audio_url",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 444,
+      "line": 448,
       "function": "process_download_task",
       "condition": "not url"
     },
@@ -1764,7 +1764,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 901,
+      "line": 906,
       "function": "main",
       "condition": ""
     },
@@ -1772,7 +1772,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_3_1_a_audio_download.py",
-      "line": 908,
+      "line": 913,
       "function": "main",
       "condition": "except Exception"
     },
@@ -1870,7 +1870,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Config file not found: {path}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 104,
+      "line": 105,
       "function": "load_config",
       "condition": "not path.is_file()"
     },
@@ -1878,7 +1878,7 @@
       "kind": "exception",
       "value": "TypeError: 'sentinel2_inventory' must be a JSON object.",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 112,
+      "line": 113,
       "function": "load_config",
       "condition": "not isinstance(section, dict)"
     },
@@ -1886,7 +1886,7 @@
       "kind": "exception",
       "value": "NotADirectoryError: Sentinel-2 source directory not found: {source_dir}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 123,
+      "line": 124,
       "function": "discover_tifs",
       "condition": "not source_dir.is_dir()"
     },
@@ -1894,7 +1894,7 @@
       "kind": "exception",
       "value": "ValueError: Missing Dawn Chorus ID column in Sentinel-2 score CSV. Tried {[candidate for candidate in candidates if candidate]}. Available columns: {columns}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 166,
+      "line": 167,
       "function": "resolve_score_id_column",
       "condition": ""
     },
@@ -1902,7 +1902,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Sentinel-2 score CSV not found: {score_csv}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 184,
+      "line": 185,
       "function": "load_scores",
       "condition": "not score_csv.is_file()"
     },
@@ -1910,7 +1910,7 @@
       "kind": "exception",
       "value": "ValueError: Missing required columns in Sentinel-2 score CSV: {sorted(missing_columns)}. Available columns: {df.columns.tolist()}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 198,
+      "line": 199,
       "function": "load_scores",
       "condition": "missing_columns"
     },
@@ -1918,7 +1918,7 @@
       "kind": "code",
       "value": "score_rows_with_invalid_id:{invalid_id_count}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 222,
+      "line": 223,
       "function": "load_scores",
       "condition": "invalid_id_count"
     },
@@ -1926,7 +1926,7 @@
       "kind": "code",
       "value": "duplicate_score_rows:{row_count}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 275,
+      "line": 276,
       "function": "load_scores",
       "condition": "row_count > 1"
     },
@@ -1934,7 +1934,7 @@
       "kind": "code",
       "value": "non_numeric_or_missing_scores:{missing_numeric_count}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 280,
+      "line": 281,
       "function": "load_scores",
       "condition": "missing_numeric_count"
     },
@@ -1942,7 +1942,7 @@
       "kind": "code",
       "value": "scores_outside_0_1:{invalid_range_count}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 285,
+      "line": 286,
       "function": "load_scores",
       "condition": "invalid_range_count"
     },
@@ -1950,7 +1950,7 @@
       "kind": "code",
       "value": "quality_score_missing",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 290,
+      "line": 291,
       "function": "load_scores",
       "condition": "not score_present"
     },
@@ -1958,15 +1958,23 @@
       "kind": "code",
       "value": "no_valid_quality_score",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 293,
+      "line": 294,
       "function": "load_scores",
       "condition": "not score_valid"
     },
     {
       "kind": "code",
+      "value": "too_cloudy_sentinel_not_available",
+      "source": "scripts/Step_4_0_Sentinel2_inventory.py",
+      "line": 297,
+      "function": "load_scores",
+      "condition": "selected_score == 0"
+    },
+    {
+      "kind": "code",
       "value": "unexpected_raster_driver:{dataset.driver}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 358,
+      "line": 362,
       "function": "inspect_raster",
       "condition": "dataset.driver != 'GTiff'"
     },
@@ -1974,7 +1982,7 @@
       "kind": "code",
       "value": "invalid_dimensions:{dataset.width}x{dataset.height}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 363,
+      "line": 367,
       "function": "inspect_raster",
       "condition": "dataset.width <= 0 or dataset.height <= 0"
     },
@@ -1982,7 +1990,7 @@
       "kind": "code",
       "value": "no_raster_bands",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 368,
+      "line": 372,
       "function": "inspect_raster",
       "condition": "dataset.count <= 0"
     },
@@ -1990,7 +1998,7 @@
       "kind": "code",
       "value": "missing_crs",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 371,
+      "line": 375,
       "function": "inspect_raster",
       "condition": "dataset.crs is None"
     },
@@ -1998,7 +2006,7 @@
       "kind": "code",
       "value": "identity_geotransform",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 374,
+      "line": 378,
       "function": "inspect_raster",
       "condition": "dataset.transform == Affine.identity()"
     },
@@ -2006,7 +2014,7 @@
       "kind": "code",
       "value": "non_finite_bounds",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 387,
+      "line": 391,
       "function": "inspect_raster",
       "condition": "not all((math.isfinite(value) for value in (raster_bounds.left, raster_bounds.bottom, raster_bounds.right, raster_bounds.top)))"
     },
@@ -2014,7 +2022,7 @@
       "kind": "code",
       "value": "invalid_bounds",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 393,
+      "line": 397,
       "function": "inspect_raster",
       "condition": "raster_bounds.left >= raster_bounds.right or raster_bounds.bottom >= raster_bounds.top"
     },
@@ -2022,7 +2030,7 @@
       "kind": "code",
       "value": "raster_read_failed:{type(exc).__name__}:{exc}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 448,
+      "line": 452,
       "function": "inspect_raster",
       "condition": "except Exception"
     },
@@ -2030,7 +2038,7 @@
       "kind": "code",
       "value": "all_pixels_nodata",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 470,
+      "line": 474,
       "function": "inspect_raster",
       "condition": "all_pixels_nodata"
     },
@@ -2038,7 +2046,7 @@
       "kind": "code",
       "value": "contains_nan_values:{nan_values}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 473,
+      "line": 477,
       "function": "inspect_raster",
       "condition": "nan_values"
     },
@@ -2046,7 +2054,7 @@
       "kind": "code",
       "value": "contains_infinite_values:{infinite_values}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 478,
+      "line": 482,
       "function": "inspect_raster",
       "condition": "infinite_values"
     },
@@ -2054,7 +2062,7 @@
       "kind": "code",
       "value": "constant_raster:value={global_min}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 483,
+      "line": 487,
       "function": "inspect_raster",
       "condition": "constant_raster"
     },
@@ -2062,7 +2070,7 @@
       "kind": "code",
       "value": "filename_does_not_contain_id_before_tif_extension",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 524,
+      "line": 528,
       "function": "validate_original_file",
       "condition": "not id_extraction_ok"
     },
@@ -2070,7 +2078,7 @@
       "kind": "code",
       "value": "source_stat_failed:{type(exc).__name__}:{exc}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 532,
+      "line": 536,
       "function": "validate_original_file",
       "condition": "except OSError"
     },
@@ -2078,7 +2086,7 @@
       "kind": "code",
       "value": "empty_file",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 574,
+      "line": 578,
       "function": "validate_original_file",
       "condition": "stat.st_size == 0"
     },
@@ -2086,7 +2094,7 @@
       "kind": "code",
       "value": "duplicate_tif_files_for_id:{len(id_rows)}",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 948,
+      "line": 952,
       "function": "main",
       "condition": "len(id_rows) > 1"
     },
@@ -2094,7 +2102,7 @@
       "kind": "code",
       "value": "quality_score_missing",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 969,
+      "line": 973,
       "function": "main",
       "condition": "score is None"
     },
@@ -2102,7 +2110,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 1235,
+      "line": 1239,
       "function": "main",
       "condition": ""
     },
@@ -2110,7 +2118,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_4_0_Sentinel2_inventory.py",
-      "line": 1242,
+      "line": 1246,
       "function": "main",
       "condition": "except Exception"
     },
@@ -2704,7 +2712,7 @@
       "kind": "exception",
       "value": "NotADirectoryError: Weather directory not found: {directory}",
       "source": "scripts/Step_5_1_Weather_inventory.py",
-      "line": 512,
+      "line": 514,
       "function": "main",
       "condition": "not directory.is_dir()"
     },
@@ -2712,7 +2720,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_5_1_Weather_inventory.py",
-      "line": 570,
+      "line": 572,
       "function": "main",
       "condition": "args.list_only"
     },
@@ -2720,7 +2728,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_5_1_Weather_inventory.py",
-      "line": 674,
+      "line": 676,
       "function": "main",
       "condition": ""
     },
@@ -2728,7 +2736,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_5_1_Weather_inventory.py",
-      "line": 677,
+      "line": 679,
       "function": "main",
       "condition": "except Exception"
     },
@@ -3647,10 +3655,34 @@
   ],
   "step_7_0_master_table": [
     {
+      "kind": "code",
+      "value": "time_source_not_localtimes",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 204,
+      "function": "refresh_time_quality",
+      "condition": "'record_blocking_issue_codes' in table"
+    },
+    {
+      "kind": "status",
+      "value": "partial",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 209,
+      "function": "refresh_time_quality",
+      "condition": "'record_status' in table"
+    },
+    {
+      "kind": "status",
+      "value": "not_started",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 211,
+      "function": "refresh_time_quality",
+      "condition": "'release_status' in table"
+    },
+    {
       "kind": "exception",
       "value": "FileNotFoundError: Step 1 clean metadata is missing or empty: {status_dir / 'dawnchorus_metadata_clean.csv'}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 306,
+      "line": 331,
       "function": "build_base_table",
       "condition": "clean.empty"
     },
@@ -3658,7 +3690,7 @@
       "kind": "code",
       "value": "recording_date_changed_recheck_required",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 460,
+      "line": 487,
       "function": "add_preserved_nonformation_domains",
       "condition": "'date_local' in previous.columns"
     },
@@ -3666,15 +3698,31 @@
       "kind": "code",
       "value": "inventory_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 517,
+      "line": 544,
       "function": "add_media_status",
       "condition": "compact.empty"
+    },
+    {
+      "kind": "code",
+      "value": "qc_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 559,
+      "function": "add_media_status",
+      "condition": "not (compact.empty)"
+    },
+    {
+      "kind": "code",
+      "value": "duration_unavailable",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 611,
+      "function": "add_media_status",
+      "condition": "prefix == 'sound'"
     },
     {
       "kind": "status",
       "value": "not_started",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 613,
+      "line": 657,
       "function": "add_bioacoustic_status",
       "condition": "compact.empty"
     },
@@ -3682,7 +3730,7 @@
       "kind": "code",
       "value": "bioacoustic_qc_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 615,
+      "line": 659,
       "function": "add_bioacoustic_status",
       "condition": "compact.empty"
     },
@@ -3690,7 +3738,7 @@
       "kind": "code",
       "value": "bioacoustic_result_missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 651,
+      "line": 695,
       "function": "add_bioacoustic_status",
       "condition": ""
     },
@@ -3698,7 +3746,7 @@
       "kind": "exception",
       "value": "ValueError: Run the core pipeline first: an existing master is required.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 681,
+      "line": 725,
       "function": "write_bioacoustic_master",
       "condition": "previous.empty"
     },
@@ -3706,7 +3754,7 @@
       "kind": "code",
       "value": "inventory_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 709,
+      "line": 765,
       "function": "add_sentinel_status",
       "condition": "compact.empty"
     },
@@ -3714,23 +3762,47 @@
       "kind": "code",
       "value": "missing_file",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 752,
+      "line": 808,
       "function": "add_sentinel_status",
       "condition": "not row['sentinel_exists']"
     },
     {
       "kind": "code",
+      "value": "quality_score_missing",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 813,
+      "function": "add_sentinel_status",
+      "condition": "row['sentinel_exists'] and pd.isna(score)"
+    },
+    {
+      "kind": "code",
+      "value": "too_cloudy_sentinel_not_available",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 815,
+      "function": "add_sentinel_status",
+      "condition": "pd.notna(score) and score == 0"
+    },
+    {
+      "kind": "code",
       "value": "inventory_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 791,
+      "line": 852,
       "function": "add_weather_point_status",
       "condition": "compact.empty"
     },
     {
       "kind": "code",
+      "value": "qc_not_run",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 894,
+      "function": "add_weather_point_status",
+      "condition": ""
+    },
+    {
+      "kind": "code",
       "value": "missing_file",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 831,
+      "line": 895,
       "function": "add_weather_point_status",
       "condition": ""
     },
@@ -3738,7 +3810,7 @@
       "kind": "exception",
       "value": "ValueError: Expected HOSTRADA raster resolution_m=100 for the master table, got {resolution}.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 854,
+      "line": 922,
       "function": "add_weather_raster_status",
       "condition": "resolution != 100"
     },
@@ -3746,7 +3818,7 @@
       "kind": "code",
       "value": "missing_raster",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 864,
+      "line": 932,
       "function": "add_weather_raster_status",
       "condition": "not exists"
     },
@@ -3754,7 +3826,7 @@
       "kind": "code",
       "value": "all_nodata",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 871,
+      "line": 939,
       "function": "add_weather_raster_status",
       "condition": "'status' in qc.columns and qc['status'].astype(str).str.upper().eq('ONLY_NODATA').any()"
     },
@@ -3762,7 +3834,7 @@
       "kind": "code",
       "value": "unexpected_shape",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 873,
+      "line": 941,
       "function": "add_weather_raster_status",
       "condition": "'square' in qc.columns and (~bool_series(qc['square'])).any()"
     },
@@ -3770,7 +3842,7 @@
       "kind": "code",
       "value": "raster_structure_warning",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 876,
+      "line": 944,
       "function": "add_weather_raster_status",
       "condition": "column in qc.columns and pd.to_numeric(qc[column], errors='coerce').fillna(0).gt(0).any()"
     },
@@ -3778,7 +3850,7 @@
       "kind": "code",
       "value": "raster_qc_read_error_{type(exc).__name__}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 879,
+      "line": 947,
       "function": "add_weather_raster_status",
       "condition": "except Exception"
     },
@@ -3786,7 +3858,7 @@
       "kind": "code",
       "value": "qc_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 881,
+      "line": 949,
       "function": "add_weather_raster_status",
       "condition": "exists"
     },
@@ -3794,7 +3866,7 @@
       "kind": "exception",
       "value": "ValueError: The INSPIRE grid has no CRS.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 953,
+      "line": 1021,
       "function": "complete_100m_grid_ids",
       "condition": "not info['crs']"
     },
@@ -3802,7 +3874,7 @@
       "kind": "exception",
       "value": "ValueError: FORMATION_10M_UNREADABLE: {path}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1132,
+      "line": 1200,
       "function": "read_10m_rows",
       "condition": "except Exception"
     },
@@ -3810,7 +3882,7 @@
       "kind": "status",
       "value": "majority_formation_status_10m",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1164,
+      "line": 1232,
       "function": "add_10m_formation",
       "condition": ""
     },
@@ -3818,7 +3890,7 @@
       "kind": "status",
       "value": "validated",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1288,
+      "line": 1376,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3826,7 +3898,7 @@
       "kind": "status",
       "value": "has_issues",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1289,
+      "line": 1377,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3834,7 +3906,7 @@
       "kind": "status",
       "value": "missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1295,
+      "line": 1383,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3842,15 +3914,23 @@
       "kind": "code",
       "value": "timestamp_missing_or_invalid",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1364,
+      "line": 1453,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(valid_timestamp.loc[row.name])"
     },
     {
       "kind": "code",
+      "value": "time_source_not_localtimes",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 1455,
+      "function": "add_agreement_and_ready_flags",
+      "condition": "bool(row['time_has_issues'])"
+    },
+    {
+      "kind": "code",
       "value": "coordinates_missing_or_invalid",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1366,
+      "line": 1457,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(valid_coordinates.loc[row.name])"
     },
@@ -3858,7 +3938,7 @@
       "kind": "code",
       "value": "{prefix}_missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1371,
+      "line": 1462,
       "function": "add_agreement_and_ready_flags",
       "condition": "not exists"
     },
@@ -3866,7 +3946,7 @@
       "kind": "code",
       "value": "{prefix}_issue",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1373,
+      "line": 1464,
       "function": "add_agreement_and_ready_flags",
       "condition": "has_issues"
     },
@@ -3874,7 +3954,7 @@
       "kind": "code",
       "value": "grid_100m_missing_majority_formation",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1375,
+      "line": 1466,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(row.get('grid_100m_has_majority_formation', False))"
     },
@@ -3882,7 +3962,7 @@
       "kind": "code",
       "value": "grid_10m_missing_majority_formation",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1377,
+      "line": 1468,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(row.get('grid_10m_has_majority_formation', False))"
     },
@@ -3890,7 +3970,7 @@
       "kind": "status",
       "value": "partial",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1381,
+      "line": 1472,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3898,7 +3978,7 @@
       "kind": "status",
       "value": "not_started",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1397,
+      "line": 1488,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3906,7 +3986,7 @@
       "kind": "status",
       "value": "manual_review_required",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1398,
+      "line": 1489,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3914,7 +3994,7 @@
       "kind": "status",
       "value": "approved",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1401,
+      "line": 1492,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3922,7 +4002,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1572,
+      "line": 1664,
       "function": "main",
       "condition": "execution_phase() == 'bioacoustics'"
     },
@@ -3930,7 +4010,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Master update ID file not found: {args.ids_file}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1577,
+      "line": 1669,
       "function": "main",
       "condition": "not args.ids_file.is_file()"
     },
@@ -3938,7 +4018,7 @@
       "kind": "exception",
       "value": "ValueError: FORMATION_10M_MISSING: {ten_path}; existing master retained.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1591,
+      "line": 1683,
       "function": "main",
       "condition": "ten_path and (not Path(ten_path).is_file())"
     },
@@ -3946,7 +4026,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1596,
+      "line": 1688,
       "function": "main",
       "condition": "except ValueError"
     },
@@ -3954,7 +4034,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1702,
+      "line": 1794,
       "function": "main",
       "condition": ""
     },
@@ -3962,7 +4042,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1705,
+      "line": 1797,
       "function": "main",
       "condition": "except Exception"
     },

@@ -2,11 +2,14 @@
 from pathlib import Path
 from html import escape
 import re
+import argparse
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Preformatted, KeepTogether
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,19 +21,45 @@ def inline(text):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output', type=Path, default=ROOT / 'README_CI_TEC.pdf')
+    output = parser.parse_args().output
+    output.parent.mkdir(parents=True, exist_ok=True)
+    choices = [
+        (Path('C:/Windows/Fonts/arial.ttf'), Path('C:/Windows/Fonts/arialbd.ttf'), Path('C:/Windows/Fonts/consola.ttf')),
+        (Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'), Path('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'), Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf')),
+    ]
+    for regular, bold, mono in choices:
+        if all(p.is_file() for p in (regular, bold, mono)):
+            for name, font in [('Doc', regular), ('DocBold', bold), ('DocMono', mono)]:
+                pdfmetrics.registerFont(TTFont(name, str(font)))
+            pdfmetrics.registerFontFamily('Doc', normal='Doc', bold='DocBold', italic='Doc', boldItalic='DocBold')
+            break
+    else:
+        raise RuntimeError('Install Arial/Consolas or DejaVu fonts before rendering.')
     navy = colors.HexColor("#19384A")
     styles = {
-        "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=21, leading=25, textColor=navy, spaceAfter=7),
-        "h": ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=navy, spaceBefore=9, spaceAfter=5, keepWithNext=True),
-        "body": ParagraphStyle("body", fontName="Helvetica", fontSize=9, leading=12, spaceAfter=6),
-        "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=8.5, leading=11),
-        "head": ParagraphStyle("head", fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=colors.white),
+        "title": ParagraphStyle("title", fontName="DocBold", fontSize=21, leading=25, textColor=navy, spaceAfter=7),
+        "h": ParagraphStyle("h", fontName="DocBold", fontSize=12, leading=15, textColor=navy, spaceBefore=9, spaceAfter=5, keepWithNext=True),
+        "body": ParagraphStyle("body", fontName="Doc", fontSize=9, leading=12, spaceAfter=6),
+        "cell": ParagraphStyle("cell", fontName="Doc", fontSize=8.5, leading=11),
+        "head": ParagraphStyle("head", fontName="DocBold", fontSize=9, leading=12, textColor=colors.white),
+        "code": ParagraphStyle("code", fontName="DocMono", fontSize=8.5, leading=11, spaceAfter=7),
     }
     lines = (ROOT / "README_CI_TEC.md").read_text(encoding="utf-8").splitlines()
     story = []
     pos = 0
     while pos < len(lines):
         line = lines[pos]
+        if line.startswith("```"):
+            pos += 1
+            block = []
+            while pos < len(lines) and not lines[pos].startswith("```"):
+                block.append(lines[pos])
+                pos += 1
+            story.append(KeepTogether([Preformatted("\n".join(block), styles["code"])]))
+            pos += 1
+            continue
         if line.startswith("|"):
             group = []
             while pos < len(lines) and lines[pos].startswith("|"):
@@ -53,16 +82,18 @@ def main():
             story += [table, Spacer(1, 7)]
             continue
         if line:
-            if line.startswith('## Abstimmung mit ci-tec'):
+            if line.startswith('## Clean-data filters'):
+                story.append(PageBreak())
+            if line.startswith(('## Abstimmung mit ci-tec', '## Vorgaben und offene Punkte')):
                 story.append(PageBreak())
             kind = "title" if line.startswith("# ") else "h" if line.startswith("## ") else "body"
             text = re.sub(r"^#{1,2} ", "", line)
             story.append(Paragraph(inline(text), styles[kind]))
         pos += 1
-    SimpleDocTemplate(str(ROOT / "README_CI_TEC.pdf"), pagesize=A4,
+    SimpleDocTemplate(str(output), pagesize=A4,
                       leftMargin=42, rightMargin=42, topMargin=32, bottomMargin=32,
                       title="Master table - ci-tec", author="Bio-O-Ton").build(story)
-    print(ROOT / "README_CI_TEC.pdf")
+    print(output)
 
 
 if __name__ == "__main__":

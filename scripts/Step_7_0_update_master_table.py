@@ -36,9 +36,10 @@ from common import (
 
 from spatiotemporal_duplicates import FLAG_COLUMNS, proximity_flags
 from pipeline_phase import execution_phase
+from audio_issue_policy import duration_notes_only
 from input_consistency import require_point_coverage, guard_source_population
 
-SCHEMA_VERSION = "2026-09-17-mastertable-v6"
+SCHEMA_VERSION = "2026-10-09-mastertable-v7"
 MASTER_COLUMNS = [
     "mastertable_schema_version",
     "workflow_run_id",
@@ -49,6 +50,7 @@ MASTER_COLUMNS = [
     "date_local",
     "time_local",
     "timestamp_source",
+    "time_has_issues",
     "timestamp_changed",
     "timestamp_change_reason",
     "lat",
@@ -57,6 +59,7 @@ MASTER_COLUMNS = [
     "record_updated_in_mastertable_utc",
     "metadata_status",
     "sound_exists",
+    "duration_seconds",
     "sound_has_issues",
     "sound_issue_codes",
     "sound_status",
@@ -185,6 +188,28 @@ def read_csv_optional(path: str | Path | None, **kwargs: Any) -> pd.DataFrame:
 
 def bool_series(series: pd.Series) -> pd.Series:
     return series.astype("string").str.lower().isin({"true", "1", "yes", "y"})
+
+
+def refresh_time_quality(table: pd.DataFrame) -> pd.DataFrame:
+    """Apply the source rule to every row, including retained legacy rows."""
+    sources = table.get("timestamp_source", pd.Series(pd.NA, index=table.index, dtype="string"))
+    table["time_has_issues"] = ~sources.astype("string").eq("localtimes").fillna(False)
+    # Time confidence matters to the combined clean-data flags, while an
+    # audio-only bioacoustic flag remains independent of the time domain.
+    for column in table.columns:
+        if column.startswith("ready_for_") and column != "ready_for_bioacoustic_analysis":
+            table[column] = bool_series(table[column]) & ~table["time_has_issues"]
+    if "record_blocking_issue_codes" in table:
+        table["record_blocking_issue_codes"] = [
+            join_codes([c for c in split_issues(value) if c != "time_source_not_localtimes"]
+                       + (["time_source_not_localtimes"] if issue else []))
+            for value, issue in zip(table["record_blocking_issue_codes"], table["time_has_issues"])
+        ]
+    if "record_status" in table:
+        table.loc[table["time_has_issues"] & table["record_status"].eq("validated"), "record_status"] = "partial"
+    if "release_status" in table:
+        table.loc[table["time_has_issues"] & table["release_status"].eq("manual_review_required"), "release_status"] = "not_started"
+    return table
 
 
 def clean_issue_token(value: Any) -> str:
@@ -352,6 +377,7 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
         if column not in base.columns:
             base[column] = pd.NA
     base["timestamp_changed"] = bool_series(base["timestamp_changed"])
+    base["time_has_issues"] = ~base["timestamp_source"].astype("string").eq("localtimes").fillna(False)
 
     previous_added = read_previous_added(output_csv)
     base["record_added_to_mastertable_utc"] = base["dawn_chorus_id"].map(previous_added).fillna(now)
@@ -406,6 +432,7 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
 # A focused local refresh can retain these values from a trusted previous
 # master instead of copying every historical domain product to the workstation.
 PRESERVED_NONFORMATION_COLUMNS = [
+    "duration_seconds",
     "sound_exists", "sound_has_issues", "sound_issue_codes",
     "photo_exists", "photo_has_issues", "photo_issue_codes",
     "sentinel_exists", "sentinel_has_issues", "sentinel_quality_score",
@@ -520,7 +547,7 @@ def add_media_status(
         media[f"{prefix}_exists"] = True
         if "has_issues" in compact.columns:
             issue_by_id = (
-                compact.assign(_has_issues=bool_series(compact["has_issues"]))
+                compact.assign(_has_issues=bool_series(compact["has_issues"].fillna(True)))
                 .groupby("dawn_chorus_id")["_has_issues"]
                 .any()
             )
@@ -528,8 +555,8 @@ def add_media_status(
                 media["dawn_chorus_id"].map(issue_by_id).fillna(False).astype(bool)
             )
         else:
-            media[f"{prefix}_has_issues"] = False
-        media[f"{prefix}_issue_codes"] = ""
+            media[f"{prefix}_has_issues"] = True
+        media[f"{prefix}_issue_codes"] = "" if "has_issues" in compact.columns else "qc_not_run"
 
     detail_issues = aggregate_detail_issues(
         settings.get("detailed_log"),
@@ -566,6 +593,22 @@ def add_media_status(
         media[f"{prefix}_has_issues"]
         | media[f"{prefix}_issue_codes"].astype(str).ne("")
     )
+    if prefix == "sound":
+        detail = normalise_id_column(read_csv_optional(settings.get("detailed_log")), ["dawn_chorus_id", "id"])
+        media["duration_seconds"] = float("nan")
+        if not detail.empty and "duration_seconds" in detail:
+            durations = pd.to_numeric(detail["duration_seconds"], errors="coerce")
+            durations = durations.where(durations.ge(0) & durations.map(lambda x: pd.isna(x) or math.isfinite(x)))
+            # Multiple files are already issue-flagged by their individual QC;
+            # the minimum duration prevents a long file hiding a short one.
+            per_id = detail.assign(duration_seconds=durations).groupby("dawn_chorus_id")["duration_seconds"].min()
+            media["duration_seconds"] = media["dawn_chorus_id"].map(per_id)
+        notes_only = media["sound_issue_codes"].map(duration_notes_only)
+        media.loc[notes_only & media["sound_exists"] & media["duration_seconds"].gt(0), "sound_has_issues"] = False
+        unavailable = media["duration_seconds"].isna() & media["sound_exists"]
+        media.loc[unavailable, "sound_has_issues"] = True
+        media.loc[unavailable, "sound_issue_codes"] = media.loc[unavailable, "sound_issue_codes"].map(
+            lambda value: join_codes(split_issues(value) + ["duration_unavailable"]))
     return table.merge(
         media[
             [
@@ -573,6 +616,7 @@ def add_media_status(
                 f"{prefix}_exists",
                 f"{prefix}_has_issues",
                 f"{prefix}_issue_codes",
+                *(["duration_seconds"] if prefix == "sound" else []),
             ]
         ],
         on="dawn_chorus_id",
@@ -679,18 +723,30 @@ def write_bioacoustic_master(config, output_csv, output_parquet, summary_json, n
     previous = read_previous_master(output_csv)
     if previous.empty:
         raise ValueError("Run the core pipeline first: an existing master is required.")
-    table = refresh_bioacoustic_domain(previous, config)
+    table = refresh_time_quality(refresh_bioacoustic_domain(previous, config))
+    if "duration_seconds" not in table:
+        table["duration_seconds"] = pd.NA
+    if set(MASTER_COLUMNS) <= set(table.columns):
+        table = add_agreement_and_ready_flags(table)
+    table["mastertable_schema_version"] = SCHEMA_VERSION
     atomic_write_csv(table, output_csv)
     parquet_written = write_parquet_optional(table, output_parquet)
     append_status_events(config, previous, table, now, partial_update=False)
     summary = json.loads(summary_json.read_text(encoding="utf-8")) if summary_json.is_file() else {}
     summary.update({
+        "schema_version": SCHEMA_VERSION,
         "phase": "bioacoustics", "workflow_run_id": workflow_run_id(),
         "created_utc": now, "rows": len(table), "rows_updated": len(table),
         "output_csv": str(output_csv),
         "output_parquet": str(output_parquet) if parquet_written else "",
         "ready_for_bioacoustic_analysis": int(table["ready_for_bioacoustic_analysis"].sum()),
     })
+    for column in table:
+        if column.startswith("ready_for_"):
+            summary[column] = int(bool_series(table[column]).sum())
+    for column in ("record_status", "release_status"):
+        if column in table:
+            summary[f"{column}_counts"] = {str(k): int(v) for k, v in table[column].value_counts().items()}
     atomic_write_json(summary_json, summary)
     print(f"Bioacoustic master fields refreshed: {len(table):,} recordings")
 
@@ -727,7 +783,7 @@ def add_sentinel_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataF
             if column not in sentinel.columns:
                 sentinel[column] = default
         sentinel["sentinel_exists"] = bool_series(sentinel["sentinel_exists"])
-        sentinel["sentinel_has_issues"] = bool_series(sentinel["sentinel_has_issues"])
+        sentinel["sentinel_has_issues"] = bool_series(sentinel["sentinel_has_issues"].fillna(True))
         sentinel["sentinel_quality_score"] = pd.to_numeric(
             sentinel["sentinel_quality_score"],
             errors="coerce",
@@ -752,6 +808,11 @@ def add_sentinel_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.DataF
             codes.append("missing_file")
         codes.extend(split_issues(row.get("sentinel_issue_codes", "")))
         codes.extend(split_issues(row.get("sentinel_detail_issue_codes", "")))
+        score = row.get("sentinel_quality_score")
+        if row["sentinel_exists"] and pd.isna(score):
+            codes.append("quality_score_missing")
+        if pd.notna(score) and score == 0:
+            codes.append("too_cloudy_sentinel_not_available")
         issue_values.append(join_codes(codes))
     sentinel["sentinel_issue_codes"] = issue_values
     sentinel["sentinel_has_issues"] = (
@@ -825,9 +886,12 @@ def add_weather_point_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.
             if column in compact.columns
             else default
         )
+    checked = weather["weather_point_has_issues"].notna()
     weather["weather_point_exists"] = bool_series(weather["weather_point_exists"])
-    weather["weather_point_has_issues"] = bool_series(weather["weather_point_has_issues"])
+    weather["weather_point_has_issues"] = bool_series(weather["weather_point_has_issues"].fillna(True))
     weather["weather_point_issue_codes"] = weather["weather_point_issue_codes"].fillna("")
+    weather.loc[~checked, "weather_point_issue_codes"] = weather.loc[~checked, "weather_point_issue_codes"].map(
+        lambda value: join_codes(split_issues(value) + ["qc_not_run"]))
     weather.loc[
         ~weather["weather_point_exists"]
         & weather["weather_point_issue_codes"].astype(str).eq(""),
@@ -837,6 +901,10 @@ def add_weather_point_status(table: pd.DataFrame, config: dict[str, Any]) -> pd.
         weather["weather_point_has_issues"]
         | weather["weather_point_issue_codes"].astype(str).ne("")
     )
+    # The PDF defines missing values as an informational code. Older compact
+    # inventories may still flag it; only this sole, explicit code is cleared.
+    values_only = weather["weather_point_issue_codes"].map(lambda value: set(split_issues(value)) == {"missing_value"})
+    weather.loc[checked & values_only & weather["weather_point_exists"], "weather_point_has_issues"] = False
     weather = weather.drop_duplicates("dawn_chorus_id", keep="last")
     result = table.merge(weather, on="dawn_chorus_id", how="left")
     result["weather_point_exists"] = result["weather_point_exists"].fillna(False).astype(bool)
@@ -1266,6 +1334,26 @@ def add_formation_variant_status(
 
 
 def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
+    table = refresh_time_quality(table)
+    for prefix in ("sound", "photo", "sentinel", "weather_point", "weather_raster_hostrada_100m"):
+        table[f"{prefix}_exists"] = bool_series(table[f"{prefix}_exists"].fillna(False))
+        table[f"{prefix}_has_issues"] = bool_series(table[f"{prefix}_has_issues"].fillna(True))
+    for column in ("grid_100m_assignment_exists", "grid_10m_assignment_exists",
+                   "grid_100m_has_majority_formation", "grid_10m_has_majority_formation", "inside_lrt_polygon"):
+        table[column] = bool_series(table[column].fillna(False))
+    if "weather_point_issue_codes" in table:
+        values_only = table["weather_point_issue_codes"].map(lambda v: set(split_issues(v)) == {"missing_value"})
+        table.loc[values_only & table["weather_point_exists"], "weather_point_has_issues"] = False
+    if "duration_seconds" in table and "sound_issue_codes" in table:
+        notes_only = table["sound_issue_codes"].map(duration_notes_only)
+        table.loc[notes_only & table["sound_exists"] & pd.to_numeric(table["duration_seconds"], errors="coerce").gt(0), "sound_has_issues"] = False
+    if "sentinel_quality_score" in table and "sentinel_issue_codes" in table:
+        scores = pd.to_numeric(table["sentinel_quality_score"], errors="coerce")
+        for mask, code in ((table["sentinel_exists"] & scores.isna(), "quality_score_missing"),
+                           (scores.eq(0), "too_cloudy_sentinel_not_available")):
+            table.loc[mask, "sentinel_has_issues"] = True
+            table.loc[mask, "sentinel_issue_codes"] = table.loc[mask, "sentinel_issue_codes"].map(
+                lambda value: join_codes(split_issues(value) + [code]))
     table["formation_100m_10m_agree"] = (
         table["majority_formation_100m"].notna()
         & table["majority_formation_10m"].notna()
@@ -1318,6 +1406,7 @@ def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
 
     table["ready_for_general_analysis"] = (
         valid_timestamp
+        & ~table["time_has_issues"]
         & valid_coordinates
         & table["sound_exists"].fillna(False).astype(bool)
         & ~table["sound_has_issues"].fillna(True).astype(bool)
@@ -1362,6 +1451,8 @@ def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
         codes: list[str] = []
         if not bool(valid_timestamp.loc[row.name]):
             codes.append("timestamp_missing_or_invalid")
+        if bool(row["time_has_issues"]):
+            codes.append("time_source_not_localtimes")
         if not bool(valid_coordinates.loc[row.name]):
             codes.append("coordinates_missing_or_invalid")
         for prefix in ["sound", "weather_point", "sentinel", "photo"]:
@@ -1467,6 +1558,7 @@ def append_status_events(
             )
 
     tracked = [
+        "time_has_issues",
         "metadata_status",
         "sound_status",
         "photo_status",
@@ -1635,17 +1727,17 @@ def main() -> int:
             for column in FLAG_COLUMNS:
                 table[column] = flags[column]
             table["mastertable_schema_version"] = SCHEMA_VERSION
+            if not table.empty:
+                table = add_agreement_and_ready_flags(table)
 
             atomic_write_csv(table, output_csv)
             parquet_written = write_parquet_optional(table, output_parquet)
-            event_previous = restrict_to_ids(previous_master, selected_ids)
             status_events_written = append_status_events(
                 config,
-                event_previous,
-                updated_rows,
+                previous_master,
+                table,
                 now,
-                # Both sides already contain only the requested scope. Missing
-                # current rows are real deletions, even for an incremental run.
+                # Track schema migration on retained rows as well as updates.
                 partial_update=False,
             )
 

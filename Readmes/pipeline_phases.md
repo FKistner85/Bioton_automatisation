@@ -32,8 +32,11 @@ Modelle, Parameter, logische Shards und Dateipfade bleiben unverändert.
 Standardmäßig verteilen vier Slurm-Worker die bisherigen logischen Inferenzaufgaben.
 Ein erneuter Start setzt die Arbeit anhand der Checkpoints fort.
 
-Das Bioakustik-Master-Update ersetzt ausschließlich Bioakustikfelder und
-`ready_for_bioacoustic_analysis`. Zeiten, Koordinaten, LRT-/Grid-Zuordnungen,
+Das Bioakustik-Master-Update ersetzt Bioakustikfelder und
+`ready_for_bioacoustic_analysis`. Seit Schema v7 migriert es zusaetzlich
+`time_has_issues`, zeitabhaengige kombinierte Readiness und die Schemaversion;
+bei alten Tabellen kommt eine nullable `duration_seconds`-Spalte hinzu.
+Zeiten, Koordinaten, LRT-/Grid-Zuordnungen,
 Medien-/Wetterstatus und zusätzliche vorhandene Spalten werden übernommen.
 Die Kern-Abschlussprüfung fordert keine Bioakustikprodukte; der Bioakustiklauf
 prüft seine eigenen Produkte und Voraussetzungen. Die gemeinsame Sperre verhindert

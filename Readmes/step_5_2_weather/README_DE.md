@@ -63,7 +63,7 @@ Fehlende Inputs oder Konfigurationsabschnitte beenden den Step mit Exit-Code ung
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Fehlercodes, Status und Exit-Codes
 
-Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes, Statuswerte, explizite Exceptions und Prozess-Exit-Codes. `{...}` sind variable Werte, keine festen Codes. Bedingungen nennen den konkreten Ausloeser im Quellcode; mehrere Codes koennen gleichzeitig auftreten.
+Abgleich mit dem lokalen Code: 2026-10-12. Die Tabellen trennen Daten-/QC-Codes, Statuswerte, explizite Exceptions und Prozess-Exit-Codes. `{...}` sind variable Werte, keine festen Codes. Bedingungen nennen den konkreten Ausloeser im Quellcode; mehrere Codes koennen gleichzeitig auftreten.
 
 `0` bedeutet nur einen erfolgreichen Prozessabschluss, nicht automatisch fehlerfreie Daten. `argparse` kann bei ungueltigen Argumenten mit `2` abbrechen; ungefangene Python-Exceptions typischerweise mit `1`. Slurm-Zustaende wie `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` und `DependencyNeverSatisfied` sind Scheduler-Meldungen, keine fachlichen Fehlercodes. Dynamische Bibliotheks-/HTTP-/Dateisystemfehler stehen mit ihrer Originalmeldung im Log.
 
@@ -76,7 +76,7 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 | `empty_file` | Vorhandene Datei hat null Bytes. | [Step_5_1_Weather_inventory.py:245](../../scripts/Step_5_1_Weather_inventory.py) |
 | `unexpected_row_count` | Zeilenzahl entspricht nicht dem erwarteten Wetterfenster. | [Step_5_1_Weather_inventory.py:270](../../scripts/Step_5_1_Weather_inventory.py) |
 | `missing_required_column` | Mindestens eine konfigurierte Pflichtspalte fehlt. | [Step_5_1_Weather_inventory.py:277](../../scripts/Step_5_1_Weather_inventory.py) |
-| `missing_value` | Werte fehlen; massgeblich ist die jeweilige Pruefung bzw. NaN-Toleranz. | [Step_5_1_Weather_inventory.py:286](../../scripts/Step_5_1_Weather_inventory.py) |
+| `missing_value` | Wetterwerte fehlen; Hinweis bleibt im Code, setzt allein keine Issue-Flag. Benoetigte Variablen/Stunden pruefen. | [Step_5_1_Weather_inventory.py:286](../../scripts/Step_5_1_Weather_inventory.py) |
 | `unparseable_datetime` | Zeitstempel in der Datendatei sind nicht parsebar. | [Step_5_1_Weather_inventory.py:294](../../scripts/Step_5_1_Weather_inventory.py) |
 | `duplicate_datetime` | Mehr Zeitstempelduplikate als im lokalen DST-Fenster zulaessig. | [Step_5_1_Weather_inventory.py:302](../../scripts/Step_5_1_Weather_inventory.py) |
 | `unexpected_time_interval` | Zeitstempel einschliesslich ihrer Haeufigkeit entsprechen nicht dem vollstaendigen erwarteten lokalen Wetterfenster. Korrekte Sommer-/Winterzeitwechsel sind erlaubt; Code allein unterscheidet fehlende, zusaetzliche und verschobene Stunden nicht. | [Step_5_1_Weather_inventory.py:316](../../scripts/Step_5_1_Weather_inventory.py) |
@@ -102,7 +102,7 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 | `FileNotFoundError: Config file not found: {config_path}` | `not config_path.is_file()` | [Step_5_1_Weather_inventory.py:76](../../scripts/Step_5_1_Weather_inventory.py) |
 | `KeyError: Missing 'weather_inventory' section in config.` | `not isinstance(config.get('weather_inventory'), dict)` | [Step_5_1_Weather_inventory.py:80](../../scripts/Step_5_1_Weather_inventory.py) |
 | `ValueError: Metadata ID column '{id_column}' not found in {metadata_csv}.` | `id_column not in metadata.columns` | [Step_5_1_Weather_inventory.py:133](../../scripts/Step_5_1_Weather_inventory.py) |
-| `NotADirectoryError: Weather directory not found: {directory}` | `not directory.is_dir()` | [Step_5_1_Weather_inventory.py:512](../../scripts/Step_5_1_Weather_inventory.py) |
+| `NotADirectoryError: Weather directory not found: {directory}` | `not directory.is_dir()` | [Step_5_1_Weather_inventory.py:514](../../scripts/Step_5_1_Weather_inventory.py) |
 | `FileNotFoundError: Config file not found: {config_path}` | `not config_path.is_file()` | [Step_5_2_download_weather_data.py:98](../../scripts/Step_5_2_download_weather_data.py) |
 | `KeyError: Missing 'weather_download' section in config.json.` | `not isinstance(section, dict)` | [Step_5_2_download_weather_data.py:104](../../scripts/Step_5_2_download_weather_data.py) |
 | `RuntimeError: Step 5_2 worker was not initialised.` | `_worker_transformer is None or _worker_preceding_days is None or _worker_input_timezone is None or (_worker_cache_dir is None) or (_worker_download_settings is None)` | [Step_5_2_download_weather_data.py:532](../../scripts/Step_5_2_download_weather_data.py) |
@@ -114,9 +114,9 @@ Abgleich mit dem lokalen Code: 2026-09-23. Die Tabellen trennen Daten-/QC-Codes,
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `0` | `args.list_only` | [Step_5_1_Weather_inventory.py:570](../../scripts/Step_5_1_Weather_inventory.py) |
-| `0` | `Ausgabe in main` | [Step_5_1_Weather_inventory.py:674](../../scripts/Step_5_1_Weather_inventory.py) |
-| `1` | `except Exception` | [Step_5_1_Weather_inventory.py:677](../../scripts/Step_5_1_Weather_inventory.py) |
+| `0` | `args.list_only` | [Step_5_1_Weather_inventory.py:572](../../scripts/Step_5_1_Weather_inventory.py) |
+| `0` | `Ausgabe in main` | [Step_5_1_Weather_inventory.py:676](../../scripts/Step_5_1_Weather_inventory.py) |
+| `1` | `except Exception` | [Step_5_1_Weather_inventory.py:679](../../scripts/Step_5_1_Weather_inventory.py) |
 | `1` | `missing` | [Step_5_2_download_weather_data.py:847](../../scripts/Step_5_2_download_weather_data.py) |
 | `2` | `unavailable` | [Step_5_2_download_weather_data.py:854](../../scripts/Step_5_2_download_weather_data.py) |
 | `0` | `args.verify_shards` | [Step_5_2_download_weather_data.py:855](../../scripts/Step_5_2_download_weather_data.py) |

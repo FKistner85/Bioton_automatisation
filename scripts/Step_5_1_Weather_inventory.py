@@ -364,7 +364,7 @@ def inspect_weather_csv(
         "max_nan_fraction": max_nan_fraction,
         "observed_max_nan_fraction": observed_max_nan_fraction,
         "value_ranges_ok": value_ranges_ok,
-        "has_issues": bool(issues),
+        "has_issues": any(code != "missing_value" for code in issues),
         "issues": issue_join(issues),
     }
 
@@ -410,6 +410,8 @@ def compact_from_detail(detail: pd.DataFrame) -> pd.DataFrame:
                 for token in str(value).split("|")
                 if token.strip() and token.strip().lower() != "nan"
             )
+        if exists and set(issue_codes) == {"missing_value"}:
+            has_issues = False
         file_rows = group[group["record_type"].astype(str).eq("file")]
         selected = file_rows.iloc[0] if not file_rows.empty else group.iloc[0]
         rows.append(

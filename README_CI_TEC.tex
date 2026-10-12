@@ -1,0 +1,236 @@
+% Compile with: pdflatex README_CI_TEC.tex
+% Editable source with the same content as the accompanying PDF.
+% The PDF is rendered by ReportLab; LaTeX pagination can differ.
+\documentclass[a4paper,9pt]{extarticle}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[margin=15mm]{geometry}
+\usepackage[table]{xcolor}
+\usepackage{longtable,array,enumitem,microtype}
+\usepackage{titlesec}
+\definecolor{navy}{HTML}{19384A}
+\definecolor{pale}{HTML}{EFF5F7}
+\titleformat{\section}{\large\bfseries\color{navy}}{}{0pt}{}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlength{\emergencystretch}{4em}
+\renewcommand{\arraystretch}{1.3}
+\pagestyle{empty}
+\begin{document}
+
+{\Huge\bfseries\color{navy} Master table}\par
+
+ci-tec | README | 12.10.2026 | Master schema v7\par
+
+Use \textbf{Bio\_O\_Ton\_Master.csv}, one row per recording. No separate ci-tec table is required. This is the latest recorded inventory, not a guarantee that processing is finished. Original metadata source: dawn-chorus-soundscape.csv.\par
+
+\begingroup\small\begin{longtable}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.55\linewidth}}
+
+\rowcolor{navy} \color{white}\bfseries Column & \color{white}\bfseries Meaning \\
+
+\endfirsthead
+
+\rowcolor{navy} \color{white}\bfseries Column & \color{white}\bfseries Meaning \\
+
+\endhead
+
+\rowcolor{pale} dawn\_chorus\_id & Recording ID. \\
+
+lon, lat & WGS84 coordinates in decimal degrees. \\
+
+\rowcolor{pale} grid\_100m\_id, grid\_10m\_id & Assigned grid cells. A grid ID does not imply that LRT formation data are available. \\
+
+datetime\_local & German local date and clock time in Europe/Berlin, stored without a timezone suffix. Its origin is recorded separately in timestamp\_source. \\
+
+\rowcolor{pale} datetime\_utc & UTC instant of the selected recording time. When localtimes is absent, this is the datetime instant from the original Dawn Chorus CSV. \\
+
+timestamp\_source & Exact values: localtimes for an explicitly supplied local clock; datetime for the UTC fallback. A populated datetime\_local does not imply source localtimes. \\
+
+\rowcolor{pale} time\_has\_issues & False only for source localtimes; True for datetime, absent or unknown provenance. Invalid local times are separately rejected by metadata checks. \\
+
+duration\_seconds & Checked audio duration in seconds; null if unavailable. \\
+
+\rowcolor{pale} inside\_lrt\_polygon & Recording point lies within an included LRT polygon. \\
+
+grid\_100m\_has\_majority\_formation, grid\_10m\_has\_majority\_formation & Majority formation is available for this cell; different from a direct point/LRT intersection. \\
+
+\end{longtable}\endgroup
+
+Grid embeddings, the LRT GeoPackage and grid reference data are separate products. Recording/bioacoustic flags do not certify their completeness.\par
+
+\section*{Recording time: source and German clock}
+
+The original Dawn Chorus column is named \textbf{localtimes} (the supplied local time). \textbf{Only when this field is absent, empty or whitespace-only} is the original \textbf{datetime} value used as a UTC instant and converted to \textbf{Europe/Berlin}. German winter time is UTC+1 and summer time is UTC+2; the conversion uses the timezone rules for the recording date, including date changes at midnight. Do not add a fixed offset or convert the resulting German clock a second time.\par
+
+Examples without localtimes: 2025-01-15T06:00:00Z becomes 2025-01-15 07:00:00; 2025-07-15T06:00:00Z becomes 2025-07-15 08:00:00. A UTC evening can become the following German calendar day.\par
+
+When localtimes is supplied, its local clock retains priority and is interpreted as German time. These recordings are unchanged by the fallback rule. A nonempty but invalid or unresolved localtimes value is flagged; it is not silently replaced with datetime. Source conflicts remain visible in the Step-1 time log.\par
+
+\textbf{Audit on 28.09.2026:} all 3,288 recordings without localtimes already match this UTC-to-Germany conversion in both published master copies, including UTC, German date and clock, and the source label. No timestamp correction was required. Of these, 3,264 use UTC+2 and 24 use UTC+1. The published master has 108,578 recordings with source localtimes and 3,288 with source datetime.\par
+
+\section*{Clean-data filters from the 9 October PDF}
+
+Apply the filters needed by your analysis:\par
+
+\begin{verbatim}
+time_has_issues=False
+sound_exists=True
+duration_seconds >= 40
+sound_has_issues=False
+weather_point_exists=True
+weather_point_has_issues=False
+sentinel_exists=True
+sentinel_has_issues=False
+\end{verbatim}
+
+The 40-second threshold is an analysis choice and can be replaced. Domain flags\par
+
+do not automatically invalidate the entire recording. For training in cells with\par
+
+a majority formation add grid\_100m\_has\_majority\_formation=True; for direct\par
+
+point-in-LRT training add inside\_lrt\_polygon=True. Grid IDs alone certify neither.\par
+
+\section*{Recording-time confidence and weather use}
+
+\textbf{Use weather data only for recordings with} time\_has\_issues=False, equivalently timestamp\_source == "localtimes". UTC fallback timestamps are converted correctly but can differ from the actual supplied recording clock by up to two hours according to the PDF; conversion alone does not establish confidence in the source.\par
+
+This source restriction supplements weather availability and quality checks. In schema v7, combined readiness flags include it. It does not automatically exclude the recording from audio-only work, and the audio-only bioacoustic readiness flag remains independent of time confidence. Recordings and stored files remain in the shared master.\par
+
+\section*{Availability and issues}
+
+\textbf{\_exists}: True means the corresponding files were recorded as present on LSDF. These flags describe the recorded inventory, not a live file check.\par
+
+\textbf{\_has\_issues}: True means a problem or missing required data/check results. It can be True whether \_exists is True or False.\par
+
+Empty means no check result is available.\par
+
+\textbf{\_issue\_codes} gives the reason. Multiple codes are separated by a pipe; details may follow a colon. \textbf{\_has\_issues is not a severity level or a universal exclusion rule.} Rules below concern the affected file/domain, not automatically the entire recording. Unknown codes or a True issue flag without codes require review.\par
+
+\begingroup\small\begin{longtable}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.55\linewidth}}
+
+\rowcolor{navy} \color{white}\bfseries Columns & \color{white}\bfseries Data \\
+
+\endfirsthead
+
+\rowcolor{navy} \color{white}\bfseries Columns & \color{white}\bfseries Data \\
+
+\endhead
+
+\rowcolor{pale} sound\_exists, sound\_has\_issues & Audio file and audio checks. \\
+
+sentinel\_exists, sentinel\_has\_issues & Sentinel-2 files and technical checks. \\
+
+\rowcolor{pale} weather\_point\_exists, weather\_point\_has\_issues & Weather file for the recording and its checks. \\
+
+\end{longtable}\endgroup
+
+Sound examples:\par
+
+\noindent\textbullet\ True / False: file found, no issues reported.\par
+
+\noindent\textbullet\ True / True: file found, but a technical property or decoding check failed.\par
+
+\noindent\textbullet\ False / True: file missing.\par
+
+\section*{Sound codes and suggested use}
+
+\begingroup\small\begin{longtable}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.55\linewidth}}
+
+\rowcolor{navy} \color{white}\bfseries sound\_issue\_codes & \color{white}\bfseries Meaning / consequence \\
+
+\endfirsthead
+
+\rowcolor{navy} \color{white}\bfseries sound\_issue\_codes & \color{white}\bfseries Meaning / consequence \\
+
+\endhead
+
+\rowcolor{pale} duration\_not\_60s & Outside 59-61 seconds. \textbf{Information}; decide in application-specific preprocessing. Not a general exclusion. \\
+
+missing\_file & File absent: unavailable. \\
+
+\rowcolor{pale} empty\_file, no\_audio\_stream\_found, no\_audio\_frames\_decoded & No usable audio in the checked file: exclude that file pending repair. \\
+
+pyav\_decode\_failed, invalid\_or\_missing\_sample\_rate, invalid\_or\_missing\_channel\_count, invalid\_duration, duration\_unavailable & Technical check failed or a property could not be established: hold for review. Does not prove the original source is permanently corrupt. \\
+
+\rowcolor{pale} multiple\_audio\_streams & Select the intended stream before use. \\
+
+filename\_does\_not\_match\_\textless{}id\textgreater{}\_audio\_pattern & File-to-ID association needs clarification. \\
+
+\rowcolor{pale} source\_stat\_failed, copy\_failed, WinError & Access/copy problem; investigate connection and download before concluding source corruption. \\
+
+\end{longtable}\endgroup
+
+\textbf{PDF audio filter:} sound\_exists=True, duration\_seconds \textgreater{}= 40, sound\_has\_issues=False. A pure duration\_not\_60s note does not set the issue flag. Shorter or longer files can be usable; change the duration threshold for your analysis. Technical codes still require review.\par
+
+\section*{Point weather codes and suggested use}
+
+Expected window: ten preceding complete German calendar days plus the recording day, hourly. Normally 264 rows; across spring DST 263, across autumn DST 265. The repeated local autumn hour is valid; a timezone-free timestamp alone cannot distinguish its two UTC instants.\par
+
+\begingroup\small\begin{longtable}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.55\linewidth}}
+
+\rowcolor{navy} \color{white}\bfseries weather\_point\_issue\_codes & \color{white}\bfseries Meaning / consequence \\
+
+\endfirsthead
+
+\rowcolor{navy} \color{white}\bfseries weather\_point\_issue\_codes & \color{white}\bfseries Meaning / consequence \\
+
+\endhead
+
+\rowcolor{pale} missing\_file & No weather file. Cause is not established by this code. \\
+
+missing\_value & At least one required value is missing. \textbf{Information only:} this code alone does not set weather\_point\_has\_issues. Check variables/hours needed by the application; do not fill values blindly. \\
+
+\rowcolor{pale} recording\_date\_changed\_recheck\_required & Recording date changed while previous results were retained. Temporal association is unconfirmed: hold until rechecked. \\
+
+unexpected\_time\_interval & Full timestamp sequence and multiplicities differ from the expected window. May mean missing, extra or shifted hours. Correct DST transitions are accepted by the current inventory. \textbf{Check/correct before use.} \\
+
+\rowcolor{pale} unexpected\_time\_window, unexpected\_row\_count & Wrong boundaries or row count: check/correct before use. \\
+
+duplicate\_datetime & More repeats than allowed by the expected window, not the legitimate repeated autumn hour. Check/correct before use. \\
+
+\rowcolor{pale} missing\_required\_column, missing\_datetime\_column, unparseable\_datetime, invalid\_metadata\_datetime & Structure or time basis is unreliable: hold until clarified. \\
+
+empty\_file, read\_error & Empty or unreadable; an exception suffix may follow read\_error. File currently unusable. \\
+
+\rowcolor{pale} implausible\_value & Temperature/humidity range check failed. Investigate values and source before deciding usability. \\
+
+\end{longtable}\endgroup
+
+\textbf{PDF weather filter:} time\_has\_issues=False, weather\_point\_exists=True and weather\_point\_has\_issues=False. This permits missing\_value as an informational code; verify the variables/hours your analysis needs. A stricter application can additionally require no codes. Additional time/structure errors remain blocking.\par
+
+\section*{Sentinel}
+
+\begingroup\small\begin{longtable}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.55\linewidth}}
+
+\rowcolor{navy} \color{white}\bfseries Code / field & \color{white}\bfseries Meaning / consequence \\
+
+\endfirsthead
+
+\rowcolor{navy} \color{white}\bfseries Code / field & \color{white}\bfseries Meaning / consequence \\
+
+\endhead
+
+\rowcolor{pale} Sentinel: missing\_file, score\_without\_tif & Image missing; a score does not replace it. \\
+
+Sentinel: too\_cloudy\_sentinel\_not\_available & Quality score is exactly 0: too cloudy, Sentinel data unavailable for use. The numeric score stays 0; sentinel\_has\_issues=True. sentinel\_exists still reports physical file presence. \\
+
+\rowcolor{pale} Sentinel: quality\_score\_missing & Image may exist, but its quality assessment is missing. \\
+
+Sentinel: empty\_file, raster\_read\_failed & Image empty or unreadable: exclude pending repair. \\
+
+\rowcolor{pale} inventory\_not\_run, qc\_not\_run & Check results unavailable; not equivalent to passing QC. \\
+
+\end{longtable}\endgroup
+
+Weather and Sentinel do not automatically exclude a recording from audio/LRT-only work. Photos are not a filter criterion for the stated ci-tec priorities.\par
+
+\section*{Processing completion is separate from quality}
+
+\textbf{is\_final does not currently exist.} ready\_for\_general\_analysis is not a ci-tec release flag: it requires trusted time provenance plus unflagged sound, weather and Sentinel together. It does not enforce an analysis-specific audio duration threshold; apply duration\_seconds \textgreater{}= 40 separately for the PDF clean filter.\par
+
+Completion requires finished processing and checks for the required products, a specified input/code version and no outstanding repairs. Missing data and suitability remain separate. A permanent release applies only to a frozen version; later versions can reveal new errors. The shared master retains all rows.\par
+
+\end{document}

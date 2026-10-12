@@ -1,6 +1,6 @@
 # Bio-O-Ton Master Table Reference
 
-This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-09-17-mastertable-v6` and contains 104 columns.
+This reference defines the final ID-level table written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The implementation's `MASTER_COLUMNS` list is the authoritative output order; the current version is `2026-10-09-mastertable-v7` and contains 106 columns.
 
 ## Products and row model
 
@@ -50,7 +50,7 @@ The master table deliberately condenses these sources. File-level, segment-level
 
 | Column | Definition |
 |---|---|
-| `mastertable_schema_version` | Master-table row version. Current constant: `2026-09-17-mastertable-v6`. |
+| `mastertable_schema_version` | Master-table row version. Current constant: `2026-10-09-mastertable-v7`. |
 | `workflow_run_id` | Shared workflow ID that most recently updated the row. Outside an orchestrated run, the writer's fallback run ID is used. |
 | `dawn_chorus_id` | Unique numeric Dawn Chorus recording ID. It is normalized to a digit string and is the table's primary key. |
 | `source_fingerprint` | SHA-256 fingerprint from Step 1 over the source fields relevant to the ID. It supports changed-record detection. |
@@ -66,6 +66,7 @@ The master table deliberately condenses these sources. File-level, segment-level
 | `date_local` | Local calendar date derived from `datetime_local`. |
 | `time_local` | Local wall-clock time derived from `datetime_local`; the local offset is not applied twice. |
 | `timestamp_source` | Source selected by Step 1, such as `localtimes` or `datetime`. |
+| `time_has_issues` | `False` exactly when `timestamp_source = localtimes`; `True` for UTC fallback, missing or unknown provenance. This is a source-confidence flag; invalid local timestamps are separately rejected by `metadata_status` and readiness. |
 | `timestamp_changed` | `True` when Step 1 normalized, converted, or reinterpreted the source timestamp. |
 | `timestamp_change_reason` | Step-1 explanation of the timestamp conversion/normalization. |
 | `lat` | Cleaned WGS84 latitude; valid range is -90 to 90. |
@@ -81,6 +82,8 @@ separate from the master's syntactic `metadata_status` check. Source offsets
 inconsistent with Germany never override an explicitly supplied local clock.
 ci-tec uses `datetime_local` in the shared full master as its recording-time
 column. A separate compact export is no longer generated automatically.
+
+The 9 October 2026 PDF clean-data rule requires `time_has_issues=False`. Combined readiness now enforces that source rule. UTC fallback conversion remains unchanged. The source flag does not invalidate audio-only analyses or remove rows. See `README_CI_TEC.md` for the consumer filters.
 
 ### Status fields
 
@@ -102,7 +105,8 @@ Canonical domain and row statuses use values from the project status model, incl
 | Column | Definition |
 |---|---|
 | `sound_exists` | At least one audio file for the ID was found by the audio inventory. |
-| `sound_has_issues` | The audio inventory or download retry log reports a problem for the ID. |
+| `duration_seconds` | Checked audio duration from the detailed inventory; null when unavailable. With multiple files, the minimum known duration is retained and individual QC issues remain visible. Focused metadata refreshes preserve this value. |
+| `sound_has_issues` | The audio inventory or download retry log reports a technical problem for the ID. A pure `duration_not_60s` note does not set this flag; apply `duration_seconds >= 40` separately for the PDF's suggested clean filter. |
 | `sound_issue_codes` | Pipe-separated compact audio causes such as `missing_file`, `duration_unavailable`, or `sound_missing_audio_url`. |
 | `sound_status` | Canonical audio status; derivation is listed under [Status fields](#status-fields). |
 | `photo_exists` | At least one photo file for the ID was found by the photo inventory. |
@@ -115,17 +119,17 @@ Canonical domain and row statuses use values from the project status model, incl
 | Column | Definition |
 |---|---|
 | `sentinel_exists` | At least one Sentinel-2 GeoTIFF for the ID was inventoried. |
-| `sentinel_has_issues` | The inventory or score join reports a technical problem. A low score alone is not a technical issue. |
-| `sentinel_quality_score` | Optional quality score joined from the configured `S2_Scores.csv`. Scores are not treated as calibrated technical pass/fail thresholds by the master writer. |
-| `sentinel_issue_codes` | Pipe-separated causes such as `missing_file`, `quality_score_missing`, or `all_pixels_nodata`. |
+| `sentinel_has_issues` | The inventory or score join reports a technical problem. A score of exactly 0 sets `too_cloudy_sentinel_not_available`; positive low scores alone are not technical issues. |
+| `sentinel_quality_score` | Optional quality score joined from the configured `S2_Scores.csv`. The value is retained, including 0; exactly 0 marks Sentinel data as unavailable for use due to cloudiness. |
+| `sentinel_issue_codes` | Pipe-separated causes such as `missing_file`, `quality_score_missing`, `too_cloudy_sentinel_not_available`, or `all_pixels_nodata`. |
 | `sentinel_status` | Canonical Sentinel-2 status; derivation is listed under [Status fields](#status-fields). |
 
 ### Weather
 
 | Column | Definition |
 |---|---|
-| `weather_point_exists` | The Step-5.1 compact inventory reports a non-empty `weather_<id>.csv`. |
-| `weather_point_has_issues` | Point weather has missing columns/values, implausible values, wrong row count/interval, or a read error. |
+| `weather_point_exists` | The Step-5.1 compact inventory reports a present `weather_<id>.csv`; an empty file can exist and have issues. |
+| `weather_point_has_issues` | Point weather has missing required columns, implausible values, wrong row count/interval, a read error or missing QC. `missing_value` alone is informational and does not set this flag. |
 | `weather_point_issue_codes` | Pipe-separated HOSTRADA point-weather causes such as `missing_file`, `missing_value`, or `unexpected_row_count`. |
 | `weather_point_status` | Canonical point-weather status; the master writer reuses Step-5.1 QC rather than rereading all weather files. |
 | `weather_raster_hostrada_100m_exists` | Required products are present in the configured 100 m raster output tree. This is a global state copied to each row. |
@@ -215,7 +219,7 @@ These fields describe direct point-in-polygon hits against the cleaned primary L
 
 | Column | Exact intent |
 |---|---|
-| `ready_for_general_analysis` | Valid local/UTC time and coordinates; audio exists without issues; point weather exists without issues; Sentinel-2 exists without technical issues. Photos, formation, raster weather, and bioacoustics do not block it. |
+| `ready_for_general_analysis` | Valid local/UTC time and coordinates, `time_has_issues=False`; audio exists without issues; point weather exists without issues; Sentinel-2 exists with a quality score and without technical issues. Photos, formation, raster weather, and bioacoustics do not block it. |
 | `ready_for_formation_analysis_100m` | General readiness plus a 100 m assignment and majority formation. |
 | `ready_for_direct_lrt_analysis` | General readiness plus `inside_lrt_polygon = True`. |
 | `ready_for_formation_weather_raster_analysis_100m` | 100 m formation readiness plus present, issue-free HOSTRADA 100 m rasters. |
@@ -249,11 +253,17 @@ When errors originate in free-text detail/retry logs, Step 7.0 normalizes them t
 
 ## Incremental update behavior
 
-The statements below describe core-phase updates. With a run plan whose `phase`
-is `bioacoustics`, Step 7.0 reads the existing master and changes only the
-bioacoustic fields and `ready_for_bioacoustic_analysis`. Metadata, times, grid/LRT
-assignments, other domains, manual fields and the existing row schema version
-are retained. It does not upgrade an older master to v6; a core update does that.
+Both Horeka and local runs call the same Step 7.0 writer. Core full, incremental
+and focused metadata updates derive the time flag from provenance. Incremental
+updates also migrate retained rows, so the new flag is never left empty. Changes
+are recorded in status events. A missing source is conservatively flagged.
+
+The bioacoustics phase refreshes Step-6 fields and also applies the v7 source
+flag and combined-readiness migration to the existing master. It updates the
+schema version and adds a nullable duration column if an older master lacks it;
+a core run fills it from audio QC. Metadata timestamps, grid/LRT assignments,
+other domains and manual fields are retained. Existing manual approvals remain
+historical approvals and do not override the current clean-data filters.
 
 ## Proximity review fields
 
