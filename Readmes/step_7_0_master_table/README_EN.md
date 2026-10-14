@@ -2,7 +2,7 @@
 
 ## Current Operation (2026-10-12)
 
-Direct Slurm submission serializes intermediate updates. The tmux/hybrid controller collects dependencies and writes one final master. Core and local runs share the v7 writer (106 columns). `time_has_issues` is false only for source `localtimes`; `duration_seconds` comes from audio QC. Pure duration deviations and weather `missing_value` codes remain informational. No clean-data filter removes master rows; 40 seconds is a later analysis choice. Incremental and bioacoustic updates also migrate time flags on older rows. Full rules are in the master reference.
+Direct Slurm submission serializes intermediate updates. The tmux/hybrid controller collects dependencies and writes one final master. Core and local runs share the v7 writer (107 columns, including persistent time_issue_codes). `time_has_issues` is false for QC-validated conflict-free recording times from either `localtimes` or `datetime`; `duration_seconds` comes from audio QC. Pure duration deviations and weather `missing_value` codes remain informational. No clean-data filter removes master rows; 40 seconds is a later analysis choice. Incremental and bioacoustic updates also migrate time flags on older rows. Full rules are in the master reference.
 
 
 ## Purpose
@@ -75,7 +75,7 @@ when their relevant recording date changes. It does not regenerate those product
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Error Codes, Status And Exit Codes
 
-Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
+Checked against local code: 2026-10-13. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
 
 `0` only means process success, not necessarily clean data. Invalid argparse arguments can exit with `2`; uncaught Python exceptions typically exit with `1`. Slurm states such as `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` and `DependencyNeverSatisfied` are scheduler messages, not data-quality codes. Dynamic library/HTTP/filesystem errors retain their original messages in logs.
 
@@ -83,61 +83,64 @@ Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses,
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `time_source_not_localtimes` | Time source is datetime, unknown or absent; time_has_issues=True and combined clean readiness flags=False. | [Step_7_0_update_master_table.py:204](../../scripts/Step_7_0_update_master_table.py) |
-| `recording_date_changed_recheck_required` | Local recording date changed; recheck retained weather/Sentinel products. | [Step_7_0_update_master_table.py:487](../../scripts/Step_7_0_update_master_table.py) |
-| `inventory_not_run` | No usable compact inventory is available. | [Step_7_0_update_master_table.py:544](../../scripts/Step_7_0_update_master_table.py) |
-| `qc_not_run` | Raster exists but QC result is missing. | [Step_7_0_update_master_table.py:559](../../scripts/Step_7_0_update_master_table.py) |
-| `duration_unavailable` | Audio duration could not be determined. | [Step_7_0_update_master_table.py:611](../../scripts/Step_7_0_update_master_table.py) |
-| `bioacoustic_qc_not_run` | No usable compact bioacoustic QC is available. | [Step_7_0_update_master_table.py:659](../../scripts/Step_7_0_update_master_table.py) |
-| `bioacoustic_result_missing` | This master ID has no matching QC result. | [Step_7_0_update_master_table.py:695](../../scripts/Step_7_0_update_master_table.py) |
-| `inventory_not_run` | No usable compact inventory is available. | [Step_7_0_update_master_table.py:765](../../scripts/Step_7_0_update_master_table.py) |
-| `missing_file` | Expected file is missing. | [Step_7_0_update_master_table.py:808](../../scripts/Step_7_0_update_master_table.py) |
-| `quality_score_missing` | No score is available for the recording. | [Step_7_0_update_master_table.py:813](../../scripts/Step_7_0_update_master_table.py) |
-| `too_cloudy_sentinel_not_available` | Sentinel score is exactly 0: too cloudy, Sentinel data unavailable for use; a file may still exist. | [Step_7_0_update_master_table.py:815](../../scripts/Step_7_0_update_master_table.py) |
-| `inventory_not_run` | No usable compact inventory is available. | [Step_7_0_update_master_table.py:852](../../scripts/Step_7_0_update_master_table.py) |
-| `qc_not_run` | Raster exists but QC result is missing. | [Step_7_0_update_master_table.py:894](../../scripts/Step_7_0_update_master_table.py) |
-| `missing_file` | Expected file is missing. | [Step_7_0_update_master_table.py:895](../../scripts/Step_7_0_update_master_table.py) |
-| `missing_raster` | Expected HOSTRADA rasters are absent. | [Step_7_0_update_master_table.py:932](../../scripts/Step_7_0_update_master_table.py) |
-| `all_nodata` | At least one QC band contains only NoData. | [Step_7_0_update_master_table.py:939](../../scripts/Step_7_0_update_master_table.py) |
-| `unexpected_shape` | QC reports a nonsquare raster. | [Step_7_0_update_master_table.py:941](../../scripts/Step_7_0_update_master_table.py) |
-| `raster_structure_warning` | QC reports constant or all-NoData rows/columns. | [Step_7_0_update_master_table.py:944](../../scripts/Step_7_0_update_master_table.py) |
-| `raster_qc_read_error_{type(exc).__name__}` | Raster QC file could not be read. | [Step_7_0_update_master_table.py:947](../../scripts/Step_7_0_update_master_table.py) |
-| `qc_not_run` | Raster exists but QC result is missing. | [Step_7_0_update_master_table.py:949](../../scripts/Step_7_0_update_master_table.py) |
-| `timestamp_missing_or_invalid` | A required master timestamp is missing or invalid. | [Step_7_0_update_master_table.py:1453](../../scripts/Step_7_0_update_master_table.py) |
-| `time_source_not_localtimes` | Time source is datetime, unknown or absent; time_has_issues=True and combined clean readiness flags=False. | [Step_7_0_update_master_table.py:1455](../../scripts/Step_7_0_update_master_table.py) |
-| `coordinates_missing_or_invalid` | Master coordinates are missing or outside valid WGS84 bounds. | [Step_7_0_update_master_table.py:1457](../../scripts/Step_7_0_update_master_table.py) |
-| `{prefix}_missing` | The named data domain is missing for the recording. | [Step_7_0_update_master_table.py:1462](../../scripts/Step_7_0_update_master_table.py) |
-| `{prefix}_issue` | The named data domain exists but reports issues. | [Step_7_0_update_master_table.py:1464](../../scripts/Step_7_0_update_master_table.py) |
-| `grid_100m_missing_majority_formation` | No 100 m majority formation; this does not necessarily mean no grid ID. | [Step_7_0_update_master_table.py:1466](../../scripts/Step_7_0_update_master_table.py) |
-| `grid_10m_missing_majority_formation` | No 10 m majority formation; this does not necessarily mean no grid ID. | [Step_7_0_update_master_table.py:1468](../../scripts/Step_7_0_update_master_table.py) |
+| `time_validation_failed` | A local recording time exists, but QC detected a conflict or invalid value; do not use as a clean timestamp. | [Step_7_0_update_master_table.py:227](../../scripts/Step_7_0_update_master_table.py) |
+| `time_check_not_validated` | The recording has no successful time QC; time_has_issues remains True. | [Step_7_0_update_master_table.py:415](../../scripts/Step_7_0_update_master_table.py) |
+| `recording_date_changed_recheck_required` | Local recording date changed; recheck retained weather/Sentinel products. | [Step_7_0_update_master_table.py:528](../../scripts/Step_7_0_update_master_table.py) |
+| `recording_date_changed_recheck_required` | Local recording date changed; recheck retained weather/Sentinel products. | [Step_7_0_update_master_table.py:536](../../scripts/Step_7_0_update_master_table.py) |
+| `recording_date_changed_recheck_required` | Local recording date changed; recheck retained weather/Sentinel products. | [Step_7_0_update_master_table.py:585](../../scripts/Step_7_0_update_master_table.py) |
+| `inventory_not_run` | No usable compact inventory is available. | [Step_7_0_update_master_table.py:639](../../scripts/Step_7_0_update_master_table.py) |
+| `qc_not_run` | Raster exists but QC result is missing. | [Step_7_0_update_master_table.py:654](../../scripts/Step_7_0_update_master_table.py) |
+| `duration_unavailable` | Audio duration could not be determined. | [Step_7_0_update_master_table.py:706](../../scripts/Step_7_0_update_master_table.py) |
+| `bioacoustic_qc_not_run` | No usable compact bioacoustic QC is available. | [Step_7_0_update_master_table.py:754](../../scripts/Step_7_0_update_master_table.py) |
+| `bioacoustic_result_missing` | This master ID has no matching QC result. | [Step_7_0_update_master_table.py:790](../../scripts/Step_7_0_update_master_table.py) |
+| `inventory_not_run` | No usable compact inventory is available. | [Step_7_0_update_master_table.py:860](../../scripts/Step_7_0_update_master_table.py) |
+| `missing_file` | Expected file is missing. | [Step_7_0_update_master_table.py:903](../../scripts/Step_7_0_update_master_table.py) |
+| `quality_score_missing` | No score is available for the recording. | [Step_7_0_update_master_table.py:908](../../scripts/Step_7_0_update_master_table.py) |
+| `too_cloudy_sentinel_not_available` | Sentinel score is exactly 0: too cloudy, Sentinel data unavailable for use; a file may still exist. | [Step_7_0_update_master_table.py:910](../../scripts/Step_7_0_update_master_table.py) |
+| `inventory_not_run` | No usable compact inventory is available. | [Step_7_0_update_master_table.py:947](../../scripts/Step_7_0_update_master_table.py) |
+| `qc_not_run` | Raster exists but QC result is missing. | [Step_7_0_update_master_table.py:989](../../scripts/Step_7_0_update_master_table.py) |
+| `missing_file` | Expected file is missing. | [Step_7_0_update_master_table.py:990](../../scripts/Step_7_0_update_master_table.py) |
+| `missing_raster` | Expected HOSTRADA rasters are absent. | [Step_7_0_update_master_table.py:1027](../../scripts/Step_7_0_update_master_table.py) |
+| `all_nodata` | At least one QC band contains only NoData. | [Step_7_0_update_master_table.py:1034](../../scripts/Step_7_0_update_master_table.py) |
+| `unexpected_shape` | QC reports a nonsquare raster. | [Step_7_0_update_master_table.py:1036](../../scripts/Step_7_0_update_master_table.py) |
+| `raster_structure_warning` | QC reports constant or all-NoData rows/columns. | [Step_7_0_update_master_table.py:1039](../../scripts/Step_7_0_update_master_table.py) |
+| `raster_qc_read_error_{type(exc).__name__}` | Raster QC file could not be read. | [Step_7_0_update_master_table.py:1042](../../scripts/Step_7_0_update_master_table.py) |
+| `qc_not_run` | Raster exists but QC result is missing. | [Step_7_0_update_master_table.py:1044](../../scripts/Step_7_0_update_master_table.py) |
+| `timestamp_missing_or_invalid` | A required master timestamp is missing or invalid. | [Step_7_0_update_master_table.py:1548](../../scripts/Step_7_0_update_master_table.py) |
+| `time_validation_failed` | A local recording time exists, but QC detected a conflict or invalid value; do not use as a clean timestamp. | [Step_7_0_update_master_table.py:1550](../../scripts/Step_7_0_update_master_table.py) |
+| `coordinates_missing_or_invalid` | Master coordinates are missing or outside valid WGS84 bounds. | [Step_7_0_update_master_table.py:1552](../../scripts/Step_7_0_update_master_table.py) |
+| `{prefix}_missing` | The named data domain is missing for the recording. | [Step_7_0_update_master_table.py:1557](../../scripts/Step_7_0_update_master_table.py) |
+| `{prefix}_issue` | The named data domain exists but reports issues. | [Step_7_0_update_master_table.py:1559](../../scripts/Step_7_0_update_master_table.py) |
+| `grid_100m_missing_majority_formation` | No 100 m majority formation; this does not necessarily mean no grid ID. | [Step_7_0_update_master_table.py:1561](../../scripts/Step_7_0_update_master_table.py) |
+| `grid_10m_missing_majority_formation` | No 10 m majority formation; this does not necessarily mean no grid ID. | [Step_7_0_update_master_table.py:1563](../../scripts/Step_7_0_update_master_table.py) |
 
 ### Status Values (Not All Are Errors)
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `partial` | `'record_status' in table` | [Step_7_0_update_master_table.py:209](../../scripts/Step_7_0_update_master_table.py) |
-| `not_started` | `'release_status' in table` | [Step_7_0_update_master_table.py:211](../../scripts/Step_7_0_update_master_table.py) |
-| `not_started` | `compact.empty` | [Step_7_0_update_master_table.py:657](../../scripts/Step_7_0_update_master_table.py) |
-| `majority_formation_status_10m` | `Emitted by add_10m_formation` | [Step_7_0_update_master_table.py:1232](../../scripts/Step_7_0_update_master_table.py) |
-| `validated` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1376](../../scripts/Step_7_0_update_master_table.py) |
-| `has_issues` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1377](../../scripts/Step_7_0_update_master_table.py) |
-| `missing` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1383](../../scripts/Step_7_0_update_master_table.py) |
-| `partial` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1472](../../scripts/Step_7_0_update_master_table.py) |
-| `not_started` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1488](../../scripts/Step_7_0_update_master_table.py) |
-| `manual_review_required` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1489](../../scripts/Step_7_0_update_master_table.py) |
-| `approved` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1492](../../scripts/Step_7_0_update_master_table.py) |
+| `partial` | `'record_status' in table` | [Step_7_0_update_master_table.py:236](../../scripts/Step_7_0_update_master_table.py) |
+| `not_started` | `'release_status' in table` | [Step_7_0_update_master_table.py:238](../../scripts/Step_7_0_update_master_table.py) |
+| `not_started` | `compact.empty` | [Step_7_0_update_master_table.py:752](../../scripts/Step_7_0_update_master_table.py) |
+| `majority_formation_status_10m` | `Emitted by add_10m_formation` | [Step_7_0_update_master_table.py:1327](../../scripts/Step_7_0_update_master_table.py) |
+| `validated` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1471](../../scripts/Step_7_0_update_master_table.py) |
+| `has_issues` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1472](../../scripts/Step_7_0_update_master_table.py) |
+| `missing` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1478](../../scripts/Step_7_0_update_master_table.py) |
+| `partial` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1567](../../scripts/Step_7_0_update_master_table.py) |
+| `not_started` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1583](../../scripts/Step_7_0_update_master_table.py) |
+| `manual_review_required` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1584](../../scripts/Step_7_0_update_master_table.py) |
+| `approved` | `Emitted by add_agreement_and_ready_flags` | [Step_7_0_update_master_table.py:1587](../../scripts/Step_7_0_update_master_table.py) |
 
 ### Explicit Failure Messages
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `FileNotFoundError: Step 1 clean metadata is missing or empty: {status_dir / 'dawnchorus_metadata_clean.csv'}` | `clean.empty` | [Step_7_0_update_master_table.py:331](../../scripts/Step_7_0_update_master_table.py) |
-| `ValueError: Run the core pipeline first: an existing master is required.` | `previous.empty` | [Step_7_0_update_master_table.py:725](../../scripts/Step_7_0_update_master_table.py) |
-| `ValueError: Expected HOSTRADA raster resolution_m=100 for the master table, got {resolution}.` | `resolution != 100` | [Step_7_0_update_master_table.py:922](../../scripts/Step_7_0_update_master_table.py) |
-| `ValueError: The INSPIRE grid has no CRS.` | `not info['crs']` | [Step_7_0_update_master_table.py:1021](../../scripts/Step_7_0_update_master_table.py) |
-| `ValueError: FORMATION_10M_UNREADABLE: {path}` | `except Exception` | [Step_7_0_update_master_table.py:1200](../../scripts/Step_7_0_update_master_table.py) |
-| `FileNotFoundError: Master update ID file not found: {args.ids_file}` | `not args.ids_file.is_file()` | [Step_7_0_update_master_table.py:1669](../../scripts/Step_7_0_update_master_table.py) |
-| `ValueError: FORMATION_10M_MISSING: {ten_path}; existing master retained.` | `ten_path and (not Path(ten_path).is_file())` | [Step_7_0_update_master_table.py:1683](../../scripts/Step_7_0_update_master_table.py) |
+| `FileNotFoundError: Step 1 clean metadata is missing or empty: {status_dir / 'dawnchorus_metadata_clean.csv'}` | `clean.empty` | [Step_7_0_update_master_table.py:358](../../scripts/Step_7_0_update_master_table.py) |
+| `ValueError: Run the core pipeline first: an existing master is required.` | `previous.empty` | [Step_7_0_update_master_table.py:820](../../scripts/Step_7_0_update_master_table.py) |
+| `ValueError: Expected HOSTRADA raster resolution_m=100 for the master table, got {resolution}.` | `resolution != 100` | [Step_7_0_update_master_table.py:1017](../../scripts/Step_7_0_update_master_table.py) |
+| `ValueError: The INSPIRE grid has no CRS.` | `not info['crs']` | [Step_7_0_update_master_table.py:1116](../../scripts/Step_7_0_update_master_table.py) |
+| `ValueError: FORMATION_10M_UNREADABLE: {path}` | `except Exception` | [Step_7_0_update_master_table.py:1295](../../scripts/Step_7_0_update_master_table.py) |
+| `FileNotFoundError: Master update ID file not found: {args.ids_file}` | `not args.ids_file.is_file()` | [Step_7_0_update_master_table.py:1764](../../scripts/Step_7_0_update_master_table.py) |
+| `ValueError: FORMATION_10M_MISSING: {ten_path}; existing master retained.` | `ten_path and (not Path(ten_path).is_file())` | [Step_7_0_update_master_table.py:1778](../../scripts/Step_7_0_update_master_table.py) |
 | `ValueError: Proximity thresholds must be finite and positive` | `not all((math.isfinite(v) and v > 0 for v in (radius, seconds, cluster_radius, cluster_seconds)))` | [spatiotemporal_duplicates.py:27](../../scripts/spatiotemporal_duplicates.py) |
 | `ValueError: Cluster thresholds must include duplicate thresholds` | `radius > cluster_radius or seconds > cluster_seconds` | [spatiotemporal_duplicates.py:29](../../scripts/spatiotemporal_duplicates.py) |
 | `ValueError: Cluster radius cannot exceed half Earth's circumference` | `cluster_radius > math.pi * EARTH_RADIUS_M` | [spatiotemporal_duplicates.py:31](../../scripts/spatiotemporal_duplicates.py) |
@@ -149,10 +152,10 @@ Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses,
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `0` | `execution_phase() == 'bioacoustics'` | [Step_7_0_update_master_table.py:1664](../../scripts/Step_7_0_update_master_table.py) |
-| `0` | `except ValueError` | [Step_7_0_update_master_table.py:1688](../../scripts/Step_7_0_update_master_table.py) |
-| `0` | `Emitted by main` | [Step_7_0_update_master_table.py:1794](../../scripts/Step_7_0_update_master_table.py) |
-| `1` | `except Exception` | [Step_7_0_update_master_table.py:1797](../../scripts/Step_7_0_update_master_table.py) |
+| `0` | `execution_phase() == 'bioacoustics'` | [Step_7_0_update_master_table.py:1759](../../scripts/Step_7_0_update_master_table.py) |
+| `0` | `except ValueError` | [Step_7_0_update_master_table.py:1783](../../scripts/Step_7_0_update_master_table.py) |
+| `0` | `Emitted by main` | [Step_7_0_update_master_table.py:1890](../../scripts/Step_7_0_update_master_table.py) |
+| `1` | `except Exception` | [Step_7_0_update_master_table.py:1893](../../scripts/Step_7_0_update_master_table.py) |
 
 **Recovery:** Read the step log and manifest for the affected run first, then the detail/retry/QC log for the ID or chunk. Correct the configuration or input and restart the same phase. File existence does not resolve `failed`/`partial` results. Release a pipeline lock only after inspecting its jobs.
 

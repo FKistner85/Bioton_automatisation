@@ -40,7 +40,8 @@
     "date_local": {"type": ["string", "null"]},
     "time_local": {"type": ["string", "null"]},
     "timestamp_source": {"type": ["string", "null"]},
-    "time_has_issues": {"type": "boolean", "description": "False exactly when timestamp_source is localtimes; UTC fallback, absent or unknown sources are flagged."},
+    "time_has_issues": {"type": "boolean", "description": "True for invalid/missing/ambiguous timestamp, absent QC or real timestamp conflicts; source datetime alone does not constitute an issue. False requires validated recording time."},
+    "time_issue_codes": {"type": "string", "description": "Step-1 recording time quality and confidence reasons, preserved across incremental master refreshes."},
     "duration_seconds": {"type": ["number", "null"], "minimum": 0, "description": "Checked audio duration; minimum across inventoried files for the ID. Null if unavailable."},
     "inside_lrt_polygon": {"type": "boolean", "description": "Direct recording point intersection with an included LRT polygon, independent of grid majority."},
     "timestamp_changed": {"type": "boolean"},
@@ -148,7 +149,7 @@
   },
   "x-primary-key": "dawn_chorus_id",
   "x-validation-rules": [
-    "time_has_issues equals timestamp_source != localtimes (including absent or unknown sources)",
+    "time_has_issues is true for absent/invalid times or unresolved QC conflicts; valid and checked datetime-fallback recordings are not flagged solely for provenance",
     "dawn_chorus_id is unique",
     "majority_disputed_100m equals majority_delta_100m <= 200 when present",
     "majority_disputed_10m equals majority_delta_10m <= 200 when present"

@@ -79,6 +79,8 @@ def main():
     for c in ['lat','lon']:
         assert pd.to_numeric(live[c]).reset_index(drop=True).eq(meta_by[c].reset_index(drop=True)).all()
     clocks=pd.to_datetime(metadata.datetime,format='mixed',utc=True).dt.tz_convert('Europe/Berlin').dt.tz_localize(None)
+    # Step-1 outputs offset-aware localized Berlin times; never treat the
+    # raw source `datetime` label as evidence of a UTC instant.
     assert pd.Series(clocks.to_numpy(),index=metadata.id.astype(str)).loc[live.dawn_chorus_id].reset_index(drop=True).eq(pd.to_datetime(live.datetime_local)).all()
     cfg['point_lrt_assignment']['metadata_csv']=str(snapshots/'metadata.csv')
     discovered=discover_variants(cfg)

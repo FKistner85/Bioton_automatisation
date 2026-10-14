@@ -38,9 +38,21 @@ def audit(source_path, baseline_path, output, master_path=None, short_path=None)
     raw_local_clock = pd.to_datetime(local.str.replace(r"(Z|[+-]\d{2}:?\d{2})$", "", regex=True), format="mixed", errors="coerce")
     # All present local clock components must survive, at product precision.
     local_matches = actual_local[present].eq(raw_local_clock[present].dt.floor("s"))
-    fallback_matches = actual_utc[~present].eq(reference[~present].dt.floor("s"))
+    # A source `datetime` with Z/+00 but without localtimes may be a
+    # mislabeled Berlin wall clock, not a UTC instant.
+    fallback_raw = source.datetime.astype("string").str.strip()
+    fallback_zero = ~present & fallback_raw.str.contains(r"(?:Z|\+00:?00)$", case=False, na=False)
+    raw_fallback_wall = pd.to_datetime(
+        fallback_raw.str.replace(r"(?:Z|[+-]\d{2}:?\d{2})$", "", regex=True),
+        errors="coerce", format="mixed",
+    )
+    actual_fallback_wall = actual_local.dt.floor("s")
+    fallback_matches = pd.Series(True, index=source.index)
+    fallback_matches.loc[fallback_zero] = actual_fallback_wall[fallback_zero].eq(raw_fallback_wall[fallback_zero].dt.floor("s"))
+    legacy_fallback = (~present) & (~fallback_zero)
+    fallback_matches.loc[legacy_fallback] = actual_utc[legacy_fallback].eq(reference[legacy_fallback].dt.floor("s"))
     assert local_matches.all(), "A supplied local clock changed or could not be resolved; inspect source"
-    assert fallback_matches.all(), "UTC fallback failed independent instant comparison"
+    assert fallback_matches.all(), "Fallback clock/reference is inconsistent with the selected time policy"
     assert actual_utc.notna().all(), "Unresolved recording timestamps"
     # Independently require the selected offset to be the Berlin offset.
     for raw, utc in zip(clean.datetime, actual_utc):
@@ -50,14 +62,17 @@ def audit(source_path, baseline_path, output, master_path=None, short_path=None)
     audit_rows["datetime_local"] = actual_local.dt.strftime("%Y-%m-%d %H:%M:%S")
     audit_rows["datetime_utc"] = actual_utc.dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     before = pd.read_csv(baseline_path, dtype={"dawn_chorus_id": "Int64"}, low_memory=False).set_index("dawn_chorus_id")
+    previously_in_master = source.id.isin(before.index)
     old_raw = source.id.map(before.datetime_local).astype("string")
     old_local = pd.to_datetime(old_raw.str.replace(r"(Z|[+-]\d{2}:?\d{2})$", "", regex=True), format="mixed", errors="coerce")
     audit_rows["previous_datetime_local"] = old_raw
     audit_rows["clock_change_seconds"] = (actual_local - old_local).dt.total_seconds()
-    audit_rows["local_date_changed"] = actual_local.dt.date.ne(old_local.dt.date)
+    audit_rows["local_date_changed"] = previously_in_master & actual_local.dt.date.ne(old_local.dt.date)
     old_utc = pd.to_datetime(source.id.map(before.datetime_utc), utc=True, errors="coerce", format="mixed")
-    audit_rows["utc_date_changed"] = actual_utc.dt.date.ne(old_utc.dt.date)
-    changed = audit_rows.clock_change_seconds.ne(0)
+    audit_rows["utc_date_changed"] = previously_in_master & actual_utc.dt.date.ne(old_utc.dt.date)
+    # A source ID absent from an older published master is a new recording,
+    # not an existing recording whose date or clock has changed.
+    changed = previously_in_master & audit_rows.clock_change_seconds.ne(0)
     issues = Counter(code for value in log.timestamp_issue_codes for code in value.split("|") if code)
     # Calendar windows containing a German offset change require DST-aware QC.
     day = actual_local.dt.normalize()
@@ -73,9 +88,12 @@ def audit(source_path, baseline_path, output, master_path=None, short_path=None)
     summary = {
         "policy": TIME_POLICY_VERSION, "source": str(source_path), "source_sha256": sha(source_path),
         "baseline": str(baseline_path), "baseline_sha256": sha(baseline_path),
-        "rows": len(source), "localtimes_present_preserved": int(present.sum()), "utc_fallback": int((~present).sum()),
+        "rows": len(source), "previously_in_master": int(previously_in_master.sum()),
+        "new_since_baseline": int((~previously_in_master).sum()),
+        "localtimes_present_preserved": int(present.sum()), "utc_fallback": int((~present).sum()),
         "unresolved": int(actual_utc.isna().sum()), "local_clock_mismatches": int((~local_matches).sum()),
-        "utc_fallback_mismatches": int((~fallback_matches).sum()),
+        "utc_fallback_mismatches": int((~fallback_matches).sum()),  # Backward compatible audit key.
+        "mislabeled_utc_walltime_count": int(fallback_zero.sum()),
         "clock_changes": int(changed.sum()), "clock_change_seconds_counts": {str(k): int(v) for k,v in audit_rows.loc[changed, "clock_change_seconds"].value_counts().items()},
         "local_date_changes": int(audit_rows.local_date_changed.sum()),
         "utc_date_changes": int(audit_rows.utc_date_changed.sum()),

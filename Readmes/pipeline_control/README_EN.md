@@ -39,7 +39,7 @@ steps whose markers are missing.
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Error Codes, Status And Exit Codes
 
-Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
+Checked against local code: 2026-10-13. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
 
 `0` only means process success, not necessarily clean data. Invalid argparse arguments can exit with `2`; uncaught Python exceptions typically exit with `1`. Slurm states such as `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` and `DependencyNeverSatisfied` are scheduler messages, not data-quality codes. Dynamic library/HTTP/filesystem errors retain their original messages in logs.
 
@@ -51,7 +51,7 @@ No fixed values in this category in the associated source.
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `in_progress` | `not resume` | [plan_pipeline_run.py:469](../../tools/plan_pipeline_run.py) |
+| `in_progress` | `not resume` | [plan_pipeline_run.py:470](../../tools/plan_pipeline_run.py) |
 | `complete` | `Emitted by main` | [run_with_manifest.py:117](../../tools/run_with_manifest.py) |
 | `failed` | `Emitted by main` | [run_with_manifest.py:117](../../tools/run_with_manifest.py) |
 | `starting` | `Emitted by main` | [horeka_controller.py:180](../../tools/horeka_controller.py) |
@@ -60,9 +60,9 @@ No fixed values in this category in the associated source.
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `ValueError: Bioacoustics is disabled in this configuration.` | `not config.get('bioacoustics', {}).get('enabled', True)` | [plan_pipeline_run.py:522](../../tools/plan_pipeline_run.py) |
-| `FileNotFoundError: Run the core pipeline first; missing prerequisite: {path}` | `not path.is_file()` | [plan_pipeline_run.py:528](../../tools/plan_pipeline_run.py) |
-| `ValueError: Prepared metadata and master IDs differ; finish the core pipeline first.` | `ids != master_ids` | [plan_pipeline_run.py:534](../../tools/plan_pipeline_run.py) |
+| `ValueError: Bioacoustics is disabled in this configuration.` | `not config.get('bioacoustics', {}).get('enabled', True)` | [plan_pipeline_run.py:523](../../tools/plan_pipeline_run.py) |
+| `FileNotFoundError: Run the core pipeline first; missing prerequisite: {path}` | `not path.is_file()` | [plan_pipeline_run.py:529](../../tools/plan_pipeline_run.py) |
+| `ValueError: Prepared metadata and master IDs differ; finish the core pipeline first.` | `ids != master_ids` | [plan_pipeline_run.py:535](../../tools/plan_pipeline_run.py) |
 | `ValueError: Require positive counts and 0 <= worker-index < worker-count` | `worker_count < 1 or task_count < 1 or (not 0 <= worker_index < worker_count)` | [run_array_worker.py:13](../../tools/run_array_worker.py) |
 | `ValueError: A child command is required` | `not command` | [run_array_worker.py:20](../../tools/run_array_worker.py) |
 | `ValueError: Unknown pipeline phase: {phase}` | `phase not in {'core', 'bioacoustics', 'all'}` | [pipeline_phase.py:16](../../scripts/pipeline_phase.py) |
@@ -73,8 +73,8 @@ No fixed values in this category in the associated source.
 
 | Code / Message | Meaning / Trigger | Source |
 |---|---|---|
-| `0` | `args.mode == 'bioacoustics'` | [plan_pipeline_run.py:564](../../tools/plan_pipeline_run.py) |
-| `0` | `Emitted by main` | [plan_pipeline_run.py:884](../../tools/plan_pipeline_run.py) |
+| `0` | `args.mode == 'bioacoustics'` | [plan_pipeline_run.py:565](../../tools/plan_pipeline_run.py) |
+| `0` | `Emitted by main` | [plan_pipeline_run.py:952](../../tools/plan_pipeline_run.py) |
 | `3` | `except FileExistsError` | [pipeline_lock.py:50](../../tools/pipeline_lock.py) |
 | `0` | `Emitted by acquire` | [pipeline_lock.py:62](../../tools/pipeline_lock.py) |
 | `0` | `not path.exists()` | [pipeline_lock.py:68](../../tools/pipeline_lock.py) |

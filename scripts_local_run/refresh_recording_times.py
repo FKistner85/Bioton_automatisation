@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "tools"), str(ROOT / "scripts")]
 import pipeline_lock
 from audit_recording_times import audit, sha
+from recording_time import TIME_POLICY_VERSION
 
 
 def main():
@@ -42,6 +43,8 @@ def main():
             raise ValueError(f"Refusing a target outside the local workspace: {path}")
     if sha(source) != verified["source_sha256"] or sha(master) != verified["baseline_sha256"]:
         raise ValueError("Source or master changed since the reviewed audit; audit again first")
+    if verified.get("policy") != TIME_POLICY_VERSION:
+        raise ValueError("Review a fresh audit made under the current recording-time policy")
     if any(verified[key] for key in ["unresolved", "local_clock_mismatches", "utc_fallback_mismatches"]):
         raise ValueError("The reviewed audit contains unresolved timestamp failures")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

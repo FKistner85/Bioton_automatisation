@@ -612,6 +612,7 @@ point_ids="$(plan_ids point_assignment)"
 audio_ids="$(plan_ids audio)"
 photo_ids="$(plan_ids photo)"
 weather_ids="$(plan_ids weather)"
+weather_stale_ids="$(plan_ids weather_stale)"
 bioacoustic_ids="$(plan_ids bioacoustic)"
 sentinel_ids="$(plan_ids sentinel)"
 
@@ -740,9 +741,31 @@ if [[ "$(plan_run step_5_2_weather_download)" == "1" ]]; then
   j52verify="$(submit_python bio_step52verify step_5_2_weather_download 1 "00:15:00" "$(afterany_jobs "${j52}")" scripts/Step_5_2_download_weather_data.py --verify-shards --ids-file "${weather_ids}")"
 fi
 j51post="skipped_plan"
-if [[ "${j52}" =~ ^[0-9]+$ ]]; then
+if [[ "${j52}" =~ ^[0-9]+$ || ( "${SLURM_DRY_RUN}" == "1" && "${j52}" == dryrun_* ) ]]; then
   j51post="$(submit_python bio_step51post step_5_1_weather_inventory_post "${STEP51_CPUS}" "${t_step51}" "$(afterok_jobs "${j52verify}")" scripts/Step_5_1_Weather_inventory.py)"
   submit_master_update weather "${j51post}" "${weather_ids}"
+fi
+
+# Local-date changes must invalidate an existing point-weather window.
+# A plain file-existence check cannot verify that the cached hourly window
+# corresponds to the corrected calendar date. Recompute only the explicitly
+# stale IDs with --force, after normal Step 5.2 work has finished. This also
+# recovers interrupted migrations where Step 1 already advanced fingerprints.
+j52stale="skipped_plan"
+j52staleverify="skipped_plan"
+j51stalepost="skipped_plan"
+if [[ -f "${weather_stale_ids}" ]]; then
+  weather_stale_count="$(
+    "${PYTHON}" -c       'import sys; sys.path.insert(0, sys.argv[1]); from common import read_ids_file; print(len(read_ids_file(sys.argv[2])))'       "${PIPELINE_DIR}/scripts" "${weather_stale_ids}"
+  )"
+  if (( weather_stale_count > 0 )); then
+    weather_stale_tasks=$(( (weather_stale_count + 4999) / 5000 ))
+    (( weather_stale_tasks > WEATHER_SHARD_LIMIT )) && weather_stale_tasks="${WEATHER_SHARD_LIMIT}"
+    j52stale="$(submit_weather_array "${t_step52}" "$(afterok_jobs "${j1}" "${j51post}")" "${weather_stale_tasks}" "${weather_stale_ids}" --force)"
+    j52staleverify="$(submit_python bio_step52staleverify step_5_2_weather_download 1 "00:15:00" "$(afterok_jobs "${j52stale}")" scripts/Step_5_2_download_weather_data.py --verify-shards --ids-file "${weather_stale_ids}")"
+    j51stalepost="$(submit_python bio_step51stalepost step_5_1_weather_inventory_post "${STEP51_CPUS}" "${t_step51}" "$(afterok_jobs "${j52staleverify}")" scripts/Step_5_1_Weather_inventory.py --ids-file "${weather_stale_ids}")"
+    submit_master_update weather_timefix "${j51stalepost}" "${weather_stale_ids}"
+  fi
 fi
 
 j53="skipped_plan"
@@ -827,7 +850,7 @@ if [[ "${HYBRID_CONTROLLER}" == "1" ]]; then
     "${j1}" "${j20}" "${j21}" "${j22}" "${j23}" "${j24}" \
     "${j30a}" "${j30b}" "${j31a}" "${j30apost}" "${j31b}" \
     "${j41}" "${j40}" "${j51pre}" "${j52}" "${j52verify}" \
-    "${j51post}" "${j53}" "${j54}" "${j54verify}" "${j55}" \
+    "${j51post}" "${j52stale}" "${j52staleverify}" "${j51stalepost}" "${j53}" "${j54}" "${j54verify}" "${j55}" \
     "${j60}" "${j61}" "${j62}" "${j62verify}" "${j63}" "${j64}" \
     "${j65}" "${j66}" "${jmaster}"
   trap - ERR INT TERM

@@ -1,6 +1,6 @@
 # Master table
 
-ci-tec | README | 12.10.2026 | Master schema v7
+ci-tec | internal README | 13.10.2026 | Master schema v7 (normative PDF revised 13.10.2026)
 
 Use **Bio_O_Ton_Master.csv**, one row per recording. No separate ci-tec table is required. This is the latest recorded inventory, not a guarantee that processing is finished. Original metadata source: dawn-chorus-soundscape.csv.
 
@@ -10,9 +10,9 @@ Use **Bio_O_Ton_Master.csv**, one row per recording. No separate ci-tec table is
 | `lon`, `lat` | WGS84 coordinates in decimal degrees. |
 | `grid_100m_id`, `grid_10m_id` | Assigned grid cells. A grid ID does not imply that LRT formation data are available. |
 | `datetime_local` | German local date and clock time in Europe/Berlin, stored without a timezone suffix. Its origin is recorded separately in timestamp_source. |
-| `datetime_utc` | UTC instant of the selected recording time. When localtimes is absent, this is the datetime instant from the original Dawn Chorus CSV. |
-| `timestamp_source` | Exact values: localtimes for an explicitly supplied local clock; datetime for the UTC fallback. A populated datetime_local does not imply source localtimes. |
-| `time_has_issues` | False only for source localtimes; True for datetime, absent or unknown provenance. Invalid local times are separately rejected by metadata checks. |
+| `datetime_utc` | UTC instant derived from the chosen Europe/Berlin recording clock; `datetime` values mislabeled +00:00 are first localized to Germany. |
+| `timestamp_source` | Exact values: localtimes for an explicitly supplied local clock; datetime for the source fallback. The zero-offset datetime label can be misleading; see time repair policy below. |
+| `time_has_issues` | False for structurally valid, QC-checked recording times regardless of `timestamp_source`; True for invalid, missing, ambiguous or conflicting times. |
 | `duration_seconds` | Checked audio duration in seconds; null if unavailable. |
 | `inside_lrt_polygon` | Recording point lies within an included LRT polygon. |
 | `grid_100m_has_majority_formation`, `grid_10m_has_majority_formation` | Majority formation is available for this cell; different from a direct point/LRT intersection. |
@@ -21,15 +21,15 @@ Grid embeddings, the LRT GeoPackage and grid reference data are separate product
 
 ## Recording time: source and German clock
 
-The original Dawn Chorus column is named **localtimes** (the supplied local time). **Only when this field is absent, empty or whitespace-only** is the original **datetime** value used as a UTC instant and converted to **Europe/Berlin**. German winter time is UTC+1 and summer time is UTC+2; the conversion uses the timezone rules for the recording date, including date changes at midnight. Do not add a fixed offset or convert the resulting German clock a second time.
+The original Dawn Chorus column is named **localtimes** (the supplied local time). **Only when this field is absent, empty or whitespace-only** does Step 1 use **datetime** as a fallback. Website spot-checks on 13 October 2026 showed that the zero-offset (`Z` / `+00:00`) annotation on these fallback values labels a **German wall clock**; their clock components must be localized to **Europe/Berlin without first shifting the hour**. A nonzero offset is still treated as an actual offset-aware instant. Local time is exported without suffix as `YYYY-MM-DD HH:MM:SS` (normative attached PDF). For the reviewed zero-offset class, source-wide consistency was checked across 3,288 recordings, with 14 independent website spot-checks; valid corrected fallbacks are not flagged solely for source provenance. DST gaps and unresolved folds are invalid and not guessed.
 
-Examples without localtimes: `2025-01-15T06:00:00Z` becomes `2025-01-15 07:00:00`; `2025-07-15T06:00:00Z` becomes `2025-07-15 08:00:00`. A UTC evening can become the following German calendar day.
+Examples without localtimes: `2025-01-15T06:00:00Z` becomes `2025-01-15 06:00:00` (UTC `05:00Z`); `2025-07-15T06:00:00Z` becomes `2025-07-15 06:00:00` (UTC `04:00Z`). The original local calendar day is retained for these mislabeled zero-offset clocks.
 
 When localtimes is supplied, its local clock retains priority and is interpreted as German time. These recordings are unchanged by the fallback rule. A nonempty but invalid or unresolved localtimes value is flagged; it is not silently replaced with datetime. Source conflicts remain visible in the Step-1 time log.
 
-**Audit on 28.09.2026:** all 3,288 recordings without localtimes already match this UTC-to-Germany conversion in both published master copies, including UTC, German date and clock, and the source label. No timestamp correction was required. Of these, 3,264 use UTC+2 and 24 use UTC+1. The published master has 108,578 recordings with source localtimes and 3,288 with source datetime.
+**Historical audit superseded (28.09.2026):** its assertion that all 3,288 `datetime` fallbacks were correctly UTC-converted was contradicted by 14 manual Dawn Chorus website checks on 13.10.2026. The v4 QC policy preserves the displayed clock for affected zero-offset fallbacks, applies German DST to derive real UTC, and leaves actual validation conflicts flagged. This source-wide algorithm check is not a website validation of every recording. Re-run the time audit and downstream date-dependent QC before publishing a new master.
 
-## Clean-data filters from the 9 October PDF
+## Clean-data filters from the normative 13 October PDF
 
 Apply the filters needed by your analysis:
 
@@ -51,7 +51,7 @@ point-in-LRT training add `inside_lrt_polygon=True`. Grid IDs alone certify neit
 
 ## Recording-time confidence and weather use
 
-**Use weather data only for recordings with** `time_has_issues=False`, equivalently `timestamp_source == "localtimes"`. UTC fallback timestamps are converted correctly but can differ from the actual supplied recording clock by up to two hours according to the PDF; conversion alone does not establish confidence in the source.
+**Use weather data only for recordings with** `time_has_issues=False`, as specified in the revised normative PDF. `timestamp_source` records the origin (localtimes/datetime) and is never by itself a reason to set the quality flag. The 3,288 zero-offset datetime fallbacks in the supplied Germany export passed deterministic timezone/DST and source-to-output validation; 14 examples were independently checked against the website. Some `localtimes` records contain genuine cross-field contradictions and remain flagged; no claim is made that every source recording was individually website-verified.
 
 This source restriction supplements weather availability and quality checks. In schema v7, combined readiness flags include it. It does not automatically exclude the recording from audio-only work, and the audio-only bioacoustic readiness flag remains independent of time confidence. Recordings and stored files remain in the shared master.
 
@@ -123,6 +123,10 @@ Weather and Sentinel do not automatically exclude a recording from audio/LRT-onl
 
 ## Processing completion is separate from quality
 
-**is_final does not currently exist.** ready_for_general_analysis is not a ci-tec release flag: it requires trusted time provenance plus unflagged sound, weather and Sentinel together. It does not enforce an analysis-specific audio duration threshold; apply duration_seconds >= 40 separately for the PDF clean filter.
+**is_final does not currently exist.** ready_for_general_analysis is not a ci-tec release flag: it requires validated time plus unflagged sound, weather and Sentinel together. It does not enforce an analysis-specific audio duration threshold; apply duration_seconds >= 40 separately for the PDF clean filter.
 
 Completion requires finished processing and checks for the required products, a specified input/code version and no outstanding repairs. Missing data and suitability remain separate. A permanent release applies only to a frozen version; later versions can reveal new errors. The shared master retains all rows.
+
+## Sentinel date migration safety (v3)
+
+A recording whose effective UTC **calendar date** has changed must not silently reuse an old Sentinel scene selected under the earlier date. The master marks `sentinel_has_issues=True` and adds `recording_date_changed_recheck_required` to `sentinel_issue_codes`. This warning persists until the scene is independently regenerated/reviewed and an operator supplies an **explicit** `master_table.sentinel_time_rechecked_ids_csv` CSV containing `dawn_chorus_id,reviewed` with `reviewed=True` for the verified recordings. Never treat a successful mirror of an old tile as confirmation of a newly chosen GEE scene. The 13.10.2026 PDF's Sentinel clean filters remain unchanged.

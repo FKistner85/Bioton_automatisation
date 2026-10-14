@@ -51,6 +51,7 @@ MASTER_COLUMNS = [
     "time_local",
     "timestamp_source",
     "time_has_issues",
+    "time_issue_codes",
     "timestamp_changed",
     "timestamp_change_reason",
     "lat",
@@ -191,9 +192,31 @@ def bool_series(series: pd.Series) -> pd.Series:
 
 
 def refresh_time_quality(table: pd.DataFrame) -> pd.DataFrame:
-    """Apply the source rule to every row, including retained legacy rows."""
+    """Apply timestamp QC independently from source provenance."""
     sources = table.get("timestamp_source", pd.Series(pd.NA, index=table.index, dtype="string"))
-    table["time_has_issues"] = ~sources.astype("string").eq("localtimes").fillna(False)
+    source_invalid = ~sources.astype("string").isin({"localtimes", "datetime"})
+    # Guard a legacy master-only refresh: a datetime row cannot lose its
+    # old warning unless Step 1 has actually rewritten the formerly shifted
+    # clock under the checked German-walltime policy. Source alone is not proof.
+    conversion = table.get("timestamp_change_reason", pd.Series("", index=table.index))
+    valid_fallback_reasons = {
+        "datetime_zero_utc_label_interpreted_as_German_walltime",
+        "datetime_offset_instant_to_Europe/Berlin",
+    }
+    fallback_unrepaired = sources.astype("string").eq("datetime").fillna(False) & ~conversion.astype("string").isin(valid_fallback_reasons)
+    # A present but invalid/conflicting localtimes entry is not clean either.
+    # For the fresh Step-1 join, use its explicit QC verdict. In later
+    # master-only refreshes, retained flagged localtimes must not be cleared.
+    checked_issues = bool_series(table.get("time_quality_log_has_issues", pd.Series(False, index=table.index)))
+    # Persist Step-1 QC codes in the master so bioacoustics-only and partial
+    # refreshes do not silently erase genuine localtimes conflicts.
+    if "time_issue_codes" in table:
+        checked_issues |= table["time_issue_codes"].fillna("").astype(str).str.strip().ne("")
+    if "datetime_local" in table and "datetime_utc" in table:
+        missing_clock = table["datetime_local"].isna() | table["datetime_utc"].isna()
+    else:
+        missing_clock = pd.Series(True, index=table.index)
+    table["time_has_issues"] = source_invalid | fallback_unrepaired | checked_issues | missing_clock
     # Time confidence matters to the combined clean-data flags, while an
     # audio-only bioacoustic flag remains independent of the time domain.
     for column in table.columns:
@@ -201,9 +224,13 @@ def refresh_time_quality(table: pd.DataFrame) -> pd.DataFrame:
             table[column] = bool_series(table[column]) & ~table["time_has_issues"]
     if "record_blocking_issue_codes" in table:
         table["record_blocking_issue_codes"] = [
-            join_codes([c for c in split_issues(value) if c != "time_source_not_localtimes"]
-                       + (["time_source_not_localtimes"] if issue else []))
-            for value, issue in zip(table["record_blocking_issue_codes"], table["time_has_issues"])
+            join_codes([c for c in split_issues(value)
+                        if c not in {"time_source_not_localtimes", "time_validation_failed"}]
+                       + (["time_validation_failed"] if issue else []))
+            for value, issue, source in zip(
+                table["record_blocking_issue_codes"], table["time_has_issues"],
+                sources.fillna("").astype(str),
+            )
         ]
     if "record_status" in table:
         table.loc[table["time_has_issues"] & table["record_status"].eq("validated"), "record_status"] = "partial"
@@ -362,6 +389,8 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
                 "datetime_source",
                 "conversion_needed",
                 "conversion_step",
+                "timestamp_status",
+                "timestamp_issue_codes",
             ]
             if column in log.columns
         ]
@@ -377,7 +406,20 @@ def build_base_table(config: dict[str, Any], output_csv: Path, now: str) -> pd.D
         if column not in base.columns:
             base[column] = pd.NA
     base["timestamp_changed"] = bool_series(base["timestamp_changed"])
-    base["time_has_issues"] = ~base["timestamp_source"].astype("string").eq("localtimes").fillna(False)
+    base["time_issue_codes"] = base.get("timestamp_issue_codes", pd.Series("", index=base.index)).fillna("").astype(str)
+    if "timestamp_status" not in base.columns:
+        base["timestamp_status"] = pd.NA
+    if "timestamp_issue_codes" not in base.columns:
+        base["timestamp_issue_codes"] = pd.NA
+    unverified = ~base["timestamp_status"].astype("string").eq("validated").fillna(False)
+    base.loc[unverified & base["time_issue_codes"].eq(""), "time_issue_codes"] = "time_check_not_validated"
+    base["time_quality_log_has_issues"] = unverified | base["time_issue_codes"].str.strip().ne("")
+    base["time_has_issues"] = (
+        ~base["timestamp_source"].astype("string").isin({"localtimes", "datetime"})
+        | base["time_quality_log_has_issues"]
+        | base["datetime_local"].isna()
+        | base["datetime_utc"].isna()
+    )
 
     previous_added = read_previous_added(output_csv)
     base["record_added_to_mastertable_utc"] = base["dawn_chorus_id"].map(previous_added).fillna(now)
@@ -476,18 +518,71 @@ def add_preserved_nonformation_domains(
         if column not in table.columns:
             table[column] = pd.NA
 
-    if "date_local" in previous.columns:
-        old_dates = previous.drop_duplicates("dawn_chorus_id").set_index("dawn_chorus_id")["date_local"]
-        before = table["dawn_chorus_id"].map(old_dates)
+    previous_by_id = previous.drop_duplicates("dawn_chorus_id").set_index("dawn_chorus_id")
+    if "date_local" in previous_by_id.columns:
+        before = table["dawn_chorus_id"].map(previous_by_id["date_local"])
         changed_day = before.notna() & table["date_local"].ne(before)
-        for prefix in ("weather_point", "sentinel"):
-            table.loc[changed_day, f"{prefix}_has_issues"] = True
-            table.loc[changed_day, f"{prefix}_issue_codes"] = table.loc[
-                changed_day, f"{prefix}_issue_codes"
-            ].map(lambda value: join_codes(split_issues(value) + ["recording_date_changed_recheck_required"]))
+        table.loc[changed_day, "weather_point_has_issues"] = True
+        table.loc[changed_day, "weather_point_issue_codes"] = table.loc[
+            changed_day, "weather_point_issue_codes"
+        ].map(lambda value: join_codes(split_issues(value) + ["recording_date_changed_recheck_required"]))
+    if "datetime_utc" in previous_by_id.columns:
+        before_utc = pd.to_datetime(table["dawn_chorus_id"].map(previous_by_id["datetime_utc"]), utc=True, errors="coerce", format="mixed")
+        after_utc = pd.to_datetime(table["datetime_utc"], utc=True, errors="coerce", format="mixed")
+        changed_utc_day = before_utc.notna() & after_utc.notna() & before_utc.dt.date.ne(after_utc.dt.date)
+        table.loc[changed_utc_day, "sentinel_has_issues"] = True
+        table.loc[changed_utc_day, "sentinel_issue_codes"] = table.loc[
+            changed_utc_day, "sentinel_issue_codes"
+        ].map(lambda value: join_codes(split_issues(value) + ["recording_date_changed_recheck_required"]))
 
     table["formation_primary_variant"] = str(
         config.get("lrt_variants", {}).get("primary_suffix", "")
+    )
+    return table
+
+
+def preserve_sentinel_time_selection_warnings(table: pd.DataFrame, previous: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
+    """Fail closed on Sentinel scenes selected using an obsolete UTC date.
+
+    Unlike weather, a valid TIFF and score do not independently establish
+    which date was used to choose the scene. The warning is sticky across
+    partial/full master refreshes until a separate re-export and explicit
+    review list has been provided by the operator.
+    """
+    if previous.empty or "dawn_chorus_id" not in previous or "sentinel_issue_codes" not in table:
+        return table
+    previous_by_id = previous.drop_duplicates("dawn_chorus_id").set_index("dawn_chorus_id")
+    old_codes = table["dawn_chorus_id"].map(previous_by_id.get("sentinel_issue_codes", pd.Series(dtype=str))).fillna("")
+    stale_before = old_codes.map(lambda value: "recording_date_changed_recheck_required" in split_issues(value))
+    changed = pd.Series(False, index=table.index)
+    if "datetime_utc" in previous_by_id and "datetime_utc" in table:
+        old_dt = pd.to_datetime(table["dawn_chorus_id"].map(previous_by_id["datetime_utc"]), utc=True, errors="coerce", format="mixed")
+        new_dt = pd.to_datetime(table["datetime_utc"], utc=True, errors="coerce", format="mixed")
+        changed = old_dt.notna() & new_dt.notna() & old_dt.dt.date.ne(new_dt.dt.date)
+    stale = stale_before | changed
+    # No automatic unflagging on a plain inventory refresh: validation of the
+    # *date selection* is a separate responsibility from raster file QC.
+    ack = config.get("master_table", {}).get("sentinel_time_rechecked_ids_csv")
+    if ack and Path(ack).is_file():
+        verified = read_csv_optional(ack)
+        if "dawn_chorus_id" in verified and "reviewed" in verified:
+            verified_ids = set(verified.loc[bool_series(verified["reviewed"]), "dawn_chorus_id"].astype(str))
+            reviewed_mask = table["dawn_chorus_id"].isin(verified_ids)
+            stale &= ~reviewed_mask
+            # An approved new scene removes only the temporal-selection
+            # warning, never unrelated Sentinel raster/score/QC errors.
+            table.loc[reviewed_mask, "sentinel_issue_codes"] = table.loc[
+                reviewed_mask, "sentinel_issue_codes"
+            ].map(lambda value: join_codes([c for c in split_issues(value)
+                                            if c != "recording_date_changed_recheck_required"]))
+            if "sentinel_quality_score" in table:
+                valid_image = (bool_series(table["sentinel_exists"])
+                               & pd.to_numeric(table["sentinel_quality_score"], errors="coerce").gt(0))
+                clean_codes = table["sentinel_issue_codes"].fillna("").astype(str).str.strip().eq("")
+                table.loc[reviewed_mask & valid_image & clean_codes, "sentinel_has_issues"] = False
+    table.loc[stale, "sentinel_has_issues"] = True
+    table.loc[stale, "sentinel_issue_codes"] = table.loc[stale, "sentinel_issue_codes"].map(
+        lambda value: join_codes(split_issues(value) + ["recording_date_changed_recheck_required"])
     )
     return table
 
@@ -1452,7 +1547,7 @@ def add_agreement_and_ready_flags(table: pd.DataFrame) -> pd.DataFrame:
         if not bool(valid_timestamp.loc[row.name]):
             codes.append("timestamp_missing_or_invalid")
         if bool(row["time_has_issues"]):
-            codes.append("time_source_not_localtimes")
+            codes.append("time_validation_failed")
         if not bool(valid_coordinates.loc[row.name]):
             codes.append("coordinates_missing_or_invalid")
         for prefix in ["sound", "weather_point", "sentinel", "photo"]:
@@ -1697,6 +1792,7 @@ def main() -> int:
                     table = add_sentinel_status(table, config)
                     table = add_weather_point_status(table, config)
                     table = add_weather_raster_status(table, config)
+                table = preserve_sentinel_time_selection_warnings(table, previous_master, config)
                 table = add_100m_formation(table, config)
                 table = add_10m_formation(table, config)
                 if not args.preserve_existing_nonformation_domains:

@@ -19,6 +19,7 @@ copy_size_mismatch|Dateigroessen von Quelle und Kopie stimmen nicht ueberein.|So
 copy_verification_failed|Die Kontrolle nach dem Kopieren ist fehlgeschlagen.|Verification after copying failed.
 datetime_missing_or_unparseable|Ohne lokale Zeit ist auch datetime nicht nutzbar.|With no local clock supplied, datetime is also unusable.
 datetime_timezone_missing_assumed_utc|datetime hat keinen Offset und wird als UTC interpretiert; Warnung bleibt sichtbar.|datetime has no offset and is interpreted as UTC, with a warning.
+time_check_not_validated|Es liegt kein erfolgreiches Zeit-QC fuer diesen Datensatz vor; time_has_issues bleibt True.|The recording has no successful time QC; time_has_issues remains True.
 destination_missing_after_copy|Zieldatei fehlt nach dem Kopierversuch.|Destination is missing after the copy attempt.
 duplicate_datetime|Mehr Zeitstempelduplikate als im lokalen DST-Fenster zulaessig.|More duplicate timestamps than allowed by the local DST window.
 duplicate_score_rows|Mehrere Score-Zeilen fuer dieselbe ID.|Multiple score rows for the same ID.
@@ -60,7 +61,8 @@ missing_required_column|Mindestens eine konfigurierte Pflichtspalte fehlt.|At le
 missing_rows=|Erwartete Work-Keys sind im Shard nicht abgeschlossen.|Expected work keys are not completed in the shard.
 missing_state|Erwartete Shard-State-Datei fehlt oder ist nicht nutzbar.|Expected shard state file is missing or unusable.
 missing_value|Wetterwerte fehlen; Hinweis bleibt im Code, setzt allein keine Issue-Flag. Benoetigte Variablen/Stunden pruefen.|Weather values are missing; the code is informational and alone does not set an issue flag. Check required variables/hours.
-time_source_not_localtimes|Zeitquelle ist datetime, unbekannt oder fehlt; time_has_issues=True, kombinierte Clean-Flags=False.|Time source is datetime, unknown or absent; time_has_issues=True and combined clean readiness flags=False.
+time_validation_failed|Lokale Aufnahmezeit liegt vor, aber Zeit-QC hat einen Konflikt oder ungueltigen Wert erkannt; nicht als saubere Zeit verwenden.|A local recording time exists, but QC detected a conflict or invalid value; do not use as a clean timestamp.
+time_source_not_localtimes|Veralteter Sperr-Code aus frueheren Masterversionen; wird im Refresh entfernt. Die reine Quelle datetime ist kein Fehler.|Deprecated blocking token from earlier masters; removed during refresh. Datetime provenance alone is not an issue.
 model_checkpoint_dir_not_accessible|Checkpoint-Verzeichnis hat nicht die benoetigten Zugriffsrechte.|Checkpoint directory lacks required access permissions.
 model_inference_failed|Mindestens ein Modell meldet einen Inferenzfehler fuer die ID.|At least one model reports an inference failure for the ID.
 multiple_audio_streams|Datei enthaelt mehrere Audiostreams.|File contains multiple audio streams.

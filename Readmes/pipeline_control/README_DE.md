@@ -39,7 +39,7 @@ Steps ohne Marker erneut ein.
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Fehlercodes, Status und Exit-Codes
 
-Abgleich mit dem lokalen Code: 2026-10-12. Die Tabellen trennen Daten-/QC-Codes, Statuswerte, explizite Exceptions und Prozess-Exit-Codes. `{...}` sind variable Werte, keine festen Codes. Bedingungen nennen den konkreten Ausloeser im Quellcode; mehrere Codes koennen gleichzeitig auftreten.
+Abgleich mit dem lokalen Code: 2026-10-13. Die Tabellen trennen Daten-/QC-Codes, Statuswerte, explizite Exceptions und Prozess-Exit-Codes. `{...}` sind variable Werte, keine festen Codes. Bedingungen nennen den konkreten Ausloeser im Quellcode; mehrere Codes koennen gleichzeitig auftreten.
 
 `0` bedeutet nur einen erfolgreichen Prozessabschluss, nicht automatisch fehlerfreie Daten. `argparse` kann bei ungueltigen Argumenten mit `2` abbrechen; ungefangene Python-Exceptions typischerweise mit `1`. Slurm-Zustaende wie `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` und `DependencyNeverSatisfied` sind Scheduler-Meldungen, keine fachlichen Fehlercodes. Dynamische Bibliotheks-/HTTP-/Dateisystemfehler stehen mit ihrer Originalmeldung im Log.
 
@@ -51,7 +51,7 @@ Keine festen Werte dieser Kategorie im zugeordneten Quellcode.
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `in_progress` | `not resume` | [plan_pipeline_run.py:469](../../tools/plan_pipeline_run.py) |
+| `in_progress` | `not resume` | [plan_pipeline_run.py:470](../../tools/plan_pipeline_run.py) |
 | `complete` | `Ausgabe in main` | [run_with_manifest.py:117](../../tools/run_with_manifest.py) |
 | `failed` | `Ausgabe in main` | [run_with_manifest.py:117](../../tools/run_with_manifest.py) |
 | `starting` | `Ausgabe in main` | [horeka_controller.py:180](../../tools/horeka_controller.py) |
@@ -60,9 +60,9 @@ Keine festen Werte dieser Kategorie im zugeordneten Quellcode.
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `ValueError: Bioacoustics is disabled in this configuration.` | `not config.get('bioacoustics', {}).get('enabled', True)` | [plan_pipeline_run.py:522](../../tools/plan_pipeline_run.py) |
-| `FileNotFoundError: Run the core pipeline first; missing prerequisite: {path}` | `not path.is_file()` | [plan_pipeline_run.py:528](../../tools/plan_pipeline_run.py) |
-| `ValueError: Prepared metadata and master IDs differ; finish the core pipeline first.` | `ids != master_ids` | [plan_pipeline_run.py:534](../../tools/plan_pipeline_run.py) |
+| `ValueError: Bioacoustics is disabled in this configuration.` | `not config.get('bioacoustics', {}).get('enabled', True)` | [plan_pipeline_run.py:523](../../tools/plan_pipeline_run.py) |
+| `FileNotFoundError: Run the core pipeline first; missing prerequisite: {path}` | `not path.is_file()` | [plan_pipeline_run.py:529](../../tools/plan_pipeline_run.py) |
+| `ValueError: Prepared metadata and master IDs differ; finish the core pipeline first.` | `ids != master_ids` | [plan_pipeline_run.py:535](../../tools/plan_pipeline_run.py) |
 | `ValueError: Require positive counts and 0 <= worker-index < worker-count` | `worker_count < 1 or task_count < 1 or (not 0 <= worker_index < worker_count)` | [run_array_worker.py:13](../../tools/run_array_worker.py) |
 | `ValueError: A child command is required` | `not command` | [run_array_worker.py:20](../../tools/run_array_worker.py) |
 | `ValueError: Unknown pipeline phase: {phase}` | `phase not in {'core', 'bioacoustics', 'all'}` | [pipeline_phase.py:16](../../scripts/pipeline_phase.py) |
@@ -73,8 +73,8 @@ Keine festen Werte dieser Kategorie im zugeordneten Quellcode.
 
 | Code / Meldung | Bedeutung / Ausloeser | Quelle |
 |---|---|---|
-| `0` | `args.mode == 'bioacoustics'` | [plan_pipeline_run.py:564](../../tools/plan_pipeline_run.py) |
-| `0` | `Ausgabe in main` | [plan_pipeline_run.py:884](../../tools/plan_pipeline_run.py) |
+| `0` | `args.mode == 'bioacoustics'` | [plan_pipeline_run.py:565](../../tools/plan_pipeline_run.py) |
+| `0` | `Ausgabe in main` | [plan_pipeline_run.py:952](../../tools/plan_pipeline_run.py) |
 | `3` | `except FileExistsError` | [pipeline_lock.py:50](../../tools/pipeline_lock.py) |
 | `0` | `Ausgabe in acquire` | [pipeline_lock.py:62](../../tools/pipeline_lock.py) |
 | `0` | `not path.exists()` | [pipeline_lock.py:68](../../tools/pipeline_lock.py) |

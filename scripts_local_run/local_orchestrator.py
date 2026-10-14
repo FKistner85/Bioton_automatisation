@@ -396,6 +396,7 @@ class Pipeline:
         audio_ids = self.ids_file("audio")
         photo_ids = self.ids_file("photo")
         weather_ids = self.ids_file("weather")
+        weather_stale_ids = self.ids_file("weather_stale") if "weather_stale" in self.plan["id_files"] else None
         audio_missing_ids = Path(self.config["audio_inventory"].get(
             "missing_ids_log",
             Path(self.config["audio_inventory"]["file_list_log"]).with_name("audio_missing_ids.csv"),
@@ -502,6 +503,25 @@ class Pipeline:
                 "step_5_1_post", "step_5_1_weather_inventory_post", "scripts/Step_5_1_Weather_inventory.py",
                 ["--ids-file", str(selected_weather_ids)] if quick_incremental else [],
             ), ["j52verify"], master_ids=selected_weather_ids)
+
+        if hostrada_local and weather_stale_ids is not None and self.id_count(weather_stale_ids):
+            # The regular quick path is --missing-only. Regenerate previously
+            # present, now stale weather windows on a separate explicit list.
+            count_stale = self.id_count(weather_stale_ids)
+            stale_shards = max(1, min(int(self.config["weather_download"].get("slurm_shard_count", 8)), (count_stale + 4999) // 5000 or 1))
+            self.add("j52stale", "step_5_2_stale", self.array_runner(
+                "step_5_2_stale", "step_5_2_weather_download_stale", "scripts/Step_5_2_download_weather_data.py",
+                stale_shards,
+                lambda index: ["--ids-file", str(weather_stale_ids), "--task-index", str(index), "--task-count", str(stale_shards)],
+            ), ["j51pre", "j51post"])
+            self.add("j52stale_verify", "step_5_2_stale_verify", self.command_runner(
+                "step_5_2_stale_verify", "step_5_2_weather_download", "scripts/Step_5_2_download_weather_data.py",
+                ["--verify-shards", "--ids-file", str(weather_stale_ids)], cpus=1,
+            ), ["j52stale"])
+            self.add("j51stale_post", "step_5_1_stale_post", self.command_runner(
+                "step_5_1_stale_post", "step_5_1_weather_inventory", "scripts/Step_5_1_Weather_inventory.py",
+                ["--ids-file", str(weather_stale_ids)],
+            ), ["j52stale_verify"], master_ids=weather_stale_ids)
 
         if hostrada_local and self.plan_run("step_5_3_hostrada_monthly"):
             self.add("j53", "step_5_3", self.command_runner(

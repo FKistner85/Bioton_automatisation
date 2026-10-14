@@ -22,6 +22,7 @@ def ready_table(sources):
     table = pd.DataFrame({c: [pd.NA] * len(sources) for c in master.MASTER_COLUMNS})
     table["dawn_chorus_id"] = [str(i + 1) for i in range(len(sources))]
     table["timestamp_source"] = sources
+    table["timestamp_change_reason"] = ["datetime_zero_utc_label_interpreted_as_German_walltime" if s == "datetime" else "local_walltime" for s in sources]
     table["datetime_local"] = "2025-05-01 06:00:00"
     table["datetime_utc"] = "2025-05-01T04:00:00Z"
     table["lat"], table["lon"] = 49., 8.
@@ -78,7 +79,7 @@ class PDFContractTests(unittest.TestCase):
             parquet = pd.read_parquet(root / "Bio_O_Ton_Master.parquet")
             self.assertEqual(csv.dawn_chorus_id.tolist(), [1, 2, 3, 4, 5])
             self.assertEqual(csv.columns.tolist(), parquet.columns.tolist())
-            self.assertEqual(csv.time_has_issues.tolist(), [False, True, False, False, True])
+            self.assertEqual(csv.time_has_issues.tolist(), [False, False, False, False, True])
             self.assertEqual(csv.sound_has_issues.tolist(), [False, False, True, False, True])
             self.assertEqual(csv.duration_seconds.iloc[3], 39.)  # No >=40 filter on output.
             self.assertFalse(csv.weather_point_has_issues.any())
@@ -94,7 +95,7 @@ class PDFContractTests(unittest.TestCase):
                 self.assertEqual(master.main(), 0)
             updated = pd.read_csv(root / "Bio_O_Ton_Master.csv")
             self.assertEqual(updated.dawn_chorus_id.tolist(), [1, 2, 3, 4, 5])
-            self.assertEqual(updated.time_has_issues.tolist(), [False, True, False, False, True])
+            self.assertEqual(updated.time_has_issues.tolist(), [False, False, False, False, True])
             self.assertFalse(updated.time_has_issues.isna().any())
             self.assertTrue(updated.mastertable_schema_version.eq(master.SCHEMA_VERSION).all())
             events = pd.read_csv(root / "processed/step_0_control/status_events.csv")
@@ -120,12 +121,12 @@ class PDFContractTests(unittest.TestCase):
 
     def test_source_controls_clean_flags_but_audio_remains_usable(self):
         result = master.add_agreement_and_ready_flags(ready_table(["localtimes", "datetime", None, "unknown"]))
-        self.assertEqual(result.time_has_issues.tolist(), [False, True, True, True])
+        self.assertEqual(result.time_has_issues.tolist(), [False, False, True, True])
         for field in ("ready_for_general_analysis", "ready_for_formation_analysis_100m",
                       "ready_for_formation_analysis_10m", "ready_for_direct_lrt_analysis"):
-            self.assertEqual(result[field].tolist(), [True, False, False, False])
+            self.assertEqual(result[field].tolist(), [True, True, False, False])
         self.assertTrue(result.ready_for_bioacoustic_analysis.all())
-        self.assertIn("time_source_not_localtimes", result.record_blocking_issue_codes.iloc[1])
+        self.assertNotIn("time_source_not_localtimes", result.record_blocking_issue_codes.iloc[1])
 
     def test_missing_provenance_and_legacy_string_flags_are_migrated(self):
         table = pd.DataFrame({"timestamp_source": ["localtimes", "datetime", ""],
@@ -133,8 +134,8 @@ class PDFContractTests(unittest.TestCase):
                               "ready_for_general_analysis": ["True", "True", "False"],
                               "record_status": ["validated"] * 3})
         result = master.refresh_time_quality(table)
-        self.assertEqual(result.ready_for_general_analysis.tolist(), [True, False, False])
-        self.assertEqual(result.record_status.tolist(), ["validated", "partial", "partial"])
+        self.assertEqual(result.ready_for_general_analysis.tolist(), [False, False, False])
+        self.assertEqual(result.record_status.tolist(), ["partial", "partial", "partial"])
         result = master.refresh_time_quality(pd.DataFrame({"dawn_chorus_id": ["1"]}))
         self.assertEqual(result.time_has_issues.tolist(), [True])
 
@@ -197,7 +198,7 @@ class PDFContractTests(unittest.TestCase):
     def test_machine_schema_and_optional_export_expose_pdf_fields(self):
         schema = json.loads((ROOT / "schemas/master_table.schema.json").read_text())
         self.assertEqual(schema["schema_version"], master.SCHEMA_VERSION)
-        self.assertEqual(len(master.MASTER_COLUMNS), 106)
+        self.assertEqual(len(master.MASTER_COLUMNS), 107)
         for column in ("time_has_issues", "duration_seconds", "inside_lrt_polygon",
                        "grid_100m_has_majority_formation", "grid_10m_has_majority_formation"):
             self.assertIn(column, master.MASTER_COLUMNS)

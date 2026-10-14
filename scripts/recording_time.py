@@ -6,7 +6,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-TIME_POLICY_VERSION = "german-local-priority-utc-fallback-v2"
+TIME_POLICY_VERSION = "german-local-priority-mislabeled-utc-wall-v4-qc"
+LEGACY_TIME_POLICY_VERSION = "german-local-priority-utc-fallback-v2"
 GERMAN_TIMEZONE = "Europe/Berlin"
 UTC = dt_timezone.utc
 
@@ -38,7 +39,7 @@ def german_wall_times(values: pd.Series) -> pd.Series:
 
 
 def resolve_recording_time(local_value, utc_value, timezone: str = GERMAN_TIMEZONE) -> dict:
-    """Keep a supplied local clock; convert an instant only when it is absent.
+    """Respect localtimes, then repair Dawn Chorus zero-offset-labeled fallback clocks.
 
     A local offset can disambiguate the autumn fold only if valid in Germany.
     Otherwise a matching UTC reference may resolve it. Invalid/nonexistent or
@@ -49,9 +50,15 @@ def resolve_recording_time(local_value, utc_value, timezone: str = GERMAN_TIMEZO
     zone = ZoneInfo(timezone)
     local_raw, utc_raw = text_or_empty(local_value), text_or_empty(utc_value)
     reference = parse_iso(utc_raw)
+    # Explicit +00:00/Z on the Dawn Chorus fallback often labels a German
+    # *wall clock*, not a real UTC instant (website-verified examples).
+    # Preserve the genuine UTC reference semantics when localtimes exists.
+    mislabeled_zero_offset = (not local_raw and reference is not None
+                              and reference.tzinfo is not None
+                              and reference.utcoffset().total_seconds() == 0)
     issues = []
     if reference is not None and reference.tzinfo is None:
-        # Existing Dawn Chorus datetime values are UTC. Log any future omission.
+        # A timezone-free reference cannot establish a reliable UTC instant.
         reference = reference.replace(tzinfo=UTC)
         issues.append("datetime_timezone_missing_assumed_utc")
     reference = reference.astimezone(UTC) if reference is not None else None
@@ -97,9 +104,36 @@ def resolve_recording_time(local_value, utc_value, timezone: str = GERMAN_TIMEZO
         source = "datetime"
         if reference is None:
             issues.append("datetime_missing_or_unparseable")
+        elif mislabeled_zero_offset:
+            # The +00:00 annotation on the source is not trusted in this
+            # case. Interpret its clock fields as Germany local time, then
+            # determine real UTC *after* localizing. Never pick a DST fold.
+            wall = parse_iso(utc_raw).replace(tzinfo=None)
+            candidates = {}
+            for fold in (0, 1):
+                candidate = wall.replace(tzinfo=zone, fold=fold)
+                instant = candidate.astimezone(UTC)
+                if instant.astimezone(zone).replace(tzinfo=None) == wall:
+                    candidates[instant] = candidate
+            if not candidates:
+                issues.append("nonexistent_localtime")
+            elif len(candidates) != 1:
+                issues.append("ambiguous_localtime_unresolved")
+            else:
+                chosen = next(iter(candidates.values()))
+                resolution = "datetime_zero_utc_label_interpreted_as_German_walltime"
+            # Source provenance is distinct from time validity. This
+            # zero-offset-labeled German clock is now consistently interpreted
+            # as Europe/Berlin, so do not flag it only because localtimes
+            # was missing. Invalid DST folds/gaps are still flagged above.
         else:
             chosen = reference.astimezone(zone)
-            resolution = "utc_instant_to_Europe/Berlin"
+            resolution = "datetime_offset_instant_to_Europe/Berlin"
+            # A genuine nonzero offset is an explicit, parseable instant;
+            # using datetime as a source is not by itself a data-quality issue.
+
+    if not resolution and mislabeled_zero_offset:
+        resolution = "datetime_zero_utc_label_unresolved_German_walltime"
 
     difference = None
     if chosen is not None and reference is not None:

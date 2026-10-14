@@ -29,7 +29,7 @@ from typing import Any, Iterable
 import pandas as pd
 
 from common import atomic_write_csv
-from recording_time import TIME_POLICY_VERSION, resolve_recording_time
+from recording_time import TIME_POLICY_VERSION, LEGACY_TIME_POLICY_VERSION, parse_iso, resolve_recording_time
 from input_consistency import guard_source_population
 
 
@@ -166,10 +166,25 @@ def read_source(
     return source.loc[~source["id"].duplicated(keep="first")].copy()
 
 
+def time_policy_for_row(row: pd.Series, *, legacy_fallback: bool = False) -> str:
+    """Only zero-offset-labeled rows without localtimes changed policy.
+
+    This keeps existing fingerprints for all other records stable and allows
+    the planner to identify old-v2 vs new-v3 policy-only changes.
+    """
+    if legacy_fallback or canonical(row.get("localtimes", "")):
+        return LEGACY_TIME_POLICY_VERSION
+    parsed = parse_iso(canonical(row.get("datetime", "")))
+    if parsed is not None and parsed.tzinfo is not None and parsed.utcoffset().total_seconds() == 0:
+        return TIME_POLICY_VERSION
+    return LEGACY_TIME_POLICY_VERSION
+
+
 def build_fingerprints(
     source: pd.DataFrame,
     *,
     timezone: str = DEFAULT_TIMEZONE,
+    legacy_fallback: bool = False,
 ) -> pd.DataFrame:
     result = pd.DataFrame(
         {
@@ -182,7 +197,7 @@ def build_fingerprints(
                 lambda row: hashlib.sha256(
                     (
                         hash_values(row, columns)
-                        + f"\x1ftimezone={timezone};time_policy={TIME_POLICY_VERSION}"
+                        + f"\x1ftimezone={timezone};time_policy={time_policy_for_row(row, legacy_fallback=legacy_fallback)}"
                     ).encode("utf-8")
                 ).hexdigest(),
                 axis=1,

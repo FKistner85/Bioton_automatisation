@@ -22,7 +22,7 @@
 
 {\Huge\bfseries\color{navy} Master table}\par
 
-ci-tec | README | 12.10.2026 | Master schema v7\par
+ci-tec | README | 13.10.2026 | Master schema v7 | Time policy v4\par
 
 Use \textbf{Bio\_O\_Ton\_Master.csv}, one row per recording. No separate ci-tec table is required. This is the latest recorded inventory, not a guarantee that processing is finished. Original metadata source: dawn-chorus-soundscape.csv.\par
 
@@ -44,11 +44,11 @@ lon, lat & WGS84 coordinates in decimal degrees. \\
 
 datetime\_local & German local date and clock time in Europe/Berlin, stored without a timezone suffix. Its origin is recorded separately in timestamp\_source. \\
 
-\rowcolor{pale} datetime\_utc & UTC instant of the selected recording time. When localtimes is absent, this is the datetime instant from the original Dawn Chorus CSV. \\
+\rowcolor{pale} datetime\_utc & UTC instant derived from the selected German recording clock. A misleading +00:00 datetime label does not shift a German wall clock. \\
 
-timestamp\_source & Exact values: localtimes for an explicitly supplied local clock; datetime for the UTC fallback. A populated datetime\_local does not imply source localtimes. \\
+timestamp\_source & Exact values: localtimes for a supplied local recording clock; datetime for a source fallback. The source field is provenance, not a QC failure. \\
 
-\rowcolor{pale} time\_has\_issues & False only for source localtimes; True for datetime, absent or unknown provenance. Invalid local times are separately rejected by metadata checks. \\
+\rowcolor{pale} time\_has\_issues & False for a successfully validated time from either source. True for an unresolved, missing or conflicting time. Source datetime alone is not an issue. \\
 
 duration\_seconds & Checked audio duration in seconds; null if unavailable. \\
 
@@ -62,13 +62,13 @@ Grid embeddings, the LRT GeoPackage and grid reference data are separate product
 
 \section*{Recording time: source and German clock}
 
-The original Dawn Chorus column is named \textbf{localtimes} (the supplied local time). \textbf{Only when this field is absent, empty or whitespace-only} is the original \textbf{datetime} value used as a UTC instant and converted to \textbf{Europe/Berlin}. German winter time is UTC+1 and summer time is UTC+2; the conversion uses the timezone rules for the recording date, including date changes at midnight. Do not add a fixed offset or convert the resulting German clock a second time.\par
+The Dawn Chorus field \textbf{localtimes} has priority. Only if missing is \textbf{datetime} used. In the audited zero-offset (+00:00/Z) German fallback class, datetime stores the German local \emph{clock}, not a UTC instant. Localize the clock to \textbf{Europe/Berlin} without first shifting the hour and then derive real UTC. Summer/winter rules and DST gaps/folds must be checked.\par
 
-Examples without localtimes: 2025-01-15T06:00:00Z becomes 2025-01-15 07:00:00; 2025-07-15T06:00:00Z becomes 2025-07-15 08:00:00. A UTC evening can become the following German calendar day.\par
+Examples without localtimes: 2025-01-15T06:00:00Z becomes 2025-01-15 06:00:00 (UTC 05:00Z); 2025-07-15T06:00:00Z becomes 2025-07-15 06:00:00 (UTC 04:00Z).\par
 
 When localtimes is supplied, its local clock retains priority and is interpreted as German time. These recordings are unchanged by the fallback rule. A nonempty but invalid or unresolved localtimes value is flagged; it is not silently replaced with datetime. Source conflicts remain visible in the Step-1 time log.\par
 
-\textbf{Audit on 28.09.2026:} all 3,288 recordings without localtimes already match this UTC-to-Germany conversion in both published master copies, including UTC, German date and clock, and the source label. No timestamp correction was required. Of these, 3,264 use UTC+2 and 24 use UTC+1. The published master has 108,578 recordings with source localtimes and 3,288 with source datetime.\par
+\textbf{Revised audit on 13.10.2026:} the old UTC conversion was wrong for 3,288 datetime fallback records: 3,264 had a +2 h and 24 a +1 h clock shift. All 3,288 corrected clocks match the source fields; 14 website examples independently corroborate the rule (not every row was checked at the website). Four local dates and one UTC date changed. The 47 separate localtimes/UTC conflicts retain issue flags.\par
 
 \section*{Clean-data filters from the 9 October PDF}
 
@@ -95,9 +95,9 @@ point-in-LRT training add inside\_lrt\_polygon=True. Grid IDs alone certify neit
 
 \section*{Recording-time confidence and weather use}
 
-\textbf{Use weather data only for recordings with} time\_has\_issues=False, equivalently timestamp\_source == "localtimes". UTC fallback timestamps are converted correctly but can differ from the actual supplied recording clock by up to two hours according to the PDF; conversion alone does not establish confidence in the source.\par
+\textbf{Use weather data only for recordings with} time\_has\_issues=False. This is a validation flag, \textbf{not} a source-provenance restriction; a validated datetime fallback is allowed. Genuine time conflicts remain flagged. Four weather windows require a date-based recheck.\par
 
-This source restriction supplements weather availability and quality checks. In schema v7, combined readiness flags include it. It does not automatically exclude the recording from audio-only work, and the audio-only bioacoustic readiness flag remains independent of time confidence. Recordings and stored files remain in the shared master.\par
+This timestamp validation supplements weather availability and quality checks. In schema v7, combined readiness flags include it. It does not automatically exclude the recording from audio-only work, and the audio-only bioacoustic readiness flag remains independent of time confidence. Recordings and stored files remain in the shared master.\par
 
 \section*{Availability and issues}
 

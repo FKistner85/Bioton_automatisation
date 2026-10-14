@@ -14,10 +14,10 @@ aktuellen IDs ab und verwendet vorhandene Inferenz-Checkpoints. Das Master-Updat
 aendert Bioakustikfelder und migriert die Master-Zeitflag sowie kombinierte
 Readiness auf Schema v7. [Details und Horeka 2](../Readmes/pipeline_phases.md).
 
-## Master-Schema gemaess PDF vom 09.10.2026
+## Master-Schema gemaess verbindlichem PDF vom 13.10.2026
 
 Lokale und Horeka-Laeufe verwenden denselben Step-7.0-Code. `time_has_issues`
-ist nur bei `timestamp_source=localtimes` False; Fallback, unbekannte oder fehlende
+ist nur bei gepruefter und konfliktfreier Quelle `timestamp_source=localtimes` False; Fallback, unbekannte oder fehlende
 Zeitquelle ergeben True. Inkrementelle Laeufe migrieren auch unveraenderte Zeilen.
 `duration_seconds` stammt aus dem Audio-QC; reine Wetter-`missing_value`-Codes
 bleiben als Hinweis erhalten und setzen allein keine Issue-Flag.
@@ -389,3 +389,14 @@ master products, runs Steps 1 and 7, and independently checks all resulting time
 It does not generate a second ci-tec CSV, publish to LSDF or run Horeka jobs.
 Use `--help` for required paths. The full CSV retains technical UTC, date and time
 fields; ci-tec uses `datetime_local`, without timezone, as the recording clock.
+
+## Zeitmigration 13.10.2026 (v3)
+
+`add_new_ids` erzeugt neben dem normalen `--missing-only`-Wetterjob einen
+separaten Job fuer `weather_stale_ids.csv`. Diese Tagesfenster werden aus der
+korrigierten Step-1-Zeit neu erzeugt und danach mit Step-5.1-QC geprueft.
+HoreKa verwendet dieselbe v3-Zeitinterpretation, reicht die geaenderten
+Wetter-IDs direkt ohne `--missing-only` an Step 5.2 und erhaelt dieselben
+Master-Zeitfelder. GEE-Sentinel-Szenen werden nicht allein wegen vorhandener
+TIF-Datei als neu selektiert behandelt; UTC-Datumswechsel erfordern eine
+explizite Neu-Auswahl und Review-Freigabe (siehe `README_CI_TEC.md`).

@@ -1,6 +1,6 @@
 # Zeitkonflikte und LRT-Zellen
 
-> Historischer Stand: Befunde und Zahlen gelten fuer den damaligen Audit/Lauf. Aktuelle Betriebsanweisungen stehen in der Haupt-README und Readmes/pipeline_phases.md.
+> Historischer Stand: Die damalige UTC-Interpretation der 3.288 datetime-Fallbacks wurde am 13.10.2026 durch Zeitregel v4 korrigiert; Zeit-/QC-Flags werden nun unabhaengig von der Quellenbezeichnung gesetzt. Die 47 getrennten lokalen Zeitkonflikte bleiben weiterhin dokumentiert. Befunde und Zahlen gelten fuer den damaligen Audit/Lauf. Aktuelle Betriebsanweisungen stehen in der Haupt-README und Readmes/pipeline_phases.md.
 
 
 Prüfung vom 16.09.2026, aktuelle Hauptvariante **no_K_post2017**.

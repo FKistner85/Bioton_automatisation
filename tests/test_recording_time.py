@@ -13,37 +13,45 @@ import Step_7_0_update_master_table as master
 import plan_pipeline_run as planner
 
 
-def test_utc_fallback_and_transitions():
+def test_mislabeled_utc_walltime_fallback_and_transitions():
+    # +00:00/Z is a misleading label for German clocks when localtimes empty.
     cases = [
-        ("2025-01-15T16:03:00Z", "2025-01-15T17:03:00+01:00"),
-        ("2025-07-15T16:03:00+00:00", "2025-07-15T18:03:00+02:00"),
-        ("2025-03-30T00:59:59Z", "2025-03-30T01:59:59+01:00"),
-        ("2025-03-30T01:00:00Z", "2025-03-30T03:00:00+02:00"),
-        ("2025-10-26T00:59:59Z", "2025-10-26T02:59:59+02:00"),
-        ("2025-10-26T01:00:00Z", "2025-10-26T02:00:00+01:00"),
-        ("2025-07-15T23:30:00Z", "2025-07-16T01:30:00+02:00"),
-        ("2025-01-15T23:30:00Z", "2025-01-16T00:30:00+01:00"),
-        ("2020-05-04T05:57:00+00:00", "2020-05-04T07:57:00+02:00"),
+        ("2025-01-15T16:03:00Z", "2025-01-15T16:03:00+01:00"),
+        ("2025-07-15T16:03:00+00:00", "2025-07-15T16:03:00+02:00"),
+        ("2025-03-30T01:59:59Z", "2025-03-30T01:59:59+01:00"),
+        ("2025-03-30T03:00:00Z", "2025-03-30T03:00:00+02:00"),
+        ("2025-10-26T01:59:59Z", "2025-10-26T01:59:59+02:00"),
+        ("2025-10-26T03:00:00Z", "2025-10-26T03:00:00+01:00"),
+        ("2025-07-15T23:30:00Z", "2025-07-15T23:30:00+02:00"),
+        ("2025-01-15T23:30:00Z", "2025-01-15T23:30:00+01:00"),
+        ("2020-05-04T05:57:00+00:00", "2020-05-04T05:57:00+02:00"),
+        # Other offsets have not been demonstrated to be mislabeled.
         ("2025-07-15T11:00:00-04:00", "2025-07-15T17:00:00+02:00"),
     ]
     for raw, expected in cases:
         result = resolve_recording_time(" ", raw)
         assert result["datetime_clean"] == expected, (raw, result)
         assert result["timestamp_status"] == "validated"
+        assert result["timestamp_issue_codes"] == ""
+        if raw.endswith("-04:00"):
+            assert result["conversion_step"] == "datetime_offset_instant_to_Europe/Berlin"
 
 
-def test_transitions_for_every_recording_year():
+def test_dst_transition_gap_and_fold_never_guessed():
     from datetime import date, timedelta
-    # Explicit EU calendar rule for the audited 2011-2026 period, independent
-    # of the conversion library's transition lookup.
     for year in range(2011, 2027):
-        for month, hour, before_offset, after_offset in [(3, "03", "+01:00", "+02:00"), (10, "02", "+02:00", "+01:00")]:
+        for month in (3, 10):
             end = date(year, month, 31)
             sunday = end - timedelta(days=(end.weekday() + 1) % 7)
             day = sunday.isoformat()
-            before_hour = "01" if month == 3 else "02"
-            assert resolve_recording_time("", f"{day}T00:59:59Z")["datetime_clean"] == f"{day}T{before_hour}:59:59{before_offset}"
-            assert resolve_recording_time("", f"{day}T01:00:00Z")["datetime_clean"] == f"{day}T{hour}:00:00{after_offset}"
+            if month == 3:
+                assert resolve_recording_time("", f"{day}T01:59:59Z")["datetime_clean"] == f"{day}T01:59:59+01:00"
+                assert pd.isna(resolve_recording_time("", f"{day}T02:30:00Z")["datetime_clean"])
+                assert resolve_recording_time("", f"{day}T03:00:00Z")["datetime_clean"] == f"{day}T03:00:00+02:00"
+            else:
+                assert resolve_recording_time("", f"{day}T01:59:59Z")["datetime_clean"] == f"{day}T01:59:59+02:00"
+                assert pd.isna(resolve_recording_time("", f"{day}T02:30:00Z")["datetime_clean"])
+                assert resolve_recording_time("", f"{day}T03:00:00Z")["datetime_clean"] == f"{day}T03:00:00+01:00"
 
 
 def test_local_clock_always_wins():
@@ -104,9 +112,9 @@ def test_extraction_to_master_keeps_clock_and_utc():
         clean.to_csv(root / step1.CLEAN_FILENAME, index=False)
         log.to_csv(root / step1.LOG_FILENAME, index=False)
         result = master.build_base_table({"status_dir": str(root)}, root / "master.csv", "now")
-        assert result["datetime_local"].tolist() == ["2025-01-15 07:00:00", "2025-07-15 08:00:00", "2025-10-26 02:30:00", "2025-10-26 02:30:00"]
-        assert result["datetime_utc"].tolist() == source["datetime"].tolist()
-        assert result["time_has_issues"].tolist() == [True, True, False, False]
+        assert result["datetime_local"].tolist() == ["2025-01-15 06:00:00", "2025-07-15 06:00:00", "2025-10-26 02:30:00", "2025-10-26 02:30:00"]
+        assert result["datetime_utc"].tolist() == ["2025-01-15T05:00:00Z", "2025-07-15T04:00:00Z", "2025-10-26T00:30:00Z", "2025-10-26T01:30:00Z"]
+        assert result["time_has_issues"].tolist() == [False, False, False, False]
     planned = planner.build_fingerprints(source.assign(dawn_chorus_id=source.id.astype(str)))
     pd.testing.assert_frame_equal(step1.build_fingerprints(source), planned)
     import hashlib
@@ -136,8 +144,10 @@ def test_german_month_and_variant_context_refresh():
 
 
 def test_changed_day_invalidates_preserved_weather_and_sentinel():
-    table = pd.DataFrame({"dawn_chorus_id": ["1", "2"], "date_local": ["2025-07-02", "2025-07-01"]})
+    table = pd.DataFrame({"dawn_chorus_id": ["1", "2"], "date_local": ["2025-07-02", "2025-07-01"],
+        "datetime_utc": ["2025-07-01T23:00:00Z", "2025-07-01T05:00:00Z"]})
     previous = pd.DataFrame({"dawn_chorus_id": ["1", "2"], "date_local": ["2025-07-01"] * 2,
+        "datetime_utc": ["2025-06-30T23:00:00Z", "2025-07-01T05:00:00Z"],
         "weather_point_exists": [True] * 2, "weather_point_has_issues": [False] * 2,
         "weather_point_issue_codes": [""] * 2, "sentinel_exists": [True] * 2,
         "sentinel_has_issues": [False] * 2, "sentinel_issue_codes": [""] * 2})

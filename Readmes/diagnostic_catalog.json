@@ -4,7 +4,7 @@
       "kind": "status",
       "value": "in_progress",
       "source": "tools/plan_pipeline_run.py",
-      "line": 469,
+      "line": 470,
       "function": "full_rebuild_context",
       "condition": "not resume"
     },
@@ -12,7 +12,7 @@
       "kind": "exception",
       "value": "ValueError: Bioacoustics is disabled in this configuration.",
       "source": "tools/plan_pipeline_run.py",
-      "line": 522,
+      "line": 523,
       "function": "plan_bioacoustics",
       "condition": "not config.get('bioacoustics', {}).get('enabled', True)"
     },
@@ -20,7 +20,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Run the core pipeline first; missing prerequisite: {path}",
       "source": "tools/plan_pipeline_run.py",
-      "line": 528,
+      "line": 529,
       "function": "plan_bioacoustics",
       "condition": "not path.is_file()"
     },
@@ -28,7 +28,7 @@
       "kind": "exception",
       "value": "ValueError: Prepared metadata and master IDs differ; finish the core pipeline first.",
       "source": "tools/plan_pipeline_run.py",
-      "line": 534,
+      "line": 535,
       "function": "plan_bioacoustics",
       "condition": "ids != master_ids"
     },
@@ -36,7 +36,7 @@
       "kind": "exit",
       "value": "0",
       "source": "tools/plan_pipeline_run.py",
-      "line": 564,
+      "line": 565,
       "function": "main",
       "condition": "args.mode == 'bioacoustics'"
     },
@@ -44,7 +44,7 @@
       "kind": "exit",
       "value": "0",
       "source": "tools/plan_pipeline_run.py",
-      "line": 884,
+      "line": 952,
       "function": "main",
       "condition": ""
     },
@@ -294,7 +294,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: IDs file not found: {path}",
       "source": "scripts/Step_1_metadata_extraction.py",
-      "line": 256,
+      "line": 271,
       "function": "read_ids_file",
       "condition": "not path.is_file()"
     },
@@ -302,7 +302,7 @@
       "kind": "exception",
       "value": "KeyError: No dawn_chorus_id/id column in {path}",
       "source": "scripts/Step_1_metadata_extraction.py",
-      "line": 265,
+      "line": 280,
       "function": "read_ids_file",
       "condition": ""
     },
@@ -310,7 +310,7 @@
       "kind": "exception",
       "value": "ValueError: This pipeline requires country Germany and timezone Europe/Berlin",
       "source": "scripts/Step_1_metadata_extraction.py",
-      "line": 332,
+      "line": 347,
       "function": "main",
       "condition": "timezone != DEFAULT_TIMEZONE or country_value != 'Germany'"
     },
@@ -318,7 +318,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Dawn Chorus CSV not found: {input_csv}",
       "source": "scripts/Step_1_metadata_extraction.py",
-      "line": 344,
+      "line": 359,
       "function": "main",
       "condition": "not input_csv.is_file()"
     },
@@ -326,7 +326,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_1_metadata_extraction.py",
-      "line": 445,
+      "line": 460,
       "function": "main",
       "condition": "except Exception"
     },
@@ -334,7 +334,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_1_metadata_extraction.py",
-      "line": 483,
+      "line": 498,
       "function": "main",
       "condition": ""
     },
@@ -342,7 +342,7 @@
       "kind": "exception",
       "value": "ValueError: Germany recordings require timezone Europe/Berlin",
       "source": "scripts/recording_time.py",
-      "line": 48,
+      "line": 49,
       "function": "resolve_recording_time",
       "condition": "timezone != GERMAN_TIMEZONE"
     },
@@ -350,7 +350,7 @@
       "kind": "code",
       "value": "datetime_timezone_missing_assumed_utc",
       "source": "scripts/recording_time.py",
-      "line": 56,
+      "line": 63,
       "function": "resolve_recording_time",
       "condition": "reference is not None and reference.tzinfo is None"
     },
@@ -358,7 +358,7 @@
       "kind": "code",
       "value": "localtimes_unparseable",
       "source": "scripts/recording_time.py",
-      "line": 64,
+      "line": 71,
       "function": "resolve_recording_time",
       "condition": "local is None"
     },
@@ -366,7 +366,7 @@
       "kind": "code",
       "value": "nonexistent_localtime",
       "source": "scripts/recording_time.py",
-      "line": 74,
+      "line": 81,
       "function": "resolve_recording_time",
       "condition": "not candidates"
     },
@@ -374,7 +374,7 @@
       "kind": "code",
       "value": "ambiguous_localtime_unresolved",
       "source": "scripts/recording_time.py",
-      "line": 91,
+      "line": 98,
       "function": "resolve_recording_time",
       "condition": "not (len(matching_reference) == 1)"
     },
@@ -382,7 +382,7 @@
       "kind": "code",
       "value": "localtimes_offset_mismatch",
       "source": "scripts/recording_time.py",
-      "line": 93,
+      "line": 100,
       "function": "resolve_recording_time",
       "condition": "chosen is not None and local.tzinfo is not None and (local.utcoffset() != chosen.utcoffset())"
     },
@@ -390,7 +390,7 @@
       "kind": "code",
       "value": "utc_reference_unavailable",
       "source": "scripts/recording_time.py",
-      "line": 95,
+      "line": 102,
       "function": "resolve_recording_time",
       "condition": "reference is None"
     },
@@ -398,15 +398,23 @@
       "kind": "code",
       "value": "datetime_missing_or_unparseable",
       "source": "scripts/recording_time.py",
-      "line": 99,
+      "line": 106,
       "function": "resolve_recording_time",
       "condition": "reference is None"
     },
     {
       "kind": "code",
+      "value": "ambiguous_localtime_unresolved",
+      "source": "scripts/recording_time.py",
+      "line": 121,
+      "function": "resolve_recording_time",
+      "condition": "len(candidates) != 1"
+    },
+    {
+      "kind": "code",
       "value": "utc_local_conflict",
       "source": "scripts/recording_time.py",
-      "line": 110,
+      "line": 144,
       "function": "resolve_recording_time",
       "condition": "local_raw and difference"
     },
@@ -414,7 +422,7 @@
       "kind": "status",
       "value": "invalid",
       "source": "scripts/recording_time.py",
-      "line": 111,
+      "line": 145,
       "function": "resolve_recording_time",
       "condition": ""
     },
@@ -422,7 +430,7 @@
       "kind": "status",
       "value": "warning",
       "source": "scripts/recording_time.py",
-      "line": 111,
+      "line": 145,
       "function": "resolve_recording_time",
       "condition": ""
     },
@@ -430,7 +438,7 @@
       "kind": "status",
       "value": "validated",
       "source": "scripts/recording_time.py",
-      "line": 111,
+      "line": 145,
       "function": "resolve_recording_time",
       "condition": ""
     },
@@ -3656,9 +3664,9 @@
   "step_7_0_master_table": [
     {
       "kind": "code",
-      "value": "time_source_not_localtimes",
+      "value": "time_validation_failed",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 204,
+      "line": 227,
       "function": "refresh_time_quality",
       "condition": "'record_blocking_issue_codes' in table"
     },
@@ -3666,7 +3674,7 @@
       "kind": "status",
       "value": "partial",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 209,
+      "line": 236,
       "function": "refresh_time_quality",
       "condition": "'record_status' in table"
     },
@@ -3674,7 +3682,7 @@
       "kind": "status",
       "value": "not_started",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 211,
+      "line": 238,
       "function": "refresh_time_quality",
       "condition": "'release_status' in table"
     },
@@ -3682,23 +3690,47 @@
       "kind": "exception",
       "value": "FileNotFoundError: Step 1 clean metadata is missing or empty: {status_dir / 'dawnchorus_metadata_clean.csv'}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 331,
+      "line": 358,
       "function": "build_base_table",
       "condition": "clean.empty"
     },
     {
       "kind": "code",
+      "value": "time_check_not_validated",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 415,
+      "function": "build_base_table",
+      "condition": ""
+    },
+    {
+      "kind": "code",
       "value": "recording_date_changed_recheck_required",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 487,
+      "line": 528,
       "function": "add_preserved_nonformation_domains",
-      "condition": "'date_local' in previous.columns"
+      "condition": "'date_local' in previous_by_id.columns"
+    },
+    {
+      "kind": "code",
+      "value": "recording_date_changed_recheck_required",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 536,
+      "function": "add_preserved_nonformation_domains",
+      "condition": "'datetime_utc' in previous_by_id.columns"
+    },
+    {
+      "kind": "code",
+      "value": "recording_date_changed_recheck_required",
+      "source": "scripts/Step_7_0_update_master_table.py",
+      "line": 585,
+      "function": "preserve_sentinel_time_selection_warnings",
+      "condition": ""
     },
     {
       "kind": "code",
       "value": "inventory_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 544,
+      "line": 639,
       "function": "add_media_status",
       "condition": "compact.empty"
     },
@@ -3706,7 +3738,7 @@
       "kind": "code",
       "value": "qc_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 559,
+      "line": 654,
       "function": "add_media_status",
       "condition": "not (compact.empty)"
     },
@@ -3714,7 +3746,7 @@
       "kind": "code",
       "value": "duration_unavailable",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 611,
+      "line": 706,
       "function": "add_media_status",
       "condition": "prefix == 'sound'"
     },
@@ -3722,7 +3754,7 @@
       "kind": "status",
       "value": "not_started",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 657,
+      "line": 752,
       "function": "add_bioacoustic_status",
       "condition": "compact.empty"
     },
@@ -3730,7 +3762,7 @@
       "kind": "code",
       "value": "bioacoustic_qc_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 659,
+      "line": 754,
       "function": "add_bioacoustic_status",
       "condition": "compact.empty"
     },
@@ -3738,7 +3770,7 @@
       "kind": "code",
       "value": "bioacoustic_result_missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 695,
+      "line": 790,
       "function": "add_bioacoustic_status",
       "condition": ""
     },
@@ -3746,7 +3778,7 @@
       "kind": "exception",
       "value": "ValueError: Run the core pipeline first: an existing master is required.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 725,
+      "line": 820,
       "function": "write_bioacoustic_master",
       "condition": "previous.empty"
     },
@@ -3754,7 +3786,7 @@
       "kind": "code",
       "value": "inventory_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 765,
+      "line": 860,
       "function": "add_sentinel_status",
       "condition": "compact.empty"
     },
@@ -3762,7 +3794,7 @@
       "kind": "code",
       "value": "missing_file",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 808,
+      "line": 903,
       "function": "add_sentinel_status",
       "condition": "not row['sentinel_exists']"
     },
@@ -3770,7 +3802,7 @@
       "kind": "code",
       "value": "quality_score_missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 813,
+      "line": 908,
       "function": "add_sentinel_status",
       "condition": "row['sentinel_exists'] and pd.isna(score)"
     },
@@ -3778,7 +3810,7 @@
       "kind": "code",
       "value": "too_cloudy_sentinel_not_available",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 815,
+      "line": 910,
       "function": "add_sentinel_status",
       "condition": "pd.notna(score) and score == 0"
     },
@@ -3786,7 +3818,7 @@
       "kind": "code",
       "value": "inventory_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 852,
+      "line": 947,
       "function": "add_weather_point_status",
       "condition": "compact.empty"
     },
@@ -3794,7 +3826,7 @@
       "kind": "code",
       "value": "qc_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 894,
+      "line": 989,
       "function": "add_weather_point_status",
       "condition": ""
     },
@@ -3802,7 +3834,7 @@
       "kind": "code",
       "value": "missing_file",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 895,
+      "line": 990,
       "function": "add_weather_point_status",
       "condition": ""
     },
@@ -3810,7 +3842,7 @@
       "kind": "exception",
       "value": "ValueError: Expected HOSTRADA raster resolution_m=100 for the master table, got {resolution}.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 922,
+      "line": 1017,
       "function": "add_weather_raster_status",
       "condition": "resolution != 100"
     },
@@ -3818,7 +3850,7 @@
       "kind": "code",
       "value": "missing_raster",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 932,
+      "line": 1027,
       "function": "add_weather_raster_status",
       "condition": "not exists"
     },
@@ -3826,7 +3858,7 @@
       "kind": "code",
       "value": "all_nodata",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 939,
+      "line": 1034,
       "function": "add_weather_raster_status",
       "condition": "'status' in qc.columns and qc['status'].astype(str).str.upper().eq('ONLY_NODATA').any()"
     },
@@ -3834,7 +3866,7 @@
       "kind": "code",
       "value": "unexpected_shape",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 941,
+      "line": 1036,
       "function": "add_weather_raster_status",
       "condition": "'square' in qc.columns and (~bool_series(qc['square'])).any()"
     },
@@ -3842,7 +3874,7 @@
       "kind": "code",
       "value": "raster_structure_warning",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 944,
+      "line": 1039,
       "function": "add_weather_raster_status",
       "condition": "column in qc.columns and pd.to_numeric(qc[column], errors='coerce').fillna(0).gt(0).any()"
     },
@@ -3850,7 +3882,7 @@
       "kind": "code",
       "value": "raster_qc_read_error_{type(exc).__name__}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 947,
+      "line": 1042,
       "function": "add_weather_raster_status",
       "condition": "except Exception"
     },
@@ -3858,7 +3890,7 @@
       "kind": "code",
       "value": "qc_not_run",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 949,
+      "line": 1044,
       "function": "add_weather_raster_status",
       "condition": "exists"
     },
@@ -3866,7 +3898,7 @@
       "kind": "exception",
       "value": "ValueError: The INSPIRE grid has no CRS.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1021,
+      "line": 1116,
       "function": "complete_100m_grid_ids",
       "condition": "not info['crs']"
     },
@@ -3874,7 +3906,7 @@
       "kind": "exception",
       "value": "ValueError: FORMATION_10M_UNREADABLE: {path}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1200,
+      "line": 1295,
       "function": "read_10m_rows",
       "condition": "except Exception"
     },
@@ -3882,7 +3914,7 @@
       "kind": "status",
       "value": "majority_formation_status_10m",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1232,
+      "line": 1327,
       "function": "add_10m_formation",
       "condition": ""
     },
@@ -3890,7 +3922,7 @@
       "kind": "status",
       "value": "validated",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1376,
+      "line": 1471,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3898,7 +3930,7 @@
       "kind": "status",
       "value": "has_issues",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1377,
+      "line": 1472,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3906,7 +3938,7 @@
       "kind": "status",
       "value": "missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1383,
+      "line": 1478,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3914,15 +3946,15 @@
       "kind": "code",
       "value": "timestamp_missing_or_invalid",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1453,
+      "line": 1548,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(valid_timestamp.loc[row.name])"
     },
     {
       "kind": "code",
-      "value": "time_source_not_localtimes",
+      "value": "time_validation_failed",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1455,
+      "line": 1550,
       "function": "add_agreement_and_ready_flags",
       "condition": "bool(row['time_has_issues'])"
     },
@@ -3930,7 +3962,7 @@
       "kind": "code",
       "value": "coordinates_missing_or_invalid",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1457,
+      "line": 1552,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(valid_coordinates.loc[row.name])"
     },
@@ -3938,7 +3970,7 @@
       "kind": "code",
       "value": "{prefix}_missing",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1462,
+      "line": 1557,
       "function": "add_agreement_and_ready_flags",
       "condition": "not exists"
     },
@@ -3946,7 +3978,7 @@
       "kind": "code",
       "value": "{prefix}_issue",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1464,
+      "line": 1559,
       "function": "add_agreement_and_ready_flags",
       "condition": "has_issues"
     },
@@ -3954,7 +3986,7 @@
       "kind": "code",
       "value": "grid_100m_missing_majority_formation",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1466,
+      "line": 1561,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(row.get('grid_100m_has_majority_formation', False))"
     },
@@ -3962,7 +3994,7 @@
       "kind": "code",
       "value": "grid_10m_missing_majority_formation",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1468,
+      "line": 1563,
       "function": "add_agreement_and_ready_flags",
       "condition": "not bool(row.get('grid_10m_has_majority_formation', False))"
     },
@@ -3970,7 +4002,7 @@
       "kind": "status",
       "value": "partial",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1472,
+      "line": 1567,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3978,7 +4010,7 @@
       "kind": "status",
       "value": "not_started",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1488,
+      "line": 1583,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3986,7 +4018,7 @@
       "kind": "status",
       "value": "manual_review_required",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1489,
+      "line": 1584,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -3994,7 +4026,7 @@
       "kind": "status",
       "value": "approved",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1492,
+      "line": 1587,
       "function": "add_agreement_and_ready_flags",
       "condition": ""
     },
@@ -4002,7 +4034,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1664,
+      "line": 1759,
       "function": "main",
       "condition": "execution_phase() == 'bioacoustics'"
     },
@@ -4010,7 +4042,7 @@
       "kind": "exception",
       "value": "FileNotFoundError: Master update ID file not found: {args.ids_file}",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1669,
+      "line": 1764,
       "function": "main",
       "condition": "not args.ids_file.is_file()"
     },
@@ -4018,7 +4050,7 @@
       "kind": "exception",
       "value": "ValueError: FORMATION_10M_MISSING: {ten_path}; existing master retained.",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1683,
+      "line": 1778,
       "function": "main",
       "condition": "ten_path and (not Path(ten_path).is_file())"
     },
@@ -4026,7 +4058,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1688,
+      "line": 1783,
       "function": "main",
       "condition": "except ValueError"
     },
@@ -4034,7 +4066,7 @@
       "kind": "exit",
       "value": "0",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1794,
+      "line": 1890,
       "function": "main",
       "condition": ""
     },
@@ -4042,7 +4074,7 @@
       "kind": "exit",
       "value": "1",
       "source": "scripts/Step_7_0_update_master_table.py",
-      "line": 1797,
+      "line": 1893,
       "function": "main",
       "condition": "except Exception"
     },

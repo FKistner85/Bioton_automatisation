@@ -66,7 +66,8 @@ The master table deliberately condenses these sources. File-level, segment-level
 | `date_local` | Local calendar date derived from `datetime_local`. |
 | `time_local` | Local wall-clock time derived from `datetime_local`; the local offset is not applied twice. |
 | `timestamp_source` | Source selected by Step 1, such as `localtimes` or `datetime`. |
-| `time_has_issues` | `False` exactly when `timestamp_source = localtimes`; `True` for UTC fallback, missing or unknown provenance. This is a source-confidence flag; invalid local timestamps are separately rejected by `metadata_status` and readiness. |
+| `time_has_issues` | `False` means a valid, QC-checked recording time; validated `datetime` fallbacks are allowed. Missing, DST-ambiguous and conflicting timestamps remain flagged. `timestamp_source` separately identifies provenance. |
+| `time_issue_codes` | Optional additional v7-compatible QA column storing Step-1 timestamp issues across partial updates; not a replacement for the PDF's `time_has_issues` filter. |
 | `timestamp_changed` | `True` when Step 1 normalized, converted, or reinterpreted the source timestamp. |
 | `timestamp_change_reason` | Step-1 explanation of the timestamp conversion/normalization. |
 | `lat` | Cleaned WGS84 latitude; valid range is -90 to 90. |
@@ -83,7 +84,7 @@ inconsistent with Germany never override an explicitly supplied local clock.
 ci-tec uses `datetime_local` in the shared full master as its recording-time
 column. A separate compact export is no longer generated automatically.
 
-The 9 October 2026 PDF clean-data rule requires `time_has_issues=False`. Combined readiness now enforces that source rule. UTC fallback conversion remains unchanged. The source flag does not invalidate audio-only analyses or remove rows. See `README_CI_TEC.md` for the consumer filters.
+The revised 13 October 2026 PDF clean-data rule requires `time_has_issues=False`. Combined readiness enforces this rule. The v4 timestamp repair localizes `datetime` values with misleading Z/+00 labeling as German wall clocks without shifting the clock; valid QC-checked fallbacks are not excluded for provenance alone. The source flag does not invalidate audio-only analyses or remove rows. See `README_CI_TEC.md` for the consumer filters.
 
 ### Status fields
 

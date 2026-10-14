@@ -23,6 +23,7 @@ from Step_1_metadata_extraction import (
     FINGERPRINT_GROUPS, build_fingerprints as metadata_fingerprints,
     read_source as read_metadata_source,
 )
+from recording_time import resolve_recording_time
 
 
 FULL_REBUILD_STEPS = [
@@ -536,7 +537,7 @@ def plan_bioacoustics(config: dict[str, Any], args: argparse.Namespace) -> Path:
     run_dir = (Path(root) if root else processed_root_from_config(config) / "step_0_control" / "run_plans") / args.run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     id_files = {}
-    for name in ("metadata", "point_assignment", "audio", "photo", "sentinel", "weather", "bioacoustic"):
+    for name in ("metadata", "point_assignment", "audio", "photo", "sentinel", "weather", "weather_stale", "bioacoustic"):
         path = run_dir / f"{name}_ids.csv"
         write_id_file(path, {value: {"independent_audio_reconciliation"} for value in ids} if name == "bioacoustic" else {})
         id_files[name] = str(path)
@@ -589,6 +590,48 @@ def main() -> int:
         column: changed_ids(current, previous, column)
         for column in ["source_fingerprint", *FINGERPRINT_GROUPS]
     }
+    # V2 -> V3 migration: detect rows with IDENTICAL raw source for which
+    # the old v2 hash would still match the persisted fingerprint. Avoid
+    # misclassifying unrelated metadata edits as time-policy-only changes.
+    legacy = metadata_fingerprints(source, timezone=timezone, legacy_fallback=True)
+    old = previous.set_index("dawn_chorus_id") if not previous.empty else pd.DataFrame()
+    old_raw = old.get("source_fingerprint", pd.Series(dtype=str))
+    old_meta = old.get("metadata_fingerprint", pd.Series(dtype=str))
+    legacy_by_id = legacy.set_index("dawn_chorus_id")
+    current_by_id = current.set_index("dawn_chorus_id")
+    policy_only = {
+        dawn_id for dawn_id in legacy_by_id.index.intersection(old.index)
+        if str(legacy_by_id.at[dawn_id, "source_fingerprint"]) == str(old_raw.get(dawn_id))
+        and str(legacy_by_id.at[dawn_id, "metadata_fingerprint"]) == str(old_meta.get(dawn_id))
+        and str(current_by_id.at[dawn_id, "metadata_fingerprint"]) != str(old_meta.get(dawn_id))
+    }
+    # Compare against the published master independently of old fingerprints:
+    # a run can fail AFTER Step-1 fingerprints have already advanced to V3.
+    # Only clocks affected by this policy are inspected (not all 111k IDs).
+    policy_candidates = {
+        dawn_id for dawn_id in current_by_id.index
+        if str(current_by_id.at[dawn_id, "metadata_fingerprint"]) !=
+           str(legacy_by_id.at[dawn_id, "metadata_fingerprint"])
+    }
+    local_day_changed, utc_day_changed = set(), set()
+    if policy_candidates and not master.empty and {"date_local", "datetime_utc"} <= set(master.columns):
+        old_times = master.drop_duplicates("dawn_chorus_id").set_index("dawn_chorus_id")
+        raw_by_id = source.set_index("dawn_chorus_id")
+        for dawn_id in policy_candidates & set(old_times.index):
+            row = raw_by_id.loc[dawn_id]
+            decision = resolve_recording_time(row.get("localtimes"), row.get("datetime"))
+            parsed = pd.to_datetime(decision["datetime_clean"], utc=True, errors="coerce")
+            if pd.isna(parsed):
+                local_day_changed.add(dawn_id)
+                utc_day_changed.add(dawn_id)
+                continue
+            new_local_day = parsed.tz_convert("Europe/Berlin").strftime("%Y-%m-%d")
+            old_local_day = str(old_times.at[dawn_id, "date_local"])
+            if new_local_day != old_local_day:
+                local_day_changed.add(dawn_id)
+            old_utc = pd.to_datetime(old_times.at[dawn_id, "datetime_utc"], utc=True, errors="coerce")
+            if pd.isna(old_utc) or parsed.date() != old_utc.date():
+                utc_day_changed.add(dawn_id)
     all_current = set(current["dawn_chorus_id"].astype(str))
     all_previous = set(previous["dawn_chorus_id"].astype(str))
     deleted = all_previous - all_current
@@ -610,7 +653,6 @@ def main() -> int:
     for group, target in [
         ("source_fingerprint", "metadata"),
         ("metadata_fingerprint", "metadata"),
-        ("metadata_fingerprint", "point_assignment"),
         ("audio_fingerprint", "audio"),
         ("audio_fingerprint", "bioacoustic"),
         ("photo_fingerprint", "photo"),
@@ -621,6 +663,26 @@ def main() -> int:
         add_reason(id_reasons[target], new, "new_id")
         add_reason(id_reasons[target], changed, f"changed:{group}")
         add_reason(id_reasons[target], removed, "deleted_id")
+
+    # Point assignment uses coordinates, never the recording-time policy.
+    # Compare the actual WGS84 values against the previous master, including
+    # after an interrupted run that advanced the source fingerprints.
+    if not master.empty and {"dawn_chorus_id", "lat", "lon"} <= set(master.columns):
+        old_coordinates = master.drop_duplicates("dawn_chorus_id").set_index("dawn_chorus_id")
+        for row in source.itertuples(index=False):
+            dawn_id = row.dawn_chorus_id
+            if dawn_id not in old_coordinates.index:
+                continue
+            old_lat, old_lon = old_coordinates.loc[dawn_id, ["lat", "lon"]]
+            if (canonical(row.lat) != canonical(pd.to_numeric(old_lat, errors="coerce"))
+                    or canonical(row.lng) != canonical(pd.to_numeric(old_lon, errors="coerce"))):
+                add_reason(id_reasons["point_assignment"], [dawn_id], "recording_coordinates_changed")
+    # For v2->v3 policy-only differences, avoid pointless downstream work.
+    for target, changed_day_ids in (("weather", local_day_changed), ("sentinel", utc_day_changed)):
+        for dawn_id in policy_only - changed_day_ids:
+            id_reasons[target].pop(dawn_id, None)
+        for dawn_id in changed_day_ids:
+            add_reason(id_reasons[target], [dawn_id], "recording_date_changed_time_policy")
 
     # Step 1 may have committed its fingerprints before downstream work failed.
     # Reconcile the actual point product independently on every restart.
@@ -675,6 +737,12 @@ def main() -> int:
             add_reason(id_reasons[target], all_current | deleted, "from_scratch")
 
     id_reasons["bioacoustic"].clear()  # The independent phase reconciles prepared audio itself.
+    # Existing weather files for a changed recording date cannot be treated
+    # as "present => reusable" by the quick local incremental workflow.
+    weather_stale = id_reasons["weather_stale"] = {
+        dawn_id: {"recording_date_changed_time_policy"}
+        for dawn_id in local_day_changed & all_current
+    }
     run_root_cfg = config.get("pipeline_control", {}).get("run_plan_dir")
     run_root = Path(run_root_cfg) if run_root_cfg else processed_root_from_config(config) / "step_0_control" / "run_plans"
     run_dir = run_root / args.run_id

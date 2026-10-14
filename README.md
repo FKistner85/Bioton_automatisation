@@ -2,7 +2,7 @@
 
 Bio-O-Ton is a restartable data-processing pipeline for Dawn Chorus recordings. It combines cleaned recording metadata, habitat-formation products at 100 m and 10 m, media inventories and downloads, Sentinel-2 data, HOSTRADA weather, bioacoustic model results, validation, and visual reports. Production runs use LSDF storage and Slurm on HoreKa; a Windows orchestrator is available for controlled local execution.
 
-This document reflects the implementation checked on **2026-09-24**. Paths and operational defaults come from [`config.horeka.json`](config.horeka.json), the executable step registry is [`pipeline_steps.json`](pipeline_steps.json), and the final table is written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The [master reconciliation and restart checks](Readmes/master_reconciliation.md) explain independent spatial coverage checks, all-variant processing and protection against a truncated source. The final workflow uses `tools/finalize_master.py` to reconcile recording and variant status together.
+This document includes the time-policy v4 correction checked on **2026-10-13** (other historical sections keep their original dates). Paths and operational defaults come from [`config.horeka.json`](config.horeka.json), the executable step registry is [`pipeline_steps.json`](pipeline_steps.json), and the final table is written by [`scripts/Step_7_0_update_master_table.py`](scripts/Step_7_0_update_master_table.py). The [master reconciliation and restart checks](Readmes/master_reconciliation.md) explain independent spatial coverage checks, all-variant processing and protection against a truncated source. The final workflow uses `tools/finalize_master.py` to reconcile recording and variant status together.
 
 For ci-tec, use the short [README_CI_TEC.pdf](README_CI_TEC.pdf) ([text version](README_CI_TEC.md)). The [time review](Readmes/time_review/README.md) documents the German-time correction and the LRT check of all 47 source conflicts.
 
@@ -21,8 +21,9 @@ The main result is one row per unique `dawn_chorus_id` in:
 
 The CSV is the portable exchange format, the compressed Parquet file is intended for analysis, and the JSON file contains row counts, readiness totals, status distributions, and update metadata. The current schema version is `2026-10-09-mastertable-v7`. Detailed definitions, derivation rules, issue-code conventions, and source products are in the [master-table reference](MASTER_TABLE_README.md).
 
-The 9 October PDF contract is implemented by the shared Horeka/local writer:
-`time_has_issues` is false only for source `localtimes`; `duration_seconds` is
+The revised 13 October PDF time contract is implemented by the shared Horeka/local writer:
+`time_has_issues` is false for a QC-validated local recording time, whether
+`timestamp_source` is `localtimes` or `datetime`; `duration_seconds` is
 retained from audio QC. Weather `missing_value` alone remains an informational
 code. [Schema audit and validation](Readmes/master_schema_pdf_audit_20261009.md).
 

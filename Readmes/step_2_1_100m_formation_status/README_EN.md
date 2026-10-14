@@ -48,7 +48,7 @@ Missing inputs or configuration sections terminate the step with a non-zero exit
 <!-- BEGIN SOURCE DIAGNOSTICS -->
 ## Error Codes, Status And Exit Codes
 
-Checked against local code: 2026-10-12. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
+Checked against local code: 2026-10-13. Tables separate data/QC codes, statuses, explicit exceptions and process exit codes. `{...}` denotes runtime values rather than fixed codes. Conditions identify the exact source trigger; multiple codes may occur together.
 
 `0` only means process success, not necessarily clean data. Invalid argparse arguments can exit with `2`; uncaught Python exceptions typically exit with `1`. Slurm states such as `TIMEOUT`, `OUT_OF_MEMORY`, `CANCELLED` and `DependencyNeverSatisfied` are scheduler messages, not data-quality codes. Dynamic library/HTTP/filesystem errors retain their original messages in logs.
 
